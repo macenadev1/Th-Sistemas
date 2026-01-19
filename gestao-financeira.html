@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Financeira</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .tab-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #2193b0;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #2193b0;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2193b0;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 147, 176, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e53935 0%, #ef5350 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #43a047 0%, #66bb6a 100%);
+        }
+
+        .summary-box {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #2193b0;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-item strong {
+            color: #2193b0;
+        }
+
+        .summary-item.destaque {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #43a047;
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 2px solid #43a047;
+        }
+
+        .history-item {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #2193b0;
+        }
+
+        .history-item.gasto {
+            border-left-color: #e53935;
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .history-desc {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .history-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2193b0;
+        }
+
+        .history-value.negative {
+            color: #e53935;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2193b0;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .tipo-valor {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .tipo-valor label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .tabs {
+                justify-content: center;
+            }
+
+            .tab-btn {
+                font-size: 14px;
+                padding: 10px 16px;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-overlay.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-box h2 {
+            color: #2193b0;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .login-error {
+            color: #e53935;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .main-content {
+            display: none;
+        }
+
+        .main-content.show {
+            display: block;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group input, .filter-group select {
+            flex: 1;
+            min-width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <h2>🔒 Gestão Financeira</h2>
+            <input type="password" id="senhaInput" placeholder="Digite a senha" onkeypress="verificarEnterLogin(event)">
+            <button class="btn" onclick="verificarSenha()">Entrar</button>
+            <div id="loginError" class="login-error">❌ Senha incorreta. Tente novamente.</div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div id="mainContent" class="main-content">
+        <div class="container">
+            <h1>💰 Gestão Financeira</h1>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="abrirTab('lancamento')">📝 Lançamento Diário</button>
+                <button class="tab-btn" onclick="abrirTab('gastos')">💸 Gastos</button>
+                <button class="tab-btn" onclick="abrirTab('dashboard')">📊 Dashboard</button>
+                <button class="tab-btn" onclick="abrirTab('historico')">📜 Histórico</button>
+            </div>
+
+            <!-- Tab: Lançamento Diário -->
+            <div id="tabLancamento" class="tab-content active">
+                <div class="grid-2">
+                    <div class="card">
+                        <h2>💵 Entrada Diária</h2>
+                        
+                        <div class="form-group">
+                            <label for="dataEntrada">Data</label>
+                            <input type="date" id="dataEntrada">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="valorEntrada">Valor que Entrou (R$)</label>
+                            <input type="number" id="valorEntrada" step="0.01" placeholder="0.00">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lucratividade">Lucratividade Total (R$)</label>
+                            <input type="number" id="lucratividade" step="0.01" placeholder="0.00" oninput="atualizarDistribuicao()">
+                        </div>
+
+                        <div class="form-group" style="margin-left: 20px; background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                            <label style="font-size: 13px; color: #666;">💵 Lucratividade em Dinheiro (R$)</label>
+                            <input type="number" id="lucroDinheiro" step="0.01" placeholder="0.00" oninput="calcularLucroConta()">
+                            
+                            <label style="font-size: 13px; color: #666; margin-top: 10px;">🏦 Lucratividade em Conta (R$)</label>
+                            <input type="number" id="lucroConta" step="0.01" placeholder="0.00" oninput="calcularLucroDinheiro()" readonly style="background: #e8e8e8;">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reposicao">Reposição Total (R$)</label>
+                            <input type="number" id="reposicao" step="0.01" placeholder="0.00" oninput="atualizarDistribuicaoReposicao()">
+                        </div>
+
+                        <div class="form-group" style="margin-left: 20px; background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                            <label style="font-size: 13px; color: #666;">💵 Reposição em Dinheiro (R$)</label>
+                            <input type="number" id="reposicaoDinheiro" step="0.01" placeholder="0.00" oninput="calcularReposicaoConta()">
+                            
+                            <label style="font-size: 13px; color: #666; margin-top: 10px;">🏦 Reposição em Conta (R$)</label>
+                            <input type="number" id="reposicaoConta" step="0.01" placeholder="0.00" oninput="calcularReposicaoDinheiro()" readonly style="background: #e8e8e8;">
+                        </div>
+
+                        <button class="btn" onclick="salvarLancamento()">Salvar Lançamento</button>
+                    </div>
+
+                    <div class="card">
+                        <h2>📋 Resumo do Dia</h2>
+                        <div id="resumoDia" class="summary-box">
+                            <div class="summary-item">
+                                <span>Valor Entrada:</span>
+                                <strong>R$ <span id="resumoEntrada">0.00</span></strong>
+                            </div>
+                            <div class="summary-item">
+                                <span>Lucratividade:</span>
+                                <strong>R$ <span id="resumoLucro">0.00</span></strong>
+                            </div>
+                            <div class="summary-item">
+                                <span>Reposição:</span>
+                                <strong>R$ <span id="resumoReposicao">0.00</span></strong>
+                            </div>
+                            <div class="summary-item">
+                                <span>Total de Gastos:</span>
+                                <strong>R$ <span id="resumoGastos">0.00</span></strong>
+                            </div>
+                            <div class="summary-item">
+                                <span>Lucro após Gastos:</span>
+                                <strong>R$ <span id="resumoLucroAposGastos">0.00</span></strong>
+                            </div>
+                            <div class="summary-item destaque">
+                                <span>💰 Saldo Empresa (15%):</span>
+                                <strong>R$ <span id="resumoSaldoEmpresa">0.00</span></strong>
+                            </div>
+                        </div>
+
+                        <h2 style="margin-top: 30px;">💼 Saldos Disponíveis</h2>
+                        <div class="summary-box">
+                            <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #e0e0e0;">
+                                <div style="font-weight: 600; color: #2193b0; margin-bottom: 10px;">💰 Lucratividade</div>
+                                <div class="summary-item">
+                                    <span>💵 Em Dinheiro:</span>
+                                    <strong>R$ <span id="saldoLucroDinheiro">0.00</span></strong>
+                                </div>
+                                <div class="summary-item">
+                                    <span>🏦 Em Conta:</span>
+                                    <strong>R$ <span id="saldoLucroConta">0.00</span></strong>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: #43a047; margin-bottom: 10px;">🔄 Reposição</div>
+                                <div class="summary-item">
+                                    <span>💵 Em Dinheiro:</span>
+                                    <strong>R$ <span id="saldoReposicaoDinheiro">0.00</span></strong>
+                                </div>
+                                <div class="summary-item">
+                                    <span>🏦 Em Conta:</span>
+                                    <strong>R$ <span id="saldoReposicaoConta">0.00</span></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Gastos -->
+            <div id="tabGastos" class="tab-content">
+                <div class="grid-2">
+                    <div class="card">
+                        <h2>💸 Registrar Gasto</h2>
+                        
+                        <div class="form-group">
+                            <label for="dataGasto">Data</label>
+                            <input type="date" id="dataGasto">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tipoGasto">Tipo de Gasto</label>
+                            <select id="tipoGasto">
+                                <option value="Funcionária">Funcionária</option>
+                                <option value="Pagamento dos Sócios">Pagamento dos Sócios</option>
+                                <option value="Aluguel">Aluguel</option>
+                                <option value="Luz">Luz</option>
+                                <option value="CNPJ">CNPJ</option>
+                                <option value="Internet">Internet</option>
+                                <option value="Sacolas">Sacolas</option>
+                                <option value="Outras Despesas">Outras Despesas</option>
+                                <option value="Despesas Fixas da Loja">Despesas Fixas da Loja</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="valorGasto">Valor (R$)</label>
+                            <input type="number" id="valorGasto" step="0.01" placeholder="0.00">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tipo de Pagamento</label>
+                            <div class="tipo-valor">
+                                <label>
+                                    <input type="radio" name="tipoValorGasto" value="dinheiro" checked>
+                                    💵 Dinheiro
+                                </label>
+                                <label>
+                                    <input type="radio" name="tipoValorGasto" value="conta">
+                                    🏦 Conta
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="observacaoGasto">Observação (opcional)</label>
+                            <input type="text" id="observacaoGasto" placeholder="Detalhes do gasto">
+                        </div>
+
+                        <button class="btn" onclick="salvarGasto()">Registrar Gasto</button>
+                    </div>
+
+                    <div class="card">
+                        <h2>📊 Gastos do Mês</h2>
+                        <div id="listaGastosMes"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Dashboard -->
+            <div id="tabDashboard" class="tab-content">
+                <div class="grid-3">
+                    <div class="stat-card">
+                        <div class="stat-label">💰 Total Entrada (Mês)</div>
+                        <div class="stat-value" id="statTotalEntrada">R$ 0,00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">📈 Total Lucratividade (Mês)</div>
+                        <div class="stat-value" id="statTotalLucro">R$ 0,00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🔄 Total Reposição (Mês)</div>
+                        <div class="stat-value" id="statTotalReposicao">R$ 0,00</div>
+                    </div>
+                </div>
+
+                <div class="grid-3" style="margin-top: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-label">💸 Total Gastos (Mês)</div>
+                        <div class="stat-value" style="color: #e53935;" id="statTotalGastos">R$ 0,00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">💼 Saldo Empresa (15%)</div>
+                        <div class="stat-value" style="color: #43a047;" id="statSaldoEmpresa">R$ 0,00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">✅ Lucro Líquido</div>
+                        <div class="stat-value" style="color: #43a047;" id="statLucroLiquido">R$ 0,00</div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h2>📊 Gastos por Categoria (Mês Atual)</h2>
+                    <div id="gastosPorCategoria"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Histórico -->
+            <div id="tabHistorico" class="tab-content">
+                <div class="card">
+                    <h2>📜 Histórico de Movimentações</h2>
+                    
+                    <div class="filter-group">
+                        <input type="date" id="filtroDataInicio" placeholder="Data Início">
+                        <input type="date" id="filtroDataFim" placeholder="Data Fim">
+                        <select id="filtroTipo">
+                            <option value="todos">Todos os Tipos</option>
+                            <option value="entrada">Entradas</option>
+                            <option value="gasto">Gastos</option>
+                        </select>
+                        <button class="btn" onclick="filtrarHistorico()">Filtrar</button>
+                        <button class="btn btn-danger" onclick="limparFiltros()">Limpar</button>
+                    </div>
+
+                    <div id="listaHistorico"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SENHA_CORRETA = "@Bomboniere2025";
+
+        // Verificar login
+        function verificarSenha() {
+            const senha = document.getElementById('senhaInput').value;
+            if (senha === SENHA_CORRETA) {
+                const agora = new Date().getTime();
+                localStorage.setItem('loginFinanceiroTimestamp', agora);
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('show');
+                inicializar();
+            } else {
+                document.getElementById('loginError').classList.add('show');
+                document.getElementById('senhaInput').value = '';
+            }
+        }
+
+        function verificarEnterLogin(event) {
+            if (event.key === 'Enter') {
+                verificarSenha();
+            }
+        }
+
+        // Inicializar
+        window.onload = function() {
+            const loginTimestamp = localStorage.getItem('loginFinanceiroTimestamp');
+            const agora = new Date().getTime();
+            const trintaMinutos = 30 * 60 * 1000;
+            
+            if (loginTimestamp && (agora - parseInt(loginTimestamp)) < trintaMinutos) {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('show');
+                inicializar();
+            } else {
+                localStorage.removeItem('loginFinanceiroTimestamp');
+                document.getElementById('senhaInput').focus();
+            }
+        };
+
+        function inicializar() {
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('dataEntrada').value = hoje;
+            document.getElementById('dataGasto').value = hoje;
+            atualizarResumo();
+            atualizarDashboard();
+            carregarHistorico();
+            carregarGastosMes();
+        }
+
+        // Funções para calcular distribuição
+        function atualizarDistribuicao() {
+            const lucratividade = parseFloat(document.getElementById('lucratividade').value) || 0;
+            const lucroDinheiro = parseFloat(document.getElementById('lucroDinheiro').value) || 0;
+            document.getElementById('lucroConta').value = (lucratividade - lucroDinheiro).toFixed(2);
+        }
+
+        function calcularLucroConta() {
+            const lucratividade = parseFloat(document.getElementById('lucratividade').value) || 0;
+            const lucroDinheiro = parseFloat(document.getElementById('lucroDinheiro').value) || 0;
+            document.getElementById('lucroConta').value = (lucratividade - lucroDinheiro).toFixed(2);
+        }
+
+        function calcularLucroDinheiro() {
+            const lucratividade = parseFloat(document.getElementById('lucratividade').value) || 0;
+            const lucroConta = parseFloat(document.getElementById('lucroConta').value) || 0;
+            document.getElementById('lucroDinheiro').value = (lucratividade - lucroConta).toFixed(2);
+        }
+
+        function atualizarDistribuicaoReposicao() {
+            const reposicao = parseFloat(document.getElementById('reposicao').value) || 0;
+            const reposicaoDinheiro = parseFloat(document.getElementById('reposicaoDinheiro').value) || 0;
+            document.getElementById('reposicaoConta').value = (reposicao - reposicaoDinheiro).toFixed(2);
+        }
+
+        function calcularReposicaoConta() {
+            const reposicao = parseFloat(document.getElementById('reposicao').value) || 0;
+            const reposicaoDinheiro = parseFloat(document.getElementById('reposicaoDinheiro').value) || 0;
+            document.getElementById('reposicaoConta').value = (reposicao - reposicaoDinheiro).toFixed(2);
+        }
+
+        function calcularReposicaoDinheiro() {
+            const reposicao = parseFloat(document.getElementById('reposicao').value) || 0;
+            const reposicaoConta = parseFloat(document.getElementById('reposicaoConta').value) || 0;
+            document.getElementById('reposicaoDinheiro').value = (reposicao - reposicaoConta).toFixed(2);
+        }
+
+        // Gerenciar Tabs
+        function abrirTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'dashboard') atualizarDashboard();
+            if (tabName === 'historico') carregarHistorico();
+            if (tabName === 'gastos') carregarGastosMes();
+        }
+
+        // Salvar Lançamento
+        function salvarLancamento() {
+            const data = document.getElementById('dataEntrada').value;
+            const valorEntrada = parseFloat(document.getElementById('valorEntrada').value) || 0;
+            const lucratividade = parseFloat(document.getElementById('lucratividade').value) || 0;
+            const reposicao = parseFloat(document.getElementById('reposicao').value) || 0;
+            const lucroDinheiro = parseFloat(document.getElementById('lucroDinheiro').value) || 0;
+            const lucroConta = parseFloat(document.getElementById('lucroConta').value) || 0;
+            const reposicaoDinheiro = parseFloat(document.getElementById('reposicaoDinheiro').value) || 0;
+            const reposicaoConta = parseFloat(document.getElementById('reposicaoConta').value) || 0;
+
+            if (!data || valorEntrada <= 0) {
+                alert('Preencha a data e o valor de entrada!');
+                return;
+            }
+
+            const lancamento = {
+                id: Date.now(),
+                data,
+                tipo: 'entrada',
+                valorEntrada,
+                lucratividade,
+                reposicao,
+                lucroDinheiro,
+                lucroConta,
+                reposicaoDinheiro,
+                reposicaoConta,
+                timestamp: new Date().getTime()
+            };
+
+            let lancamentos = JSON.parse(localStorage.getItem('lancamentos') || '[]');
+            lancamentos.push(lancamento);
+            localStorage.setItem('lancamentos', JSON.stringify(lancamentos));
+
+            alert('✅ Lançamento salvo com sucesso!');
+            
+            document.getElementById('valorEntrada').value = '';
+            document.getElementById('lucratividade').value = '';
+            document.getElementById('reposicao').value = '';
+            document.getElementById('lucroDinheiro').value = '';
+            document.getElementById('lucroConta').value = '';
+            document.getElementById('reposicaoDinheiro').value = '';
+            document.getElementById('reposicaoConta').value = '';
+            
+            atualizarResumo();
+        }
+
+        // Salvar Gasto
+        function salvarGasto() {
+            const data = document.getElementById('dataGasto').value;
+            const tipo = document.getElementById('tipoGasto').value;
+            const valor = parseFloat(document.getElementById('valorGasto').value) || 0;
+            const tipoValor = document.querySelector('input[name="tipoValorGasto"]:checked').value;
+            const observacao = document.getElementById('observacaoGasto').value;
+
+            if (!data || valor <= 0) {
+                alert('Preencha a data e o valor do gasto!');
+                return;
+            }
+
+            const gasto = {
+                id: Date.now(),
+                data,
+                tipo: 'gasto',
+                categoria: tipo,
+                valor,
+                tipoValor,
+                observacao,
+                timestamp: new Date().getTime()
+            };
+
+            let gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+            gastos.push(gasto);
+            localStorage.setItem('gastos', JSON.stringify(gastos));
+
+            alert('✅ Gasto registrado com sucesso!');
+            
+            document.getElementById('valorGasto').value = '';
+            document.getElementById('observacaoGasto').value = '';
+            
+            atualizarResumo();
+            carregarGastosMes();
+        }
+
+        // Atualizar Resumo
+        function atualizarResumo() {
+            const lancamentos = JSON.parse(localStorage.getItem('lancamentos') || '[]');
+            const gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+            
+            const hoje = new Date().toISOString().split('T')[0];
+            const mesAtual = hoje.substring(0, 7);
+
+            const lancamentosMes = lancamentos.filter(l => l.data.startsWith(mesAtual));
+            const gastosMes = gastos.filter(g => g.data.startsWith(mesAtual));
+
+            const totalEntrada = lancamentosMes.reduce((sum, l) => sum + l.valorEntrada, 0);
+            const totalLucro = lancamentosMes.reduce((sum, l) => sum + l.lucratividade, 0);
+            const totalReposicao = lancamentosMes.reduce((sum, l) => sum + l.reposicao, 0);
+            const totalGastos = gastosMes.reduce((sum, g) => sum + g.valor, 0);
+            
+            const lucroAposGastos = totalLucro - totalGastos;
+            const saldoEmpresa = lucroAposGastos * 0.15;
+
+            document.getElementById('resumoEntrada').textContent = totalEntrada.toFixed(2);
+            document.getElementById('resumoLucro').textContent = totalLucro.toFixed(2);
+            document.getElementById('resumoReposicao').textContent = totalReposicao.toFixed(2);
+            document.getElementById('resumoGastos').textContent = totalGastos.toFixed(2);
+            document.getElementById('resumoLucroAposGastos').textContent = lucroAposGastos.toFixed(2);
+            document.getElementById('resumoSaldoEmpresa').textContent = saldoEmpresa.toFixed(2);
+
+            // Calcular saldos por tipo
+            const totalLucroDinheiro = lancamentosMes.reduce((sum, l) => sum + (l.lucroDinheiro || 0), 0);
+            const totalLucroConta = lancamentosMes.reduce((sum, l) => sum + (l.lucroConta || 0), 0);
+            const totalReposicaoDinheiro = lancamentosMes.reduce((sum, l) => sum + (l.reposicaoDinheiro || 0), 0);
+            const totalReposicaoConta = lancamentosMes.reduce((sum, l) => sum + (l.reposicaoConta || 0), 0);
+            
+            const gastosEmDinheiro = gastosMes.filter(g => g.tipoValor === 'dinheiro').reduce((sum, g) => sum + g.valor, 0);
+            const gastosEmConta = gastosMes.filter(g => g.tipoValor === 'conta').reduce((sum, g) => sum + g.valor, 0);
+            
+            // Saldo disponível (considerando gastos)
+            const saldoLucroDinheiro = totalLucroDinheiro - gastosEmDinheiro;
+            const saldoLucroConta = totalLucroConta - gastosEmConta;
+            
+            document.getElementById('saldoLucroDinheiro').textContent = saldoLucroDinheiro.toFixed(2);
+            document.getElementById('saldoLucroConta').textContent = saldoLucroConta.toFixed(2);
+            document.getElementById('saldoReposicaoDinheiro').textContent = totalReposicaoDinheiro.toFixed(2);
+            document.getElementById('saldoReposicaoConta').textContent = totalReposicaoConta.toFixed(2);
+        }
+
+        // Atualizar Dashboard
+        function atualizarDashboard() {
+            const lancamentos = JSON.parse(localStorage.getItem('lancamentos') || '[]');
+            const gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+            
+            const mesAtual = new Date().toISOString().substring(0, 7);
+            const lancamentosMes = lancamentos.filter(l => l.data.startsWith(mesAtual));
+            const gastosMes = gastos.filter(g => g.data.startsWith(mesAtual));
+
+            const totalEntrada = lancamentosMes.reduce((sum, l) => sum + l.valorEntrada, 0);
+            const totalLucro = lancamentosMes.reduce((sum, l) => sum + l.lucratividade, 0);
+            const totalReposicao = lancamentosMes.reduce((sum, l) => sum + l.reposicao, 0);
+            const totalGastos = gastosMes.reduce((sum, g) => sum + g.valor, 0);
+            const lucroAposGastos = totalLucro - totalGastos;
+            const saldoEmpresa = lucroAposGastos * 0.15;
+
+            document.getElementById('statTotalEntrada').textContent = 'R$ ' + totalEntrada.toFixed(2);
+            document.getElementById('statTotalLucro').textContent = 'R$ ' + totalLucro.toFixed(2);
+            document.getElementById('statTotalReposicao').textContent = 'R$ ' + totalReposicao.toFixed(2);
+            document.getElementById('statTotalGastos').textContent = 'R$ ' + totalGastos.toFixed(2);
+            document.getElementById('statSaldoEmpresa').textContent = 'R$ ' + saldoEmpresa.toFixed(2);
+            document.getElementById('statLucroLiquido').textContent = 'R$ ' + lucroAposGastos.toFixed(2);
+
+            // Gastos por categoria
+            const categorias = {};
+            gastosMes.forEach(g => {
+                categorias[g.categoria] = (categorias[g.categoria] || 0) + g.valor;
+            });
+
+            let htmlCategorias = '';
+            for (const [cat, valor] of Object.entries(categorias)) {
+                const percentual = (valor / totalGastos * 100).toFixed(1);
+                htmlCategorias += `
+                    <div class="summary-item">
+                        <span>${cat}:</span>
+                        <strong>R$ ${valor.toFixed(2)} <small>(${percentual}%)</small></strong>
+                    </div>
+                `;
+            }
+            document.getElementById('gastosPorCategoria').innerHTML = htmlCategorias || '<div class="empty-state">Nenhum gasto registrado</div>';
+        }
+
+        // Carregar Histórico
+        function carregarHistorico() {
+            const lancamentos = JSON.parse(localStorage.getItem('lancamentos') || '[]');
+            const gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+            
+            const todos = [...lancamentos, ...gastos].sort((a, b) => b.timestamp - a.timestamp);
+
+            let html = '';
+            todos.forEach(item => {
+                if (item.tipo === 'entrada') {
+                    html += `
+                        <div class="history-item">
+                            <div class="history-date">${formatarData(item.data)}</div>
+                            <div class="history-desc">💰 Entrada do Dia</div>
+                            <div class="history-value">+ R$ ${item.valorEntrada.toFixed(2)}</div>
+                            <div style="margin-top: 10px; font-size: 14px; color: #666;">
+                                Lucratividade: R$ ${item.lucratividade.toFixed(2)} | Reposição: R$ ${item.reposicao.toFixed(2)}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="history-item gasto">
+                            <div class="history-date">${formatarData(item.data)}</div>
+                            <div class="history-desc">💸 ${item.categoria} ${item.tipoValor === 'dinheiro' ? '💵' : '🏦'}</div>
+                            <div class="history-value negative">- R$ ${item.valor.toFixed(2)}</div>
+                            ${item.observacao ? '<div style="margin-top: 5px; font-size: 13px; color: #999;">' + item.observacao + '</div>' : ''}
+                        </div>
+                    `;
+                }
+            });
+
+            document.getElementById('listaHistorico').innerHTML = html || '<div class="empty-state">Nenhuma movimentação registrada</div>';
+        }
+
+        // Carregar Gastos do Mês
+        function carregarGastosMes() {
+            const gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+            const mesAtual = new Date().toISOString().substring(0, 7);
+            const gastosMes = gastos.filter(g => g.data.startsWith(mesAtual));
+
+            let html = '';
+            gastosMes.forEach(g => {
+                html += `
+                    <div class="summary-item">
+                        <span>${g.categoria} ${g.tipoValor === 'dinheiro' ? '💵' : '🏦'}</span>
+                        <strong style="color: #e53935;">R$ ${g.valor.toFixed(2)}</strong>
+                    </div>
+                `;
+            });
+
+            document.getElementById('listaGastosMes').innerHTML = html || '<div class="empty-state">Nenhum gasto este mês</div>';
+        }
+
+        // Filtrar Histórico
+        function filtrarHistorico() {
+            // Implementar filtros (para próxima versão)
+            alert('Filtros em desenvolvimento');
+        }
+
+        function limparFiltros() {
+            document.getElementById('filtroDataInicio').value = '';
+            document.getElementById('filtroDataFim').value = '';
+            document.getElementById('filtroTipo').value = 'todos';
+            carregarHistorico();
+        }
+
+        function formatarData(data) {
+            const [ano, mes, dia] = data.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+    </script>
+</body>
+</html>

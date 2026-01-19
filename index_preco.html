@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Precificação</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .form-full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 3px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-calculate {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-calculate:active {
+            transform: translateY(0);
+        }
+
+        .btn-calculate:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .btn-calculate .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .resultado {
+            display: none;
+        }
+
+        .resultado.show {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .card.pulse {
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        .resultado-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .resultado-item.destaque {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left: 4px solid #764ba2;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .resultado-item strong {
+            color: #667eea;
+        }
+
+        .resultado-item.produto {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+
+        .resultado-item.produto strong {
+            color: #4caf50;
+        }
+
+        .section-title {
+            color: #764ba2;
+            font-weight: bold;
+            margin: 15px 0 10px 0;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        /* Estilos da tela de login */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-overlay.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-box h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .login-error {
+            color: #f44336;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .main-content {
+            display: none;
+        }
+
+        .main-content.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <h2>🔒 Acesso Restrito</h2>
+            <input type="password" id="senhaInput" placeholder="Digite a senha" onkeypress="verificarEnter(event)">
+            <button class="btn-login" onclick="verificarSenha()">Entrar</button>
+            <div id="loginError" class="login-error">❌ Senha incorreta. Tente novamente.</div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div id="mainContent" class="main-content">
+        <div class="container">
+            <h1>💰 Calculadora de Precificação</h1>
+        
+        <div class="content">
+            <!-- FORMULÁRIO -->
+            <div class="card">
+                <h2>📊 Dados de Entrada</h2>
+                
+                <div class="form-group form-full">
+                    <label for="faturamento">Faturamento Mensal (R$)</label>
+                    <input type="number" id="faturamento" value="15000" step="0.01" onkeypress="calcularEnter(event)">
+                </div>
+
+                <div class="section-title">Despesas Fixas da Loja</div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="aluguel">Aluguel (R$)</label>
+                        <input type="number" id="aluguel" value="900" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="luz">Luz (R$)</label>
+                        <input type="number" id="luz" value="100" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="funcionaria">Funcionária (R$)</label>
+                        <input type="number" id="funcionaria" value="1200" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cnpj">CNPJ (R$)</label>
+                        <input type="number" id="cnpj" value="81.90" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="internet">Internet (R$)</label>
+                        <input type="number" id="internet" value="89.90" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sacolas">Sacolas (R$)</label>
+                        <input type="number" id="sacolas" value="88" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="despesaLoja">Outras Despesas (R$)</label>
+                        <input type="number" id="despesaLoja" value="88" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+                </div>
+
+                <div class="section-title">Outros Valores</div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="lucroDesejado">Lucro Desejado (R$)</label>
+                        <input type="number" id="lucroDesejado" value="3000" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taxaMaquininha">Taxa Maquininha (%)</label>
+                        <input type="number" id="taxaMaquininha" value="3.15" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="custoProduto">Custo do Produto (R$)</label>
+                        <input type="number" id="custoProduto" value="3.19" step="0.01" onkeypress="calcularEnter(event)">
+                    </div>
+                </div>
+
+                <button class="btn-calculate" id="btnCalcular" onclick="calcular()">Calcular Preço de Venda</button>
+            </div>
+
+            <!-- RESULTADOS -->
+            <div class="card">
+                <h2>📈 Resumo Financeiro</h2>
+                <div id="resultado" class="resultado">
+                    <div class="resultado-item">
+                        <strong>Faturamento Mensal:</strong> R$ <span id="resFaturamento"></span>
+                    </div>
+
+                    <div class="section-title">Custos da Loja</div>
+                    
+                    <div class="resultado-item">
+                        <strong>Total de Despesas Fixas:</strong> R$ <span id="resDespesasFixas"></span>
+                    </div>
+
+                    <div class="resultado-item">
+                        <strong>Percentual da Loja:</strong> <span id="resPercentualLoja"></span>%
+                    </div>
+
+                    <div class="section-title">Lucro</div>
+
+                    <div class="resultado-item">
+                        <strong>Lucro Desejado:</strong> R$ <span id="resLucroDesejado"></span>
+                    </div>
+
+                    <div class="resultado-item">
+                        <strong>Percentual do Lucro:</strong> <span id="resPercentualLucro"></span>%
+                    </div>
+
+                    <div class="section-title">Margens</div>
+
+                    <div class="resultado-item destaque">
+                        <strong>Margem Total Necessária:</strong> <span id="resMargemTotal"></span>%
+                    </div>
+
+                    <div class="resultado-item">
+                        <strong>Taxa da Maquininha:</strong> <span id="resTaxaMaquininha"></span>%
+                    </div>
+
+                    <div class="section-title">Produto</div>
+
+                    <div class="resultado-item produto">
+                        <strong>Custo do Produto:</strong> R$ <span id="resCustoProduto"></span>
+                    </div>
+
+                    <div class="resultado-item produto destaque" id="precoFinalVenda">
+                        <strong>💵 PREÇO FINAL DE VENDA:</strong> R$ <span id="resPrecoVenda"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sistema de senha
+        const SENHA_CORRETA = "@Bomboniere2025"; // Altere aqui para definir sua senha
+
+        function verificarSenha() {
+            const senhaDigitada = document.getElementById('senhaInput').value;
+            const loginOverlay = document.getElementById('loginOverlay');
+            const mainContent = document.getElementById('mainContent');
+            const loginError = document.getElementById('loginError');
+
+            if (senhaDigitada === SENHA_CORRETA) {
+                // Salvar timestamp no localStorage (30 minutos = 1800000 ms)
+                const agora = new Date().getTime();
+                localStorage.setItem('loginTimestamp', agora);
+                
+                loginOverlay.classList.add('hidden');
+                mainContent.classList.add('show');
+                calcular(); // Calcula automaticamente após o login
+            } else {
+                loginError.classList.add('show');
+                document.getElementById('senhaInput').value = '';
+                document.getElementById('senhaInput').focus();
+            }
+        }
+
+        function verificarEnter(event) {
+            if (event.key === 'Enter') {
+                verificarSenha();
+            }
+        }
+
+        // Calculadora
+        function calcular() {
+            const btnCalcular = document.getElementById('btnCalcular');
+            const resultadoCard = document.getElementById('resultado').parentElement;
+            
+            // Efeito de loading no botão
+            btnCalcular.disabled = true;
+            btnCalcular.innerHTML = 'Calculando... <span class="spinner"></span>';
+            
+            // Remove animação anterior se existir
+            resultadoCard.classList.remove('pulse');
+            document.getElementById('resultado').classList.remove('show');
+            
+            // Simula um pequeno delay para o usuário ver o efeito
+            setTimeout(() => {
+                realizarCalculo();
+                
+                // Restaura o botão
+                btnCalcular.disabled = false;
+                btnCalcular.innerHTML = '✓ Calculado com Sucesso!';
+                
+                // Adiciona animação no card de resultados
+                resultadoCard.classList.add('pulse');
+                
+                // Rolar para o resultado em dispositivos móveis
+                if (window.innerWidth <= 768) {
+                    setTimeout(() => {
+                        const precoFinal = document.getElementById('precoFinalVenda');
+                        precoFinal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+                
+                // Volta o texto do botão após 2 segundos
+                setTimeout(() => {
+                    btnCalcular.innerHTML = 'Calcular Preço de Venda';
+                }, 1000);
+            }, 200);
+        }
+        
+        function realizarCalculo() {
+            // Obter valores do formulário
+            const faturamentoMensal = parseFloat(document.getElementById('faturamento').value);
+            
+            const aluguel = parseFloat(document.getElementById('aluguel').value);
+            const luz = parseFloat(document.getElementById('luz').value);
+            const funcionaria = parseFloat(document.getElementById('funcionaria').value);
+            const cnpj = parseFloat(document.getElementById('cnpj').value);
+            const internet = parseFloat(document.getElementById('internet').value);
+            const sacolas = parseFloat(document.getElementById('sacolas').value);
+            const despesaLoja = parseFloat(document.getElementById('despesaLoja').value);
+            
+            const lucroDesejado = parseFloat(document.getElementById('lucroDesejado').value);
+            const taxaMaquininha = parseFloat(document.getElementById('taxaMaquininha').value) / 100;
+            const custoProduto = parseFloat(document.getElementById('custoProduto').value);
+
+            // Cálculos
+            const despesasFixas = aluguel + luz + funcionaria + cnpj + internet + sacolas + despesaLoja;
+            const percentualLoja = despesasFixas / faturamentoMensal;
+            const percentualLucro = lucroDesejado / faturamentoMensal;
+            const margemTotal = percentualLoja + percentualLucro;
+            const precoVenda = custoProduto / (1 - margemTotal - taxaMaquininha);
+
+            // Exibir resultados
+            document.getElementById('resFaturamento').textContent = faturamentoMensal.toFixed(2);
+            document.getElementById('resDespesasFixas').textContent = despesasFixas.toFixed(2);
+            document.getElementById('resPercentualLoja').textContent = (percentualLoja * 100).toFixed(2);
+            document.getElementById('resLucroDesejado').textContent = lucroDesejado.toFixed(2);
+            document.getElementById('resPercentualLucro').textContent = (percentualLucro * 100).toFixed(2);
+            document.getElementById('resMargemTotal').textContent = (margemTotal * 100).toFixed(2);
+            document.getElementById('resTaxaMaquininha').textContent = (taxaMaquininha * 100).toFixed(2);
+            document.getElementById('resCustoProduto').textContent = custoProduto.toFixed(2);
+            document.getElementById('resPrecoVenda').textContent = precoVenda.toFixed(2);
+
+            // Mostrar seção de resultados
+            document.getElementById('resultado').classList.add('show');
+        }
+        
+        // Função para calcular ao pressionar Enter
+        function calcularEnter(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                calcular();
+            }
+        }
+        
+        // Verificar login ao carregar a página
+        window.onload = function() {
+            const loginTimestamp = localStorage.getItem('loginTimestamp');
+            const agora = new Date().getTime();
+            const trintaMinutos = 30 * 60 * 1000; // 30 minutos em milissegundos
+            
+            if (loginTimestamp) {
+                const tempoDecorrido = agora - parseInt(loginTimestamp);
+                
+                if (tempoDecorrido < trintaMinutos) {
+                    // Ainda está dentro dos 30 minutos, pular login
+                    document.getElementById('loginOverlay').classList.add('hidden');
+                    document.getElementById('mainContent').classList.add('show');
+                    calcular();
+                } else {
+                    // Passou dos 30 minutos, remover cache e mostrar login
+                    localStorage.removeItem('loginTimestamp');
+                    document.getElementById('senhaInput').focus();
+                }
+            } else {
+                // Não há cache, focar no campo de senha
+                document.getElementById('senhaInput').focus();
+            }
+        };
+    </script>
+</body>
+</html>

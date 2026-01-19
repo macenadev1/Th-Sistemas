@@ -1,0 +1,55 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Dependências
+package-lock.json
+yarn.lock
+
+# Build e dist
+dist/
+build/
+
+# Temporários
+tmp/
+temp/
+*.tmp
+
+# Banco de dados (arquivos locais se houver)
+*.sqlite
+*.sqlite3
+*.db
+
+# Backup
+*.backup
+*.bak
+*~
+
+# Cache
+.cache/
+.eslintcache
