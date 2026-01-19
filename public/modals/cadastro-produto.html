@@ -1,0 +1,30 @@
+<!-- Modal de Cadastro de Produto -->
+<div id="cadastroModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📦 Cadastrar Novo Produto</h2>
+        </div>
+        <form id="cadastroForm" onsubmit="salvarProduto(event)">
+            <div class="form-group">
+                <label>Código de Barras:</label>
+                <input type="text" id="codigoBarras" required>
+            </div>
+            <div class="form-group">
+                <label>Nome do Produto:</label>
+                <input type="text" id="nomeProduto" required>
+            </div>
+            <div class="form-group">
+                <label>Preço (R$):</label>
+                <input type="number" id="precoProduto" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Estoque Inicial:</label>
+                <input type="number" id="estoqueProduto" min="0" value="0" required>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success" style="flex: 1;">💾 Salvar</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModal('cadastroModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

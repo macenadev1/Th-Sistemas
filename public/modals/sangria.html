@@ -1,0 +1,23 @@
+<!-- Modal de Sangria -->
+<div id="sangriaModal" class="modal modal-nested">
+    <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>📉 Sangria</h2>
+            <p style="margin-top: 10px; color: #666;">Retirar dinheiro do caixa</p>
+        </div>
+        <form onsubmit="confirmarSangria(event)">
+            <div class="form-group">
+                <label>Valor da Sangria (R$):</label>
+                <input type="number" id="valorSangria" step="0.01" min="0.01" placeholder="0.00" required style="font-size: 24px; text-align: center; font-weight: bold;">
+            </div>
+            <div class="form-group">
+                <label>Observação:</label>
+                <input type="text" id="observacaoSangria" placeholder="Motivo da sangria" required>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-warning" style="flex: 1; font-size: 18px; padding: 16px; background: #ff9800; border-color: #ff9800;">✓ Confirmar Sangria</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'sangriaModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

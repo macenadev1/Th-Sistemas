@@ -509,10 +509,12 @@ function atualizarPagamentos() {
     }
 }
 
-// Atalho Enter para adicionar pagamento
-document.addEventListener('DOMContentLoaded', function() {
+// Função para inicializar os event listeners do modal de finalização
+function inicializarInputPagamento() {
+    console.log('🔧 Inicializando input de pagamento...');
     const valorPagamentoInput = document.getElementById('valorPagamento');
     if (valorPagamentoInput) {
+        console.log('✅ Input de pagamento encontrado!');
         // Formatar valor ao digitar (estilo PDV - centavos primeiro)
         let valorCentavos = 0;
         
@@ -600,8 +602,22 @@ document.addEventListener('DOMContentLoaded', function() {
             valorCentavos = 0;
             this.value = '';
         };
+    } else {
+        console.warn('⚠️ Input de pagamento não encontrado!');
     }
+}
+
+// Inicializar quando os modais forem carregados
+console.log('📋 Registrando listener para modalsLoaded...');
+document.addEventListener('modalsLoaded', () => {
+    console.log('🎯 Evento modalsLoaded recebido!');
+    inicializarInputPagamento();
 });
+// Caso os modais já tenham sido carregados antes deste script
+if (document.getElementById('valorPagamento')) {
+    console.log('🔄 Modal já carregado, inicializando agora...');
+    inicializarInputPagamento();
+}
 
 async function confirmarVenda() {
     if (!caixaAberto) {

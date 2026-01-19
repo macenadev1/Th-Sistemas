@@ -1,0 +1,93 @@
+<!-- Modal de Seleção de Forma de Pagamento -->
+<div id="formaPagamentoModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 style="text-align: center; font-size: 28px;">💳 Selecione a Forma de Pagamento</h2>
+            <p id="valorSelecionadoTexto" style="text-align: center; font-size: 24px; color: #667eea; font-weight: bold; margin-top: 10px;">Valor: R$ 0,00</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px;">
+            <!-- Dinheiro - Tecla 1 -->
+            <button type="button" onclick="selecionarFormaPagamentoComValor('dinheiro')" style="
+                padding: 30px;
+                border: 4px solid #28a745;
+                background: white;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            " onmouseover="this.style.background='#28a745'; this.style.color='white'" onmouseout="this.style.background='white'; this.style.color='#000'">
+                <span style="font-size: 48px;">💵</span>
+                <span style="font-size: 20px;">DINHEIRO</span>
+                <span style="font-size: 16px; background: #28a745; color: white; padding: 8px 16px; border-radius: 6px;">Tecla 1</span>
+            </button>
+
+            <!-- Débito - Tecla 2 -->
+            <button type="button" onclick="selecionarFormaPagamentoComValor('debito')" style="
+                padding: 30px;
+                border: 4px solid #007bff;
+                background: white;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            " onmouseover="this.style.background='#007bff'; this.style.color='white'" onmouseout="this.style.background='white'; this.style.color='#000'">
+                <span style="font-size: 48px;">💳</span>
+                <span style="font-size: 20px;">DÉBITO</span>
+                <span style="font-size: 16px; background: #007bff; color: white; padding: 8px 16px; border-radius: 6px;">Tecla 2</span>
+            </button>
+
+            <!-- Crédito - Tecla 3 -->
+            <button type="button" onclick="selecionarFormaPagamentoComValor('credito')" style="
+                padding: 30px;
+                border: 4px solid #ffc107;
+                background: white;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            " onmouseover="this.style.background='#ffc107'; this.style.color='#000'" onmouseout="this.style.background='white'; this.style.color='#000'">
+                <span style="font-size: 48px;">💳</span>
+                <span style="font-size: 20px;">CRÉDITO</span>
+                <span style="font-size: 16px; background: #ffc107; color: #000; padding: 8px 16px; border-radius: 6px;">Tecla 3</span>
+            </button>
+
+            <!-- PIX - Tecla 4 -->
+            <button type="button" onclick="selecionarFormaPagamentoComValor('pix')" style="
+                padding: 30px;
+                border: 4px solid #17a2b8;
+                background: white;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            " onmouseover="this.style.background='#17a2b8'; this.style.color='white'" onmouseout="this.style.background='white'; this.style.color='#000'">
+                <span style="font-size: 48px;">📱</span>
+                <span style="font-size: 20px;">PIX</span>
+                <span style="font-size: 16px; background: #17a2b8; color: white; padding: 8px 16px; border-radius: 6px;">Tecla 4</span>
+            </button>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-danger" onclick="fecharModalFormaPagamento()" style="width: 100%; font-size: 16px;">Cancelar [ESC]</button>
+        </div>
+    </div>
+</div>

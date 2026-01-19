@@ -1,0 +1,22 @@
+<!-- Modal de Abertura de Caixa -->
+<div id="aberturaCaixaModal" class="modal modal-nested">
+    <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🔓 Abertura de Caixa</h2>
+        </div>
+        <form onsubmit="confirmarAberturaCaixa(event)">
+            <div class="form-group">
+                <label>Valor Inicial (R$):</label>
+                <input type="number" id="valorAbertura" step="0.01" min="0" placeholder="0.00" required style="font-size: 24px; text-align: center; font-weight: bold;">
+            </div>
+            <div class="form-group">
+                <label>Operador:</label>
+                <input type="text" id="operadorAbertura" placeholder="Nome do operador" required>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success" style="flex: 1; font-size: 18px; padding: 16px;">✓ Abrir Caixa</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'aberturaCaixaModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,43 @@
+<!-- Modal de Fechamento de Caixa -->
+<div id="fechamentoCaixaModal" class="modal modal-nested">
+    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🔒 Fechamento de Caixa</h2>
+        </div>
+        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                <span style="font-weight: 600;">Valor Abertura:</span>
+                <span id="fechValorAbertura" style="font-weight: bold; color: #007bff;">R$ 0,00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                <span style="font-weight: 600;">Total em Vendas:</span>
+                <span id="fechTotalVendas" style="font-weight: bold; color: #28a745;">R$ 0,00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                <span style="font-weight: 600;">Reforços:</span>
+                <span id="fechReforcos" style="font-weight: bold; color: #17a2b8;">R$ 0,00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                <span style="font-weight: 600;">Sangrias:</span>
+                <span id="fechSangrias" style="font-weight: bold; color: #ff9800;">R$ 0,00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 15px 0; padding-top: 15px; margin-top: 10px; border-top: 2px solid #667eea;">
+                <span style="font-size: 20px; font-weight: 800;">SALDO ESPERADO:</span>
+                <span id="fechSaldoEsperado" style="font-size: 24px; font-weight: 800; color: #667eea;">R$ 0,00</span>
+            </div>
+        </div>
+        <form onsubmit="confirmarFechamentoCaixa(event)">
+            <div class="form-group">
+                <label>Valor Real em Caixa (R$):</label>
+                <input type="number" id="valorFechamento" step="0.01" min="0" placeholder="0.00" required style="font-size: 24px; text-align: center; font-weight: bold;">
+            </div>
+            <div id="diferencaFechamento" style="display: none; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                <p style="font-size: 18px; font-weight: bold;"></p>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-danger" style="flex: 1; font-size: 18px; padding: 16px;">✓ Fechar Caixa</button>
+                <button type="button" class="btn btn-primary" onclick="fecharModalAninhado(event, 'fechamentoCaixaModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

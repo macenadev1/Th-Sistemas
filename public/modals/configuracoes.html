@@ -1,0 +1,43 @@
+<!-- Modal de Configurações -->
+<div id="configuracoesModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2>⚙️ Configurações do Sistema</h2>
+        </div>
+        <div style="padding: 20px;">
+            <h3 style="color: #333; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">💰 Alertas de Caixa</h3>
+            
+            <div class="form-group">
+                <label style="font-weight: bold; font-size: 16px;">Tipo de Alerta:</label>
+                <select id="configTipoAlerta" style="width: 100%; padding: 10px; font-size: 15px; border: 2px solid #ddd; border-radius: 6px;">
+                    <option value="dia_diferente">🗓️ Alertar se o caixa foi aberto em dia diferente</option>
+                    <option value="horas">⏰ Alertar após X horas de caixa aberto</option>
+                    <option value="desabilitado">🚫 Desabilitar alertas</option>
+                </select>
+            </div>
+
+            <div id="configHorasContainer" class="form-group" style="display: none;">
+                <label style="font-weight: bold; font-size: 16px;">Horas para Alertar:</label>
+                <input type="number" id="configHorasAlerta" min="1" max="168" value="24" style="width: 100%; padding: 10px; font-size: 15px; border: 2px solid #ddd; border-radius: 6px;">
+                <small style="color: #666;">Entre 1 e 168 horas (1 semana)</small>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #17a2b8;">
+                <strong>ℹ️ Informações:</strong>
+                <ul style="margin: 10px 0 0 20px; color: #555;">
+                    <li><strong>Dia diferente:</strong> Alerta será exibido se o caixa foi aberto ontem ou antes</li>
+                    <li><strong>Horas:</strong> Alerta será exibido após o tempo especificado (ex: 24h)</li>
+                    <li><strong>Desabilitado:</strong> Nenhum alerta será exibido</li>
+                </ul>
+            </div>
+        </div>
+        <div class="modal-actions" style="padding: 0 20px 20px;">
+            <button type="button" class="btn btn-success" onclick="salvarConfiguracoes()" style="flex: 1; font-size: 16px; padding: 14px;">
+                💾 Salvar Configurações
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('configuracoesModal')" style="flex: 1; font-size: 16px; padding: 14px; background: #6c757d; border-color: #6c757d;">
+                ✖️ Cancelar
+            </button>
+        </div>
+    </div>
+</div>

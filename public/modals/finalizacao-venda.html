@@ -1,0 +1,50 @@
+<!-- Modal de Finalização -->
+<div id="finalizacaoModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2>💳 Finalizar Venda</h2>
+        </div>
+        <div class="total-section" style="margin-bottom: 20px;">
+            <div class="total-row">
+                <span class="total-label">TOTAL A PAGAR:</span>
+                <span class="total-value" id="totalFinal" style="font-size: 32px; color: #28a745;">R$ 0,00</span>
+            </div>
+            <div class="total-row">
+                <span class="total-label">Valor Pago:</span>
+                <span class="total-value" id="totalPago" style="font-size: 20px; color: #007bff;">R$ 0,00</span>
+            </div>
+            <div class="total-row">
+                <span class="total-label">Falta Pagar:</span>
+                <span class="total-value" id="faltaPagar" style="font-size: 20px; color: #dc3545;">R$ 0,00</span>
+            </div>
+        </div>
+
+        <!-- Adicionar Forma de Pagamento -->
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+            <!-- Input de Valor -->
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px; display: block;">💰 Digite o Valor (R$):</label>
+                <input type="text" id="valorPagamento" placeholder="0,00" style="padding: 20px; border: 4px solid #667eea; border-radius: 10px; width: 100%; font-size: 28px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <p style="margin-top: 12px; text-align: center; color: #666; font-size: 14px;">Pressione <strong>Enter</strong> para selecionar a forma de pagamento</p>
+            </div>
+        </div>
+
+        <!-- Lista de Pagamentos -->
+        <div id="listaPagamentos" style="margin-bottom: 15px; max-height: 200px; overflow-y: auto;">
+            <!-- Pagamentos serão inseridos aqui -->
+        </div>
+
+        <!-- Troco (só aparece se pagar em dinheiro) -->
+        <div id="trocoSection" style="display: none; background: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 18px; font-weight: bold; color: #155724;">💰 TROCO:</span>
+                <span id="troco" style="font-size: 24px; font-weight: bold; color: #155724;">R$ 0,00</span>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" class="btn btn-success" onclick="confirmarVenda()" id="btnConfirmarVenda" style="flex: 1; font-size: 18px; padding: 16px; font-weight: 800;" disabled>✓ CONFIRMAR VENDA [Enter]</button>
+            <button type="button" class="btn btn-danger" onclick="fecharModal('finalizacaoModal')" style="flex: 1; font-size: 16px; padding: 16px;">Cancelar [ESC]</button>
+        </div>
+    </div>
+</div>

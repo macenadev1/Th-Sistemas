@@ -1,0 +1,31 @@
+<!-- Modal de Edição de Produto -->
+<div id="editarProdutoModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>✏️ Editar Produto</h2>
+        </div>
+        <form id="editarForm" onsubmit="salvarEdicaoProduto(event)">
+            <input type="hidden" id="editarId">
+            <div class="form-group">
+                <label>Código de Barras:</label>
+                <input type="text" id="editarCodigoBarras" readonly style="background: #f8f9fa; color: #666;">
+            </div>
+            <div class="form-group">
+                <label>Nome do Produto:</label>
+                <input type="text" id="editarNome" required>
+            </div>
+            <div class="form-group">
+                <label>Preço (R$):</label>
+                <input type="number" id="editarPreco" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Estoque:</label>
+                <input type="number" id="editarEstoque" min="0" required>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success" style="flex: 1;">💾 Salvar Alterações</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalEdicao()" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
