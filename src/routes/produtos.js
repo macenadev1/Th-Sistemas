@@ -2,6 +2,28 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../config/database');
 
+// Buscar produtos (por nome ou código)
+router.get('/buscar', async (req, res) => {
+    try {
+        const pool = getPool();
+        const { termo } = req.query;
+        
+        if (!termo) {
+            return res.json([]);
+        }
+        
+        const [rows] = await pool.query(
+            'SELECT * FROM produtos WHERE ativo = TRUE AND (nome LIKE ? OR codigo_barras LIKE ?) ORDER BY nome LIMIT 50',
+            [`%${termo}%`, `%${termo}%`]
+        );
+        
+        res.json(rows);
+    } catch (error) {
+        console.error('Erro ao buscar produtos:', error);
+        res.status(500).json({ error: 'Erro ao buscar produtos' });
+    }
+});
+
 // Listar todos os produtos
 router.get('/', async (req, res) => {
     try {

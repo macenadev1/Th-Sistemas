@@ -1,0 +1,32 @@
+<!-- Modal de Busca de Produto por Nome -->
+<div id="buscarProdutoModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2>🔍 Buscar Produto por Nome</h2>
+        </div>
+        
+        <div style="padding: 20px;">
+            <!-- Campo de busca -->
+            <div class="form-group">
+                <label style="font-size: 16px; font-weight: bold; margin-bottom: 10px; display: block;">Digite o nome do produto:</label>
+                <input 
+                    type="text" 
+                    id="inputBuscaProduto" 
+                    placeholder="Ex: Coca Cola, Chocolate..."
+                    style="padding: 15px; border: 3px solid #667eea; border-radius: 8px; width: 100%; font-size: 18px;"
+                    autofocus>
+            </div>
+            
+            <!-- Resultados da busca -->
+            <div id="resultadosBusca" style="margin-top: 20px; max-height: 400px; overflow-y: auto;">
+                <p style="text-align: center; color: #666; padding: 40px;">
+                    Digite para buscar produtos...
+                </p>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="btn btn-danger" onclick="fecharModal('buscarProdutoModal')" style="width: 100%;">Fechar [ESC]</button>
+        </div>
+    </div>
+</div>

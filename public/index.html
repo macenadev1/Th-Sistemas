@@ -63,14 +63,27 @@
                     </div>
                     
                     <label class="search-label" style="font-size: 20px; font-weight: 700; color: #333; margin-bottom: 15px;">🔍 Código de Barras:</label>
-                    <div class="search-box">
+                    <div class="search-box" style="display: flex; gap: 10px;">
                         <input 
                             type="text" 
                             id="searchInput" 
                             placeholder="Escaneie o produto..."
                             autofocus
                             autocomplete="off"
-                            style="font-size: 24px; padding: 20px; border: 4px solid #667eea;">
+                            style="font-size: 24px; padding: 20px; border: 4px solid #667eea; flex: 1;">
+                        <button onclick="abrirBuscaPorNome()" style="
+                            background: #17a2b8;
+                            color: white;
+                            border: none;
+                            padding: 15px 25px;
+                            border-radius: 10px;
+                            font-size: 18px;
+                            font-weight: bold;
+                            cursor: pointer;
+                            white-space: nowrap;
+                        " title="Buscar por nome [F9]">
+                            📝 Nome
+                        </button>
                     </div>
                 </div>
 

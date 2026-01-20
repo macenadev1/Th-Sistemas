@@ -23,7 +23,8 @@
         'lista-produtos',
         'editar-produto',
         'historico-vendas',
-        'configuracoes'
+        'configuracoes',
+        'buscar-produto'
     ];
 
     /**

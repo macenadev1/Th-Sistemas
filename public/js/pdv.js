@@ -180,7 +180,59 @@ function atualizarCarrinho() {
             <div class="cart-item">
                 <div class="item-info">
                     <div class="item-name">${item.nome}</div>
-                    <div class="item-details">Qtd: ${item.quantidade} x R$ ${item.preco.toFixed(2)}</div>
+                    <div class="item-details">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                            <span style="color: #666;">Qtd:</span>
+                            <div style="display: flex; align-items: center; gap: 5px; background: #f8f9fa; padding: 5px; border-radius: 6px; border: 2px solid #667eea;">
+                                <button onclick="alterarQuantidadeItem(${index}, -1)" style="
+                                    background: #dc3545;
+                                    color: white;
+                                    border: none;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                    font-size: 18px;
+                                    font-weight: bold;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                " title="Diminuir quantidade">−</button>
+                                <input 
+                                    type="number" 
+                                    id="qtd-${index}"
+                                    value="${item.quantidade}" 
+                                    min="1"
+                                    onchange="atualizarQuantidadeItem(${index}, this.value)"
+                                    onclick="this.select()"
+                                    style="
+                                        width: 60px;
+                                        text-align: center;
+                                        border: none;
+                                        background: white;
+                                        font-size: 16px;
+                                        font-weight: bold;
+                                        padding: 5px;
+                                        border-radius: 4px;
+                                    ">
+                                <button onclick="alterarQuantidadeItem(${index}, 1)" style="
+                                    background: #28a745;
+                                    color: white;
+                                    border: none;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                    font-size: 18px;
+                                    font-weight: bold;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                " title="Aumentar quantidade">+</button>
+                            </div>
+                            <span style="color: #666;">x R$ ${item.preco.toFixed(2)}</span>
+                        </div>
+                    </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div class="item-price">R$ ${(item.preco * item.quantidade).toFixed(2)}</div>
@@ -226,6 +278,54 @@ function removerItemCarrinho(index) {
         atualizarCarrinho();
         mostrarNotificacao(`✓ ${item.nome} removido do carrinho!`, 'info');
     }
+}
+
+// Atualizar quantidade de um item específico
+function atualizarQuantidadeItem(index, novaQuantidade) {
+    if (index < 0 || index >= carrinho.length) {
+        mostrarNotificacao('Item inválido!', 'error');
+        return;
+    }
+    
+    const quantidade = parseInt(novaQuantidade);
+    
+    if (isNaN(quantidade) || quantidade < 1) {
+        mostrarNotificacao('Quantidade inválida!', 'error');
+        atualizarCarrinho();
+        return;
+    }
+    
+    const item = carrinho[index];
+    const quantidadeAnterior = item.quantidade;
+    
+    carrinho[index].quantidade = quantidade;
+    atualizarCarrinho();
+    
+    if (quantidade > quantidadeAnterior) {
+        mostrarNotificacao(`✓ Quantidade de "${item.nome}" aumentada para ${quantidade}`, 'success');
+    } else {
+        mostrarNotificacao(`✓ Quantidade de "${item.nome}" reduzida para ${quantidade}`, 'info');
+    }
+}
+
+// Aumentar ou diminuir quantidade
+function alterarQuantidadeItem(index, incremento) {
+    if (index < 0 || index >= carrinho.length) {
+        mostrarNotificacao('Item inválido!', 'error');
+        return;
+    }
+    
+    const novaQuantidade = carrinho[index].quantidade + incremento;
+    
+    if (novaQuantidade < 1) {
+        // Se tentar diminuir abaixo de 1, perguntar se quer remover
+        if (confirm(`Remover "${carrinho[index].nome}" do carrinho?`)) {
+            removerItemCarrinho(index);
+        }
+        return;
+    }
+    
+    atualizarQuantidadeItem(index, novaQuantidade);
 }
 
 function finalizarVenda() {
@@ -940,6 +1040,18 @@ document.addEventListener('keydown', function(e) {
         abrirMenuCaixa();
     }
     
+    // F8 para configurações
+    if (e.key === 'F8') {
+        e.preventDefault();
+        abrirConfiguracoes();
+    }
+    
+    // F9 para buscar por nome
+    if (e.key === 'F9') {
+        e.preventDefault();
+        abrirBuscaPorNome();
+    }
+    
     // Atalho Delete para remover último item do carrinho
     if (e.key === 'Delete') {
         // Só funciona se não houver modal aberto
@@ -1048,4 +1160,124 @@ Promise.all([
 ]).then(() => {
     atualizarStatusCaixa();
     console.log('✅ Sistema inicializado com configurações');
+});
+
+// ========================================
+// BUSCA DE PRODUTOS POR NOME
+// ========================================
+
+let timeoutBusca = null;
+
+function abrirBuscaPorNome() {
+    abrirModal('buscarProdutoModal');
+    
+    // Focar no input após um pequeno delay
+    setTimeout(() => {
+        const input = document.getElementById('inputBuscaProduto');
+        if (input) {
+            input.value = '';
+            input.focus();
+            document.getElementById('resultadosBusca').innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">Digite para buscar produtos...</p>';
+        }
+    }, 100);
+}
+
+async function buscarProdutosPorNome(termo) {
+    if (!termo || termo.length < 2) {
+        document.getElementById('resultadosBusca').innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">Digite pelo menos 2 caracteres...</p>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/produtos/buscar?termo=${encodeURIComponent(termo)}`);
+        const produtos = await response.json();
+
+        const container = document.getElementById('resultadosBusca');
+        
+        if (produtos.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #ff9800; padding: 40px; font-size: 18px;">Nenhum produto encontrado!</p>';
+            return;
+        }
+
+        container.innerHTML = produtos.map(produto => `
+            <div style="
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: white;
+                transition: all 0.2s;
+                cursor: pointer;
+            " 
+            onmouseover="this.style.borderColor='#667eea'; this.style.background='#f8f9ff'"
+            onmouseout="this.style.borderColor='#e0e0e0'; this.style.background='white'"
+            onclick="selecionarProdutoBusca('${produto.codigo_barras}')">
+                <div style="flex: 1;">
+                    <div style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 5px;">
+                        ${produto.nome}
+                    </div>
+                    <div style="font-size: 14px; color: #666;">
+                        <span style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; margin-right: 10px;">
+                            📦 ${produto.codigo_barras || 'Sem código'}
+                        </span>
+                        <span style="background: ${produto.estoque > 0 ? '#d4edda' : '#f8d7da'}; padding: 4px 8px; border-radius: 4px; color: ${produto.estoque > 0 ? '#155724' : '#721c24'};">
+                            Estoque: ${produto.estoque}
+                        </span>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 24px; font-weight: bold; color: #28a745;">
+                        R$ ${parseFloat(produto.preco).toFixed(2)}
+                    </div>
+                    <button onclick="event.stopPropagation(); selecionarProdutoBusca('${produto.codigo_barras}')" 
+                        style="
+                            background: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            font-size: 14px;
+                            font-weight: bold;
+                            cursor: pointer;
+                            margin-top: 5px;
+                        ">
+                        ➕ Adicionar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Erro ao buscar produtos:', error);
+        document.getElementById('resultadosBusca').innerHTML = '<p style="text-align: center; color: #dc3545; padding: 40px;">Erro ao buscar produtos!</p>';
+    }
+}
+
+function selecionarProdutoBusca(codigoBarras) {
+    fecharModal('buscarProdutoModal');
+    adicionarProduto(codigoBarras);
+    setTimeout(() => {
+        document.getElementById('searchInput').focus();
+    }, 100);
+}
+
+// Inicializar busca quando o modal for carregado
+document.addEventListener('modalsLoaded', () => {
+    const inputBusca = document.getElementById('inputBuscaProduto');
+    if (inputBusca) {
+        inputBusca.addEventListener('input', function() {
+            clearTimeout(timeoutBusca);
+            timeoutBusca = setTimeout(() => {
+                buscarProdutosPorNome(this.value.trim());
+            }, 300);
+        });
+
+        inputBusca.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                fecharModal('buscarProdutoModal');
+            }
+        });
+    }
 });
