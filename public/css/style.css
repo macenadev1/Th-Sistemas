@@ -501,3 +501,54 @@
                 transform: translateY(-20px);
             }
         }
+
+        /* CSS para impressão de cupom */
+        @media print {
+            /* Ocultar tudo da página exceto o cupom */
+            body * {
+                visibility: hidden !important;
+            }
+            
+            /* Tornar visível apenas o conteúdo do cupom */
+            #cupomContent,
+            #cupomContent * {
+                visibility: visible !important;
+            }
+            
+            #cupomContent {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm;
+                padding: 5mm;
+            }
+            
+            /* FORÇAR ocultação dos botões e elementos com no-print */
+            .no-print,
+            .no-print *,
+            .modal-actions,
+            .modal-actions *,
+            button {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                height: 0 !important;
+                width: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            /* Remover fundo e sombras do modal */
+            .modal,
+            .modal-content {
+                background: none !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            
+            /* Configurações de página */
+            @page {
+                margin: 0;
+                size: 80mm auto;
+            }
+        }

@@ -43,6 +43,37 @@ Use `formatarDataMySQL()` em [src/routes/caixa.js](../src/routes/caixa.js#L6-L13
 - Fechar modal: sempre use `closeModal()` de [modal-handler.js](../public/js/modal-handler.js) (ESC já mapeado)
 - IDs únicos por modal (evitar conflitos entre modais reutilizáveis)
 
+#### **Modais Aninhadas (Padrão para Sub-Telas)**
+**SEMPRE** use modais aninhadas quando criar sub-telas ou modais que abrem sobre outras:
+
+```html
+<!-- Modal Principal -->
+<div id="menuPrincipalModal" class="modal">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <!-- conteúdo -->
+    </div>
+</div>
+
+<!-- Modal Secundária (Aninhada) -->
+<div id="subTelaModal" class="modal modal-nested">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <!-- conteúdo -->
+        <button onclick="fecharModalAninhado(event, 'subTelaModal')">Voltar</button>
+    </div>
+</div>
+```
+
+**Regras:**
+1. Modal secundária: adicionar classe `modal-nested`
+2. Ambas devem ter `onclick="event.stopPropagation()"` no `.modal-content`
+3. **NÃO fechar** modal principal ao abrir a secundária (manter cascata)
+4. Botão "Voltar" usa `fecharModalAninhado(event, 'modalId')` (não `fecharModal`)
+5. Após salvar/confirmar na secundária: fechar apenas ela com `fecharModal('modalId')` e atualizar dados da principal
+
+**Exemplo real**: Sistema de Caixa ([menu-caixa.html](../public/modals/menu-caixa.html) + [abertura-caixa.html](../public/modals/abertura-caixa.html))
+
+Para modais de terceiro nível: usar classe `modal-nested-level-2`
+
 ### Atalhos de Teclado (já implementados)
 - `F1`: Ajuda | `F2`: Finalizar venda | `F3`: Cancelar venda | `F4`: Novo produto
 - `F7`: Menu caixa | `F8`: Configurações | `F12`: Lista produtos

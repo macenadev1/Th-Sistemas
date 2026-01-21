@@ -10,7 +10,7 @@ router.post('/', async (req, res) => {
     try {
         await connection.beginTransaction();
         
-        const { itens, total, valor_pago, troco, formas_pagamento } = req.body;
+        const { itens, subtotal, desconto, total, valor_pago, troco, formas_pagamento } = req.body;
         
         if (!itens || itens.length === 0) {
             throw new Error('Carrinho vazio');
@@ -22,8 +22,8 @@ router.post('/', async (req, res) => {
         
         // Inserir venda
         const [vendaResult] = await connection.query(
-            'INSERT INTO vendas (total, valor_pago, troco, quantidade_itens) VALUES (?, ?, ?, ?)',
-            [total, valor_pago, troco, itens.reduce((sum, item) => sum + item.quantidade, 0)]
+            'INSERT INTO vendas (total, valor_pago, troco, quantidade_itens, desconto) VALUES (?, ?, ?, ?, ?)',
+            [total, valor_pago, troco, itens.reduce((sum, item) => sum + item.quantidade, 0), desconto || 0]
         );
         
         const vendaId = vendaResult.insertId;

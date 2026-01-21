@@ -1,0 +1,140 @@
+<!-- Modal de Cupom/Comprovante -->
+<div id="cupomModal" class="modal">
+    <div class="modal-content" style="max-width: 400px; font-family: 'Courier New', monospace;">
+        <div id="cupomContent" style="background: white; padding: 20px;">
+            <!-- Cabeçalho -->
+            <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 15px; margin-bottom: 15px;">
+                <h2 style="margin: 0 0 5px 0; font-size: 20px;">BOMBONIERE</h2>
+                <p style="margin: 0; font-size: 12px;">Comprovante de Venda</p>
+                <p style="margin: 5px 0 0 0; font-size: 11px;" id="cupomDataHora">00/00/0000 00:00</p>
+                <p style="margin: 3px 0 0 0; font-size: 11px;">Venda #<span id="cupomNumeroVenda">0000</span></p>
+            </div>
+
+            <!-- Itens -->
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: bold; font-size: 11px; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 3px;">
+                    ITENS
+                </div>
+                <div id="cupomItens" style="font-size: 11px;">
+                    <!-- Itens serão inseridos aqui -->
+                </div>
+            </div>
+
+            <!-- Totais -->
+            <div style="border-top: 1px solid #000; padding-top: 10px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px;">
+                    <span>Subtotal:</span>
+                    <span id="cupomSubtotal">R$ 0,00</span>
+                </div>
+                <div id="cupomDescontoDiv" style="display: none; font-size: 12px; margin-bottom: 3px; color: #c82333;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Desconto:</span>
+                        <span id="cupomDesconto">R$ 0,00</span>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 8px;">
+                    <span>TOTAL:</span>
+                    <span id="cupomTotal">R$ 0,00</span>
+                </div>
+            </div>
+
+            <!-- Formas de Pagamento -->
+            <div style="border-top: 1px solid #000; padding-top: 10px; margin-bottom: 15px;">
+                <div style="font-weight: bold; font-size: 11px; margin-bottom: 8px;">
+                    PAGAMENTO
+                </div>
+                <div id="cupomFormasPagamento" style="font-size: 11px;">
+                    <!-- Formas de pagamento serão inseridas aqui -->
+                </div>
+                <div id="cupomTrocoDiv" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #000;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold;">
+                        <span>TROCO:</span>
+                        <span id="cupomTroco">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operador -->
+            <div style="border-top: 2px dashed #000; padding-top: 10px; text-align: center; font-size: 10px;">
+                <p style="margin: 0;">Operador: <span id="cupomOperador">Sistema</span></p>
+            </div>
+
+            <!-- Rodapé -->
+            <div style="text-align: center; margin-top: 15px; font-size: 10px; color: #666;">
+                <p style="margin: 5px 0;">Obrigado pela preferência!</p>
+                <p style="margin: 5px 0;">Volte sempre!</p>
+            </div>
+        </div>
+
+        <div class="modal-actions no-print" style="margin-top: 15px;">
+            <button type="button" class="btn btn-primary" onclick="imprimirCupom()" style="flex: 1; font-size: 16px; padding: 14px;">
+                🖨️ Imprimir
+            </button>
+            <button type="button" class="btn btn-success" onclick="fecharModal('cupomModal')" style="flex: 1; font-size: 16px; padding: 14px;">
+                ✓ Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Ocultar botões na impressão */
+    @media print {
+        /* Ocultar tudo exceto o cupom */
+        body * {
+            visibility: hidden;
+        }
+        
+        #cupomContent, #cupomContent * {
+            visibility: visible;
+        }
+        
+        #cupomContent {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 10mm;
+        }
+        
+        /* Ocultar elementos com classe no-print - FORÇAR */
+        .no-print {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            width: 0 !important;
+            overflow: hidden !important;
+        }
+        
+        .no-print * {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        
+        /* Ocultar modal-actions na impressão */
+        .modal-actions {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        
+        /* Ocultar backdrop do modal */
+        .modal {
+            background: none !important;
+            box-shadow: none !important;
+        }
+        
+        .modal-content {
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Ajustes de página */
+        @page {
+            margin: 0;
+            size: 80mm auto; /* Largura de impressora térmica */
+        }
+    }
+</style>

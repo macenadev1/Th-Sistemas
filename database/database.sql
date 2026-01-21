@@ -33,6 +33,7 @@ CREATE TABLE vendas (
     valor_pago DECIMAL(10, 2) NOT NULL,
     troco DECIMAL(10, 2) NOT NULL,
     quantidade_itens INT NOT NULL,
+    desconto DECIMAL(10, 2) NOT NULL DEFAULT 0,
     data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_data_venda (data_venda)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

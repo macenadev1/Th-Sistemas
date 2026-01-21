@@ -12,6 +12,7 @@
         'finalizacao-venda',
         'forma-pagamento',
         'confirmacao-venda',
+        'cupom-venda',
         'menu-caixa',
         'abertura-caixa',
         'reforco-caixa',

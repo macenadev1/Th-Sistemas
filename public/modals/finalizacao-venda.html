@@ -6,6 +6,26 @@
         </div>
         <div class="total-section" style="margin-bottom: 20px;">
             <div class="total-row">
+                <span class="total-label">Subtotal:</span>
+                <span class="total-value" id="subtotalVenda" style="font-size: 20px; color: #666;">R$ 0,00</span>
+            </div>
+            
+            <!-- Desconto -->
+            <div class="total-row" style="background: #fff3cd; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span class="total-label" style="font-weight: bold;">🏷️ Desconto:</span>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="number" id="descontoValor" placeholder="0" min="0" step="0.01" style="width: 100px; padding: 8px; border: 2px solid #ffc107; border-radius: 6px; text-align: center; font-weight: bold;" value="0">
+                        <select id="descontoTipo" style="padding: 8px; border: 2px solid #ffc107; border-radius: 6px; font-weight: bold; background: white;">
+                            <option value="reais">R$</option>
+                            <option value="percentual">%</option>
+                        </select>
+                    </div>
+                    <span id="descontoCalculado" style="font-size: 16px; font-weight: bold; color: #856404;">(-R$ 0,00)</span>
+                </div>
+            </div>
+            
+            <div class="total-row">
                 <span class="total-label">TOTAL A PAGAR:</span>
                 <span class="total-value" id="totalFinal" style="font-size: 32px; color: #28a745;">R$ 0,00</span>
             </div>
