@@ -83,6 +83,20 @@ async function abrirGerenciarProdutos() {
         // Resetar filtros
         limparFiltrosProdutos();
         
+        // Configurar event listeners para resetar página quando filtros mudarem
+        const filtroBusca = document.getElementById('filtroBuscaProduto');
+        const filtroStatus = document.getElementById('filtroStatusProduto');
+        
+        if (filtroBusca) {
+            filtroBusca.removeEventListener('input', resetarPaginaEFiltrar);
+            filtroBusca.addEventListener('input', resetarPaginaEFiltrar);
+        }
+        
+        if (filtroStatus) {
+            filtroStatus.removeEventListener('change', resetarPaginaEFiltrar);
+            filtroStatus.addEventListener('change', resetarPaginaEFiltrar);
+        }
+        
         // Aplicar filtros (mostra todos inicialmente)
         aplicarFiltrosProdutos();
 
@@ -98,9 +112,16 @@ async function abrirGerenciarProdutos() {
     }
 }
 
+function resetarPaginaEFiltrar() {
+    paginaAtualProdutos = 1;
+    aplicarFiltrosProdutos();
+}
+
 function aplicarFiltrosProdutos() {
     const busca = document.getElementById('filtroBuscaProduto').value.toLowerCase();
     const status = document.getElementById('filtroStatusProduto').value;
+    
+    console.log('🔍 Aplicando filtros - Página atual:', paginaAtualProdutos);
     
     let produtosFiltrados = [...produtosCompletos];
     
@@ -123,8 +144,8 @@ function aplicarFiltrosProdutos() {
         });
     }
     
-    // Resetar para página 1 quando aplicar filtros
-    paginaAtualProdutos = 1;
+    console.log('📊 Total de produtos filtrados:', produtosFiltrados.length);
+    console.log('📄 Mostrando página:', paginaAtualProdutos);
     
     // Renderizar produtos filtrados
     renderizarProdutos(produtosFiltrados);
@@ -140,6 +161,8 @@ function limparFiltrosProdutos() {
 function renderizarProdutos(produtos) {
     const content = document.getElementById('produtosContent');
     const contador = document.getElementById('contadorProdutos');
+    
+    console.log('🎨 Renderizando produtos - Total:', produtos.length, 'Página:', paginaAtualProdutos);
     
     // Atualizar contador
     contador.textContent = `${produtos.length} produto(s) encontrado(s)`;
@@ -161,6 +184,8 @@ function renderizarProdutos(produtos) {
     const inicio = (paginaAtualProdutos - 1) * itensPorPagina;
     const fim = inicio + itensPorPagina;
     const produtosPagina = produtos.slice(inicio, fim);
+    
+    console.log('✂️ Slice:', inicio, 'até', fim, '- Produtos nesta página:', produtosPagina.length);
 
     let html = '<div style="padding: 10px;">';
     html += '<div style="display: grid; gap: 10px;">';
@@ -233,7 +258,7 @@ function renderizarPaginacaoProdutos(totalPaginas, produtos) {
     // Botão anterior
     html += `
         <button 
-            onclick="mudarPaginaProdutos(${paginaAtualProdutos - 1})" 
+            onclick="event.stopPropagation(); mudarPaginaProdutos(${paginaAtualProdutos - 1})" 
             ${paginaAtualProdutos === 1 ? 'disabled' : ''}
             style="
                 padding: 8px 16px; 
@@ -264,7 +289,7 @@ function renderizarPaginacaoProdutos(totalPaginas, produtos) {
     for (let i = inicio; i <= fim; i++) {
         html += `
             <button 
-                onclick="mudarPaginaProdutos(${i})" 
+                onclick="event.stopPropagation(); mudarPaginaProdutos(${i})" 
                 style="
                     padding: 8px 16px; 
                     background: ${i === paginaAtualProdutos ? '#007bff' : 'white'}; 
@@ -287,7 +312,7 @@ function renderizarPaginacaoProdutos(totalPaginas, produtos) {
     // Botão próximo
     html += `
         <button 
-            onclick="mudarPaginaProdutos(${paginaAtualProdutos + 1})" 
+            onclick="event.stopPropagation(); mudarPaginaProdutos(${paginaAtualProdutos + 1})" 
             ${paginaAtualProdutos === totalPaginas ? 'disabled' : ''}
             style="
                 padding: 8px 16px; 
@@ -306,6 +331,7 @@ function renderizarPaginacaoProdutos(totalPaginas, produtos) {
 }
 
 function mudarPaginaProdutos(novaPagina) {
+    console.log('📄 Mudando para página:', novaPagina);
     paginaAtualProdutos = novaPagina;
     aplicarFiltrosProdutos();
 }
@@ -327,8 +353,9 @@ async function abrirEdicaoProduto(id) {
         document.getElementById('editarCodigoBarras').value = produto.codigo_barras;
         document.getElementById('editarNome').value = produto.nome;
         document.getElementById('editarEstoque').value = produto.estoque;
+        document.getElementById('editarAtivo').checked = produto.ativo === 1 || produto.ativo === true;
 
-        document.getElementById('produtosModal').classList.remove('active');
+        // NÃO fechar modal principal - mantém em cascata
         
         abrirModal('editarProdutoModal', () => {
             const inputPrecoEdicao = document.getElementById('editarPreco');
@@ -336,6 +363,28 @@ async function abrirEdicaoProduto(id) {
                 aplicarFormatacaoMoeda(inputPrecoEdicao);
                 inputPrecoEdicao.setValorDecimal(parseFloat(produto.preco));
             }
+            
+            // Configurar toggle de ativo/inativo
+            const checkboxAtivo = document.getElementById('editarAtivo');
+            const statusTexto = document.getElementById('statusTextoEditar');
+            
+            // Função para atualizar o texto do status
+            function atualizarStatusTexto() {
+                if (checkboxAtivo.checked) {
+                    statusTexto.innerHTML = '✓ Ativo';
+                    statusTexto.style.color = '#28a745';
+                } else {
+                    statusTexto.innerHTML = '✕ Inativo';
+                    statusTexto.style.color = '#dc3545';
+                }
+            }
+            
+            // Atualizar texto inicial
+            atualizarStatusTexto();
+            
+            // Adicionar listener para mudanças
+            checkboxAtivo.addEventListener('change', atualizarStatusTexto);
+            
             const inputNome = document.getElementById('editarNome');
             if (inputNome) {
                 inputNome.focus();
@@ -361,13 +410,18 @@ async function salvarEdicaoProduto(event) {
     const inputPrecoEdicao = document.getElementById('editarPreco');
     const preco = inputPrecoEdicao.getValorDecimal ? inputPrecoEdicao.getValorDecimal() : parseFloat(inputPrecoEdicao.value);
     const estoque = parseInt(document.getElementById('editarEstoque').value);
+    const ativo = document.getElementById('editarAtivo').checked;
+    
+    console.log('📝 Salvando produto:', { id, nome, preco, estoque, ativo });
 
     try {
         const response = await fetch(`${API_URL}/produtos/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, preco, estoque })
+            body: JSON.stringify({ nome, preco, estoque, ativo })
         });
+        
+        console.log('📡 Resposta da API:', response.status);
 
         if (!response.ok) {
             const error = await response.json();
@@ -376,8 +430,15 @@ async function salvarEdicaoProduto(event) {
 
         mostrarNotificacao(`✓ Produto "${nome}" atualizado!`, 'success');
         
-        document.getElementById('editarProdutoModal').classList.remove('active');
-        abrirGerenciarProdutos();
+        // Fechar modal de edição e recarregar lista de produtos
+        fecharModal('editarProdutoModal');
+        
+        // Recarregar produtos e reaplicar filtros
+        const response2 = await fetch(`${API_URL}/produtos`);
+        if (response2.ok) {
+            produtosCompletos = await response2.json();
+            aplicarFiltrosProdutos();
+        }
     } catch (error) {
         console.error('Erro ao atualizar produto:', error);
         mostrarNotificacao(error.message, 'error');

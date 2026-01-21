@@ -1,6 +1,6 @@
 <!-- Modal de Edição de Produto -->
-<div id="editarProdutoModal" class="modal">
-    <div class="modal-content">
+<div id="editarProdutoModal" class="modal modal-nested">
+    <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
             <h2>✏️ Editar Produto</h2>
         </div>
@@ -22,9 +22,74 @@
                 <label>Estoque:</label>
                 <input type="number" id="editarEstoque" min="0" required>
             </div>
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 10px;">
+                    <span style="font-weight: 600; font-size: 14px; color: #333;">Status do Produto</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 2px solid #e0e0e0;">
+                    <div style="flex: 1;">
+                        <div id="statusTextoEditar" style="font-weight: bold; font-size: 16px; color: #28a745; margin-bottom: 5px;">
+                            ✓ Ativo
+                        </div>
+                        <small style="color: #666; font-size: 12px;">
+                            Produtos inativos não aparecem nas vendas
+                        </small>
+                    </div>
+                    <label class="toggle-switch" style="position: relative; display: inline-block; width: 60px; height: 30px; cursor: pointer;">
+                        <input type="checkbox" id="editarAtivo" style="opacity: 0; width: 0; height: 0;">
+                        <span class="toggle-slider" style="
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background-color: #28a745;
+                            border-radius: 30px;
+                            transition: all 0.3s ease;
+                            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                        "></span>
+                        <span class="toggle-circle" style="
+                            position: absolute;
+                            content: '';
+                            height: 24px;
+                            width: 24px;
+                            left: 3px;
+                            bottom: 3px;
+                            background-color: white;
+                            border-radius: 50%;
+                            transition: all 0.3s ease;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                        "></span>
+                    </label>
+                </div>
+                <style>
+                    /* Estilo quando checkbox está desmarcado (inativo) */
+                    .toggle-switch input:not(:checked) + .toggle-slider {
+                        background-color: #dc3545 !important;
+                    }
+                    .toggle-switch input:not(:checked) ~ .toggle-circle {
+                        transform: translateX(0) !important;
+                    }
+                    /* Estilo quando checkbox está marcado (ativo) */
+                    .toggle-switch input:checked + .toggle-slider {
+                        background-color: #28a745 !important;
+                    }
+                    .toggle-switch input:checked ~ .toggle-circle {
+                        transform: translateX(30px) !important;
+                    }
+                    /* Hover effect */
+                    .toggle-switch:hover .toggle-slider {
+                        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+                    }
+                    /* Active effect */
+                    .toggle-switch:active .toggle-circle {
+                        width: 28px;
+                    }
+                </style>
+            </div>
             <div class="modal-actions">
                 <button type="submit" class="btn btn-success" style="flex: 1;">💾 Salvar Alterações</button>
-                <button type="button" class="btn btn-danger" onclick="fecharModalEdicao()" style="flex: 1;">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'editarProdutoModal')" style="flex: 1;">Voltar</button>
             </div>
         </form>
     </div>

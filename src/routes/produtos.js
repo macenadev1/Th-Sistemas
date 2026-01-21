@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
     try {
         const pool = getPool();
         const [rows] = await pool.query(
-            'SELECT * FROM produtos WHERE ativo = TRUE ORDER BY nome'
+            'SELECT * FROM produtos ORDER BY nome'
         );
         res.json(rows);
     } catch (error) {
@@ -91,16 +91,25 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const pool = getPool();
-        const { nome, preco, estoque } = req.body;
+        const { nome, preco, estoque, ativo } = req.body;
         
-        await pool.query(
-            'UPDATE produtos SET nome = ?, preco = ?, estoque = ? WHERE id = ?',
-            [nome, preco, estoque, req.params.id]
+        console.log('📝 Recebendo atualização de produto:', { id: req.params.id, nome, preco, estoque, ativo });
+        
+        const ativoValue = ativo !== undefined ? (ativo ? 1 : 0) : 1;
+        
+        console.log('🔄 Valor convertido de ativo:', ativoValue);
+        
+        const [result] = await pool.query(
+            'UPDATE produtos SET nome = ?, preco = ?, estoque = ?, ativo = ? WHERE id = ?',
+            [nome, preco, estoque, ativoValue, req.params.id]
         );
+        
+        console.log('✅ Query executada! Linhas afetadas:', result.affectedRows);
+        console.log('📊 Resultado completo:', result);
         
         res.json({ success: true, message: 'Produto atualizado!' });
     } catch (error) {
-        console.error('Erro ao atualizar produto:', error);
+        console.error('❌ Erro ao atualizar produto:', error);
         res.status(500).json({ error: 'Erro ao atualizar produto' });
     }
 });
