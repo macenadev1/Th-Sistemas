@@ -17,6 +17,7 @@
         'reforco-caixa',
         'sangria',
         'fechamento-caixa',
+        'confirmacao-fechamento-caixa',
         'historico-fechamentos',
         'detalhes-fechamento',
         'ajuda',

@@ -365,7 +365,13 @@ function abrirModalFechamentoCaixa() {
     abrirModal('fechamentoCaixaModal', () => {
         const input = document.getElementById('valorFechamento');
         if (input && !input.getValorDecimal) {
-            aplicarFormatacaoMoeda(input);
+            aplicarFormatacaoMoeda(input, () => {
+                // Callback do Enter - submeter o form
+                const form = input.closest('form');
+                if (form) {
+                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+            });
         }
         if (input) {
             input.focus();
@@ -401,24 +407,100 @@ function confirmarFechamentoCaixa(event) {
     
     const inputValor = document.getElementById('valorFechamento');
     const valorReal = inputValor.getValorDecimal ? inputValor.getValorDecimal() : parseFloat(inputValor.value);
+    
+    if (isNaN(valorReal) || valorReal < 0) {
+        mostrarNotificacao('Digite um valor válido!', 'error');
+        return;
+    }
+    
     const saldoEsperado = caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias;
     const diferenca = valorReal - saldoEsperado;
     
-    let mensagemConfirmacao = `Fechar caixa com:\n\nValor Esperado: R$ ${saldoEsperado.toFixed(2)}\nValor Real: R$ ${valorReal.toFixed(2)}\n`;
+    // Preencher dados do modal de confirmação
+    document.getElementById('confFechOperador').textContent = caixaData.operador;
+    document.getElementById('confFechEsperado').textContent = `R$ ${saldoEsperado.toFixed(2)}`;
+    document.getElementById('confFechReal').textContent = `R$ ${valorReal.toFixed(2)}`;
+    
+    const divDiferenca = document.getElementById('confFechDiferencaDiv');
+    const txtDiferenca = document.getElementById('confFechDiferenca');
     
     if (diferenca !== 0) {
+        divDiferenca.style.display = 'block';
         if (diferenca > 0) {
-            mensagemConfirmacao += `\nSOBRA: R$ ${diferenca.toFixed(2)}`;
+            divDiferenca.style.background = '#d4edda';
+            divDiferenca.style.borderLeft = '4px solid #28a745';
+            txtDiferenca.style.color = '#155724';
+            txtDiferenca.textContent = `💰 Sobra: R$ ${diferenca.toFixed(2)}`;
         } else {
-            mensagemConfirmacao += `\nFALTA: R$ ${Math.abs(diferenca).toFixed(2)}`;
+            divDiferenca.style.background = '#f8d7da';
+            divDiferenca.style.borderLeft = '4px solid #dc3545';
+            txtDiferenca.style.color = '#721c24';
+            txtDiferenca.textContent = `⚠️ Falta: R$ ${Math.abs(diferenca).toFixed(2)}`;
         }
+    } else {
+        divDiferenca.style.display = 'none';
     }
     
-    mensagemConfirmacao += '\n\nConfirmar fechamento?';
+    // Armazenar dados para uso na confirmação final
+    window.dadosFechamentoPendente = {
+        valorReal,
+        saldoEsperado,
+        diferenca
+    };
     
-    if (!confirm(mensagemConfirmacao)) {
+    // Abrir modal de confirmação
+    abrirModal('confirmacaoFechamentoCaixaModal');
+    
+    // Adicionar event listener para Enter após abrir o modal
+    setTimeout(() => {
+        console.log('🔧 Configurando Enter para confirmação de fechamento...');
+        
+        // Remover listener antigo se existir
+        if (window.enterFechamentoHandler) {
+            document.removeEventListener('keydown', window.enterFechamentoHandler);
+        }
+        
+        // Criar novo handler e armazenar referência
+        window.enterFechamentoHandler = function(e) {
+            const modalConfirmacao = document.getElementById('confirmacaoFechamentoCaixaModal');
+            
+            console.log('🎯 Tecla pressionada:', e.key, 'Modal ativo?', modalConfirmacao?.classList.contains('active'));
+            
+            // Verificar se o modal ainda está aberto
+            if (modalConfirmacao && modalConfirmacao.classList.contains('active') && e.key === 'Enter') {
+                console.log('✅ Confirmando fechamento via Enter!');
+                e.preventDefault();
+                e.stopPropagation();
+                confirmarFechamentoCaixaFinal();
+            }
+        };
+        
+        // Adicionar listener no document para garantir captura
+        document.addEventListener('keydown', window.enterFechamentoHandler, true);
+        console.log('✅ Listener de Enter adicionado!');
+    }, 150);
+}
+
+function cancelarConfirmacaoFechamentoCaixa() {
+    console.log('❌ Cancelando confirmação de fechamento...');
+    fecharModal('confirmacaoFechamentoCaixaModal');
+    window.dadosFechamentoPendente = null;
+    
+    // Remover event listener do Enter
+    if (window.enterFechamentoHandler) {
+        document.removeEventListener('keydown', window.enterFechamentoHandler, true);
+        window.enterFechamentoHandler = null;
+        console.log('✅ Listener de Enter removido!');
+    }
+}
+
+function confirmarFechamentoCaixaFinal() {
+    if (!window.dadosFechamentoPendente) {
+        mostrarNotificacao('Erro: dados de fechamento não encontrados', 'error');
         return;
     }
+    
+    const { valorReal, saldoEsperado, diferenca } = window.dadosFechamentoPendente;
     
     // Registrar fechamento
     caixaData.movimentacoes.push({
@@ -499,7 +581,21 @@ function confirmarFechamentoCaixa(event) {
     
     salvarEstadoCaixa();
     atualizarStatusCaixa();
+    
+    // Fechar ambos os modais
+    fecharModal('confirmacaoFechamentoCaixaModal');
     fecharModal('fechamentoCaixaModal');
+    
+    // Remover event listener do Enter
+    if (window.enterFechamentoHandler) {
+        document.removeEventListener('keydown', window.enterFechamentoHandler, true);
+        window.enterFechamentoHandler = null;
+        console.log('✅ Listener de Enter removido após confirmação!');
+    }
+    
     alert(resumo);
     mostrarNotificacao('Caixa fechado com sucesso!', 'success');
+    
+    // Limpar dados pendentes
+    window.dadosFechamentoPendente = null;
 }

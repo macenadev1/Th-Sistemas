@@ -1,0 +1,49 @@
+<!-- Modal de Confirmação de Fechamento de Caixa -->
+<div id="confirmacaoFechamentoCaixaModal" class="modal modal-nested-level-2">
+    <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 style="margin: 0;">🔒 Confirmar Fechamento de Caixa</h2>
+        </div>
+        <div style="padding: 25px;">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+                <p style="font-size: 18px; font-weight: 600; color: #333; margin: 0;">
+                    Deseja realmente fechar o caixa?
+                </p>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #ddd;">
+                    <span style="font-weight: 600; color: #666;">Operador:</span>
+                    <span id="confFechOperador" style="font-weight: bold; color: #333;">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #ddd;">
+                    <span style="font-weight: 600; color: #666;">Saldo Esperado:</span>
+                    <span id="confFechEsperado" style="font-weight: bold; color: #667eea; font-size: 18px;">R$ 0,00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 2px solid #667eea;">
+                    <span style="font-weight: 600; color: #666;">Saldo Real:</span>
+                    <span id="confFechReal" style="font-weight: bold; color: #333; font-size: 18px;">R$ 0,00</span>
+                </div>
+                <div id="confFechDiferencaDiv" style="display: none; padding: 15px; margin-top: 15px; border-radius: 8px; text-align: center;">
+                    <p id="confFechDiferenca" style="font-size: 20px; font-weight: 800; margin: 0;"></p>
+                </div>
+            </div>
+
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                <p style="margin: 0; color: #856404; font-size: 14px;">
+                    ⚠️ <strong>Atenção:</strong> Esta ação não pode ser desfeita. O caixa será fechado e um novo registro será criado no histórico.
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="cancelarConfirmacaoFechamentoCaixa()" class="btn btn-secondary" style="flex: 1; font-size: 16px; padding: 14px;">
+                    ✕ Cancelar
+                </button>
+                <button onclick="confirmarFechamentoCaixaFinal()" class="btn btn-danger" style="flex: 1; font-size: 16px; padding: 14px; background: #dc3545; border-color: #dc3545;">
+                    ✓ Confirmar Fechamento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

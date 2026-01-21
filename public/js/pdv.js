@@ -180,10 +180,45 @@ function atualizarCarrinho() {
             <div class="cart-item">
                 <div class="item-info">
                     <div class="item-name">${item.nome}</div>
-                    <div class="item-details">Qtd: ${item.quantidade} x R$ ${item.preco.toFixed(2)}</div>
+                    <div class="item-details">R$ ${item.preco.toFixed(2)} cada</div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div class="item-price">R$ ${(item.preco * item.quantidade).toFixed(2)}</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 5px; background: #f8f9fa; padding: 5px; border-radius: 6px;">
+                        <button onclick="diminuirQuantidadeItem(${index})" style="
+                            background: #6c757d;
+                            color: white;
+                            border: none;
+                            padding: 5px 10px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 16px;
+                            font-weight: bold;
+                        " title="Diminuir quantidade">−</button>
+                        <input type="number" 
+                            value="${item.quantidade}" 
+                            min="1" 
+                            onchange="alterarQuantidadeItem(${index}, this.value)"
+                            style="
+                                width: 50px;
+                                text-align: center;
+                                border: 2px solid #ddd;
+                                border-radius: 4px;
+                                padding: 5px;
+                                font-size: 14px;
+                                font-weight: bold;
+                            ">
+                        <button onclick="aumentarQuantidadeItem(${index})" style="
+                            background: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 5px 10px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 16px;
+                            font-weight: bold;
+                        " title="Aumentar quantidade">+</button>
+                    </div>
+                    <div class="item-price" style="min-width: 80px;">R$ ${(item.preco * item.quantidade).toFixed(2)}</div>
                     <button onclick="removerItemCarrinho(${index})" style="
                         background: #dc3545;
                         color: white;
@@ -219,12 +254,92 @@ function removerItemCarrinho(index) {
     }
     
     const item = carrinho[index];
+    carrinho.splice(index, 1);
+    atualizarCarrinho();
+    mostrarNotificacao(`✓ ${item.nome} removido do carrinho!`, 'info');
+}
+
+async function aumentarQuantidadeItem(index) {
+    if (index < 0 || index >= carrinho.length) return;
     
-    // Confirmar remoção
-    if (confirm(`Remover "${item.nome}" (${item.quantidade}x) do carrinho?`)) {
-        carrinho.splice(index, 1);
+    const item = carrinho[index];
+    
+    // Verificar estoque disponível
+    try {
+        const response = await fetch(`${API_URL}/produtos/${item.codigo}`);
+        if (!response.ok) {
+            mostrarNotificacao('Erro ao verificar estoque!', 'error');
+            return;
+        }
+        
+        const produto = await response.json();
+        
+        if (item.quantidade >= produto.estoque) {
+            mostrarNotificacao(`Estoque máximo atingido! Disponível: ${produto.estoque}`, 'error');
+            return;
+        }
+        
+        item.quantidade++;
         atualizarCarrinho();
-        mostrarNotificacao(`✓ ${item.nome} removido do carrinho!`, 'info');
+        mostrarNotificacao(`✓ Quantidade aumentada para ${item.quantidade}`, 'success');
+    } catch (error) {
+        console.error('Erro ao aumentar quantidade:', error);
+        mostrarNotificacao('Erro ao verificar estoque!', 'error');
+    }
+}
+
+function diminuirQuantidadeItem(index) {
+    if (index < 0 || index >= carrinho.length) return;
+    
+    const item = carrinho[index];
+    
+    if (item.quantidade <= 1) {
+        mostrarNotificacao('Quantidade mínima é 1. Use o botão ✕ para remover o item.', 'error');
+        return;
+    }
+    
+    item.quantidade--;
+    atualizarCarrinho();
+    mostrarNotificacao(`✓ Quantidade diminuída para ${item.quantidade}`, 'info');
+}
+
+async function alterarQuantidadeItem(index, novaQuantidade) {
+    if (index < 0 || index >= carrinho.length) return;
+    
+    const qtd = parseInt(novaQuantidade);
+    
+    if (isNaN(qtd) || qtd < 1) {
+        mostrarNotificacao('Quantidade inválida!', 'error');
+        atualizarCarrinho(); // Restaura valor anterior
+        return;
+    }
+    
+    const item = carrinho[index];
+    
+    // Verificar estoque disponível
+    try {
+        const response = await fetch(`${API_URL}/produtos/${item.codigo}`);
+        if (!response.ok) {
+            mostrarNotificacao('Erro ao verificar estoque!', 'error');
+            atualizarCarrinho();
+            return;
+        }
+        
+        const produto = await response.json();
+        
+        if (qtd > produto.estoque) {
+            mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}`, 'error');
+            atualizarCarrinho();
+            return;
+        }
+        
+        item.quantidade = qtd;
+        atualizarCarrinho();
+        mostrarNotificacao(`✓ Quantidade alterada para ${qtd}`, 'success');
+    } catch (error) {
+        console.error('Erro ao alterar quantidade:', error);
+        mostrarNotificacao('Erro ao verificar estoque!', 'error');
+        atualizarCarrinho();
     }
 }
 
