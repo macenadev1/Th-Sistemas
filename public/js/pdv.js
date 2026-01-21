@@ -868,8 +868,10 @@ async function confirmarVenda() {
         atualizarCarrinho();
         fecharModal();
         
-        // Mostrar cupom
-        mostrarCupom(dadosVenda);
+        // Mostrar cupom apenas se habilitado nas configurações
+        if (configuracoes.imprimirCupom !== false) {
+            mostrarCupom(dadosVenda);
+        }
     } catch (error) {
         console.error('Erro ao finalizar venda:', error);
         mostrarNotificacao(error.message, 'error');
@@ -938,33 +940,59 @@ function mostrarCupom(dados) {
     // Abrir modal
     abrirModal('cupomModal');
     
-    // Imprimir automaticamente após um pequeno delay (para renderizar o conteúdo)
+    // Obter configurações (usar valores padrão se não definidos)
+    const tempoRenderizacao = (typeof configuracoes !== 'undefined' && configuracoes.tempoRenderizacaoCupom) || 500;
+    const tempoFechamento = (typeof configuracoes !== 'undefined' && configuracoes.tempoFechamentoCupom) || 500;
+    const timeoutFallback = (typeof configuracoes !== 'undefined' && configuracoes.timeoutFallbackCupom) || 3000;
+    
+    console.log('⚙️ Configurações de impressão:', { tempoRenderizacao, tempoFechamento, timeoutFallback });
+    
+    // Imprimir automaticamente após delay configurável (para renderizar o conteúdo)
     setTimeout(() => {
         console.log('🖨️ Iniciando impressão automática...');
-        window.print();
         
-        // Usar eventos de impressão para detectar quando terminar
-        const handleAfterPrint = () => {
-            console.log('✅ Impressão concluída ou cancelada');
+        let impressaoConcluida = false;
+        let timeoutId;
+        
+        // Função para fechar o cupom
+        const fecharCupom = (motivo) => {
+            if (impressaoConcluida) return; // Evitar fechar duas vezes
+            impressaoConcluida = true;
+            
+            console.log(`✅ Fechando cupom (${motivo})`);
+            
+            // Limpar timeout
+            clearTimeout(timeoutId);
+            
+            // Remover listener
+            window.removeEventListener('afterprint', handleAfterPrint);
+            
+            // Fechar modal após tempo configurado
             setTimeout(() => {
                 fecharModal('cupomModal');
-                // Remover o listener após usar
-                window.removeEventListener('afterprint', handleAfterPrint);
-            }, 500);
+            }, tempoFechamento);
+        };
+        
+        // Handler do evento afterprint
+        const handleAfterPrint = () => {
+            console.log('📋 Evento afterprint disparado');
+            fecharCupom('afterprint');
         };
         
         // Adicionar listener para depois da impressão
         window.addEventListener('afterprint', handleAfterPrint);
         
-        // Fallback: se o evento não funcionar, fechar após 3 segundos
-        setTimeout(() => {
-            if (document.getElementById('cupomModal').classList.contains('active')) {
-                console.log('⏱️ Timeout: fechando cupom automaticamente');
-                fecharModal('cupomModal');
-                window.removeEventListener('afterprint', handleAfterPrint);
+        // Abrir janela de impressão
+        window.print();
+        
+        // Fallback: se o evento não funcionar, fechar após timeout configurável
+        timeoutId = setTimeout(() => {
+            if (!impressaoConcluida) {
+                console.log('⏱️ Timeout atingido - fechando por fallback');
+                fecharCupom('timeout fallback');
             }
-        }, 3000);
-    }, 500);
+        }, timeoutFallback);
+    }, tempoRenderizacao);
 }
 
 function imprimirCupom() {

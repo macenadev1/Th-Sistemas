@@ -4,7 +4,11 @@
 
 let configuracoes = {
     tipoAlerta: 'dia_diferente', // dia_diferente, horas, desabilitado
-    horasAlerta: 24
+    horasAlerta: 24,
+    imprimirCupom: true,
+    tempoRenderizacaoCupom: 500,
+    tempoFechamentoCupom: 500,
+    timeoutFallbackCupom: 3000
 };
 
 // Carregar configurações do servidor
@@ -24,11 +28,54 @@ async function carregarConfiguracoes() {
     return configuracoes;
 }
 
+// Atualizar valores dos sliders em tempo real
+function atualizarValorSlider(sliderId, valorId) {
+    const slider = document.getElementById(sliderId);
+    const valorSpan = document.getElementById(valorId);
+    
+    if (slider && valorSpan) {
+        slider.addEventListener('input', function() {
+            valorSpan.textContent = this.value + 'ms';
+        });
+    }
+}
+
+// Mostrar/ocultar detalhes de cupom conforme checkbox
+function toggleDetalheCupom() {
+    const checkbox = document.getElementById('configImprimirCupom');
+    const detalhes = document.getElementById('configCupomDetalhes');
+    
+    if (checkbox && detalhes) {
+        detalhes.style.display = checkbox.checked ? 'block' : 'none';
+    }
+}
+
 // Abrir modal de configurações
 function abrirConfiguracoes() {
-    // Preencher valores atuais
+    // Preencher valores atuais - Alerta de Caixa
     document.getElementById('configTipoAlerta').value = configuracoes.tipoAlerta;
     document.getElementById('configHorasAlerta').value = configuracoes.horasAlerta;
+    
+    // Preencher valores atuais - Cupom
+    document.getElementById('configImprimirCupom').checked = configuracoes.imprimirCupom !== false;
+    
+    document.getElementById('configTempoRenderizacao').value = configuracoes.tempoRenderizacaoCupom || 500;
+    document.getElementById('configTempoRenderizacaoValor').textContent = (configuracoes.tempoRenderizacaoCupom || 500) + 'ms';
+    
+    document.getElementById('configTempoFechamento').value = configuracoes.tempoFechamentoCupom || 500;
+    document.getElementById('configTempoFechamentoValor').textContent = (configuracoes.tempoFechamentoCupom || 500) + 'ms';
+    
+    document.getElementById('configTimeoutFallback').value = configuracoes.timeoutFallbackCupom || 3000;
+    document.getElementById('configTimeoutFallbackValor').textContent = (configuracoes.timeoutFallbackCupom || 3000) + 'ms';
+    
+    // Configurar listeners dos sliders
+    atualizarValorSlider('configTempoRenderizacao', 'configTempoRenderizacaoValor');
+    atualizarValorSlider('configTempoFechamento', 'configTempoFechamentoValor');
+    atualizarValorSlider('configTimeoutFallback', 'configTimeoutFallbackValor');
+    
+    // Mostrar/ocultar detalhes do cupom
+    toggleDetalheCupom();
+    document.getElementById('configImprimirCupom').addEventListener('change', toggleDetalheCupom);
     
     // Mostrar/ocultar campo de horas
     toggleCampoHoras();
@@ -55,6 +102,10 @@ function toggleCampoHoras() {
 async function salvarConfiguracoes() {
     const tipoAlerta = document.getElementById('configTipoAlerta').value;
     const horasAlerta = parseInt(document.getElementById('configHorasAlerta').value);
+    const imprimirCupom = document.getElementById('configImprimirCupom').checked;
+    const tempoRenderizacaoCupom = parseInt(document.getElementById('configTempoRenderizacao').value);
+    const tempoFechamentoCupom = parseInt(document.getElementById('configTempoFechamento').value);
+    const timeoutFallbackCupom = parseInt(document.getElementById('configTimeoutFallback').value);
     
     // Validação
     if (tipoAlerta === 'horas' && (horasAlerta < 1 || horasAlerta > 168)) {
@@ -64,7 +115,11 @@ async function salvarConfiguracoes() {
     
     const novasConfiguracoes = {
         tipoAlerta,
-        horasAlerta
+        horasAlerta,
+        imprimirCupom,
+        tempoRenderizacaoCupom,
+        tempoFechamentoCupom,
+        timeoutFallbackCupom
     };
     
     try {

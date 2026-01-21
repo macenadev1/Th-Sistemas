@@ -112,15 +112,22 @@ CREATE TABLE configuracoes (
     id INT PRIMARY KEY DEFAULT 1,
     tipo_alerta VARCHAR(20) NOT NULL DEFAULT 'dia_diferente',
     horas_alerta INT NOT NULL DEFAULT 24,
+    imprimir_cupom BOOLEAN NOT NULL DEFAULT TRUE,
+    tempo_renderizacao_cupom INT NOT NULL DEFAULT 500,
+    tempo_fechamento_cupom INT NOT NULL DEFAULT 500,
+    timeout_fallback_cupom INT NOT NULL DEFAULT 3000,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_tipo_alerta CHECK (tipo_alerta IN ('dia_diferente', 'horas', 'desabilitado')),
-    CONSTRAINT chk_horas_alerta CHECK (horas_alerta BETWEEN 1 AND 168)
+    CONSTRAINT chk_horas_alerta CHECK (horas_alerta BETWEEN 1 AND 168),
+    CONSTRAINT chk_tempo_renderizacao CHECK (tempo_renderizacao_cupom BETWEEN 100 AND 5000),
+    CONSTRAINT chk_tempo_fechamento CHECK (tempo_fechamento_cupom BETWEEN 100 AND 5000),
+    CONSTRAINT chk_timeout_fallback CHECK (timeout_fallback_cupom BETWEEN 1000 AND 10000)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Inserir configuração padrão
-INSERT INTO configuracoes (id, tipo_alerta, horas_alerta) 
-VALUES (1, 'dia_diferente', 24)
+INSERT INTO configuracoes (id, tipo_alerta, horas_alerta, imprimir_cupom, tempo_renderizacao_cupom, tempo_fechamento_cupom, timeout_fallback_cupom) 
+VALUES (1, 'dia_diferente', 24, TRUE, 500, 500, 3000)
 ON DUPLICATE KEY UPDATE id = id;
 
 -- Inserir produtos de exemplo

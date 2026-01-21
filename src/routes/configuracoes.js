@@ -15,7 +15,11 @@ router.get('/', async (req, res) => {
             res.json({
                 configuracoes: {
                     tipoAlerta: config.tipo_alerta,
-                    horasAlerta: config.horas_alerta
+                    horasAlerta: config.horas_alerta,
+                    imprimirCupom: config.imprimir_cupom !== 0,
+                    tempoRenderizacaoCupom: config.tempo_renderizacao_cupom || 500,
+                    tempoFechamentoCupom: config.tempo_fechamento_cupom || 500,
+                    timeoutFallbackCupom: config.timeout_fallback_cupom || 3000
                 }
             });
         } else {
@@ -23,7 +27,11 @@ router.get('/', async (req, res) => {
             res.json({
                 configuracoes: {
                     tipoAlerta: 'dia_diferente',
-                    horasAlerta: 24
+                    horasAlerta: 24,
+                    imprimirCupom: true,
+                    tempoRenderizacaoCupom: 500,
+                    tempoFechamentoCupom: 500,
+                    timeoutFallbackCupom: 3000
                 }
             });
         }
@@ -37,7 +45,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const pool = getPool();
-        const { tipoAlerta, horasAlerta } = req.body;
+        const { tipoAlerta, horasAlerta, imprimirCupom, tempoRenderizacaoCupom, tempoFechamentoCupom, timeoutFallbackCupom } = req.body;
         
         // Validação
         if (!tipoAlerta || !['dia_diferente', 'horas', 'desabilitado'].includes(tipoAlerta)) {
@@ -54,14 +62,24 @@ router.post('/', async (req, res) => {
         if (existing.length > 0) {
             // Atualizar
             await pool.query(
-                'UPDATE configuracoes SET tipo_alerta = ?, horas_alerta = ?, data_atualizacao = NOW() WHERE id = 1',
-                [tipoAlerta, horasAlerta || 24]
+                `UPDATE configuracoes SET 
+                    tipo_alerta = ?, 
+                    horas_alerta = ?,
+                    imprimir_cupom = ?,
+                    tempo_renderizacao_cupom = ?,
+                    tempo_fechamento_cupom = ?,
+                    timeout_fallback_cupom = ?,
+                    data_atualizacao = NOW() 
+                WHERE id = 1`,
+                [tipoAlerta, horasAlerta || 24, imprimirCupom !== false, tempoRenderizacaoCupom || 500, tempoFechamentoCupom || 500, timeoutFallbackCupom || 3000]
             );
         } else {
             // Inserir
             await pool.query(
-                'INSERT INTO configuracoes (id, tipo_alerta, horas_alerta) VALUES (1, ?, ?)',
-                [tipoAlerta, horasAlerta || 24]
+                `INSERT INTO configuracoes 
+                    (id, tipo_alerta, horas_alerta, imprimir_cupom, tempo_renderizacao_cupom, tempo_fechamento_cupom, timeout_fallback_cupom) 
+                VALUES (1, ?, ?, ?, ?, ?, ?)`,
+                [tipoAlerta, horasAlerta || 24, imprimirCupom !== false, tempoRenderizacaoCupom || 500, tempoFechamentoCupom || 500, timeoutFallbackCupom || 3000]
             );
         }
         
