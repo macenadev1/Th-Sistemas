@@ -172,12 +172,19 @@ function abrirMenuCaixa() {
 }
 
 function abrirModalAberturaCaixa() {
-    document.getElementById('valorAbertura').value = '';
-    document.getElementById('operadorAbertura').value = '';
-    abrirModal('aberturaCaixaModal');
-    setTimeout(() => {
-        document.getElementById('valorAbertura').focus();
-    }, 100);
+    abrirModal('aberturaCaixaModal', () => {
+        const input = document.getElementById('valorAbertura');
+        if (input && !input.getValorDecimal) {
+            aplicarFormatacaoMoeda(input);
+        }
+        if (input) {
+            input.focus();
+        }
+        const operador = document.getElementById('operadorAbertura');
+        if (operador) {
+            operador.value = '';
+        }
+    });
 }
 
 async function confirmarAberturaCaixa(event) {
@@ -188,7 +195,8 @@ async function confirmarAberturaCaixa(event) {
         return;
     }
     
-    const valor = parseFloat(document.getElementById('valorAbertura').value);
+    const inputValor = document.getElementById('valorAbertura');
+    const valor = inputValor.getValorDecimal ? inputValor.getValorDecimal() : parseFloat(inputValor.value);
     const operador = document.getElementById('operadorAbertura').value.trim();
     
     if (valor < 0) {
@@ -248,18 +256,26 @@ async function confirmarAberturaCaixa(event) {
 }
 
 function abrirModalReforcoCaixa() {
-    document.getElementById('valorReforco').value = '';
-    document.getElementById('observacaoReforco').value = '';
-    abrirModal('reforcoCaixaModal');
-    setTimeout(() => {
-        document.getElementById('valorReforco').focus();
-    }, 100);
+    abrirModal('reforcoCaixaModal', () => {
+        const input = document.getElementById('valorReforco');
+        if (input && !input.getValorDecimal) {
+            aplicarFormatacaoMoeda(input);
+        }
+        if (input) {
+            input.focus();
+        }
+        const obs = document.getElementById('observacaoReforco');
+        if (obs) {
+            obs.value = '';
+        }
+    });
 }
 
 function confirmarReforcoCaixa(event) {
     event.preventDefault();
     
-    const valor = parseFloat(document.getElementById('valorReforco').value);
+    const inputValor = document.getElementById('valorReforco');
+    const valor = inputValor.getValorDecimal ? inputValor.getValorDecimal() : parseFloat(inputValor.value);
     const observacao = document.getElementById('observacaoReforco').value.trim();
     
     if (valor <= 0) {
@@ -282,18 +298,26 @@ function confirmarReforcoCaixa(event) {
 }
 
 function abrirModalSangria() {
-    document.getElementById('valorSangria').value = '';
-    document.getElementById('observacaoSangria').value = '';
-    abrirModal('sangriaModal');
-    setTimeout(() => {
-        document.getElementById('valorSangria').focus();
-    }, 100);
+    abrirModal('sangriaModal', () => {
+        const input = document.getElementById('valorSangria');
+        if (input && !input.getValorDecimal) {
+            aplicarFormatacaoMoeda(input);
+        }
+        if (input) {
+            input.focus();
+        }
+        const obs = document.getElementById('observacaoSangria');
+        if (obs) {
+            obs.value = '';
+        }
+    });
 }
 
 function confirmarSangria(event) {
     event.preventDefault();
     
-    const valor = parseFloat(document.getElementById('valorSangria').value);
+    const inputValor = document.getElementById('valorSangria');
+    const valor = inputValor.getValorDecimal ? inputValor.getValorDecimal() : parseFloat(inputValor.value);
     const observacao = document.getElementById('observacaoSangria').value.trim();
     
     if (valor <= 0) {
@@ -336,16 +360,26 @@ function abrirModalFechamentoCaixa() {
     document.getElementById('fechSangrias').textContent = `R$ ${caixaData.totalSangrias.toFixed(2)}`;
     document.getElementById('fechSaldoEsperado').textContent = `R$ ${saldoEsperado.toFixed(2)}`;
     
-    document.getElementById('valorFechamento').value = '';
     document.getElementById('diferencaFechamento').style.display = 'none';
+    
+    abrirModal('fechamentoCaixaModal', () => {
+        const input = document.getElementById('valorFechamento');
+        if (input && !input.getValorDecimal) {
+            aplicarFormatacaoMoeda(input);
+        }
+        if (input) {
+            input.focus();
+        }
+    });
     
     // Calcular diferença ao digitar
     document.getElementById('valorFechamento').oninput = function() {
-        const valorReal = parseFloat(this.value) || 0;
+        const inputValor = document.getElementById('valorFechamento');
+        const valorReal = inputValor.getValorDecimal ? inputValor.getValorDecimal() : (parseFloat(this.value) || 0);
         const diferenca = valorReal - saldoEsperado;
         const divDiferenca = document.getElementById('diferencaFechamento');
         
-        if (this.value && diferenca !== 0) {
+        if (valorReal > 0 && diferenca !== 0) {
             divDiferenca.style.display = 'block';
             if (diferenca > 0) {
                 divDiferenca.style.background = '#d4edda';
@@ -360,17 +394,13 @@ function abrirModalFechamentoCaixa() {
             divDiferenca.style.display = 'none';
         }
     };
-    
-    abrirModal('fechamentoCaixaModal');
-    setTimeout(() => {
-        document.getElementById('valorFechamento').focus();
-    }, 100);
 }
 
 function confirmarFechamentoCaixa(event) {
     event.preventDefault();
     
-    const valorReal = parseFloat(document.getElementById('valorFechamento').value);
+    const inputValor = document.getElementById('valorFechamento');
+    const valorReal = inputValor.getValorDecimal ? inputValor.getValorDecimal() : parseFloat(inputValor.value);
     const saldoEsperado = caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias;
     const diferenca = valorReal - saldoEsperado;
     

@@ -180,59 +180,7 @@ function atualizarCarrinho() {
             <div class="cart-item">
                 <div class="item-info">
                     <div class="item-name">${item.nome}</div>
-                    <div class="item-details">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
-                            <span style="color: #666;">Qtd:</span>
-                            <div style="display: flex; align-items: center; gap: 5px; background: #f8f9fa; padding: 5px; border-radius: 6px; border: 2px solid #667eea;">
-                                <button onclick="alterarQuantidadeItem(${index}, -1)" style="
-                                    background: #dc3545;
-                                    color: white;
-                                    border: none;
-                                    width: 28px;
-                                    height: 28px;
-                                    border-radius: 4px;
-                                    cursor: pointer;
-                                    font-size: 18px;
-                                    font-weight: bold;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                " title="Diminuir quantidade">−</button>
-                                <input 
-                                    type="number" 
-                                    id="qtd-${index}"
-                                    value="${item.quantidade}" 
-                                    min="1"
-                                    onchange="atualizarQuantidadeItem(${index}, this.value)"
-                                    onclick="this.select()"
-                                    style="
-                                        width: 60px;
-                                        text-align: center;
-                                        border: none;
-                                        background: white;
-                                        font-size: 16px;
-                                        font-weight: bold;
-                                        padding: 5px;
-                                        border-radius: 4px;
-                                    ">
-                                <button onclick="alterarQuantidadeItem(${index}, 1)" style="
-                                    background: #28a745;
-                                    color: white;
-                                    border: none;
-                                    width: 28px;
-                                    height: 28px;
-                                    border-radius: 4px;
-                                    cursor: pointer;
-                                    font-size: 18px;
-                                    font-weight: bold;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                " title="Aumentar quantidade">+</button>
-                            </div>
-                            <span style="color: #666;">x R$ ${item.preco.toFixed(2)}</span>
-                        </div>
-                    </div>
+                    <div class="item-details">Qtd: ${item.quantidade} x R$ ${item.preco.toFixed(2)}</div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div class="item-price">R$ ${(item.preco * item.quantidade).toFixed(2)}</div>
@@ -278,54 +226,6 @@ function removerItemCarrinho(index) {
         atualizarCarrinho();
         mostrarNotificacao(`✓ ${item.nome} removido do carrinho!`, 'info');
     }
-}
-
-// Atualizar quantidade de um item específico
-function atualizarQuantidadeItem(index, novaQuantidade) {
-    if (index < 0 || index >= carrinho.length) {
-        mostrarNotificacao('Item inválido!', 'error');
-        return;
-    }
-    
-    const quantidade = parseInt(novaQuantidade);
-    
-    if (isNaN(quantidade) || quantidade < 1) {
-        mostrarNotificacao('Quantidade inválida!', 'error');
-        atualizarCarrinho();
-        return;
-    }
-    
-    const item = carrinho[index];
-    const quantidadeAnterior = item.quantidade;
-    
-    carrinho[index].quantidade = quantidade;
-    atualizarCarrinho();
-    
-    if (quantidade > quantidadeAnterior) {
-        mostrarNotificacao(`✓ Quantidade de "${item.nome}" aumentada para ${quantidade}`, 'success');
-    } else {
-        mostrarNotificacao(`✓ Quantidade de "${item.nome}" reduzida para ${quantidade}`, 'info');
-    }
-}
-
-// Aumentar ou diminuir quantidade
-function alterarQuantidadeItem(index, incremento) {
-    if (index < 0 || index >= carrinho.length) {
-        mostrarNotificacao('Item inválido!', 'error');
-        return;
-    }
-    
-    const novaQuantidade = carrinho[index].quantidade + incremento;
-    
-    if (novaQuantidade < 1) {
-        // Se tentar diminuir abaixo de 1, perguntar se quer remover
-        if (confirm(`Remover "${carrinho[index].nome}" do carrinho?`)) {
-            removerItemCarrinho(index);
-        }
-        return;
-    }
-    
-    atualizarQuantidadeItem(index, novaQuantidade);
 }
 
 function finalizarVenda() {

@@ -8,10 +8,16 @@ const itensPorPagina = 10;
 // ==================== CADASTRO DE PRODUTOS ====================
 
 function abrirCadastro() {
-    abrirModal('cadastroModal');
-    setTimeout(() => {
-        document.getElementById('codigoBarras').focus();
-    }, 100);
+    abrirModal('cadastroModal', () => {
+        const inputPreco = document.getElementById('precoProduto');
+        if (inputPreco) {
+            aplicarFormatacaoMoeda(inputPreco);
+        }
+        const inputCodigo = document.getElementById('codigoBarras');
+        if (inputCodigo) {
+            inputCodigo.focus();
+        }
+    });
 }
 
 async function salvarProduto(event) {
@@ -24,7 +30,8 @@ async function salvarProduto(event) {
 
     const codigo = document.getElementById('codigoBarras').value.trim();
     const nome = document.getElementById('nomeProduto').value.trim();
-    const preco = parseFloat(document.getElementById('precoProduto').value);
+    const inputPreco = document.getElementById('precoProduto');
+    const preco = inputPreco.getValorDecimal ? inputPreco.getValorDecimal() : parseFloat(inputPreco.value);
     const estoque = parseInt(document.getElementById('estoqueProduto').value);
 
     try {
@@ -319,12 +326,21 @@ async function abrirEdicaoProduto(id) {
         document.getElementById('editarId').value = produto.id;
         document.getElementById('editarCodigoBarras').value = produto.codigo_barras;
         document.getElementById('editarNome').value = produto.nome;
-        document.getElementById('editarPreco').value = parseFloat(produto.preco).toFixed(2);
         document.getElementById('editarEstoque').value = produto.estoque;
 
         document.getElementById('produtosModal').classList.remove('active');
-        abrirModal('editarProdutoModal');
-        document.getElementById('editarNome').focus();
+        
+        abrirModal('editarProdutoModal', () => {
+            const inputPrecoEdicao = document.getElementById('editarPreco');
+            if (inputPrecoEdicao) {
+                aplicarFormatacaoMoeda(inputPrecoEdicao);
+                inputPrecoEdicao.setValorDecimal(parseFloat(produto.preco));
+            }
+            const inputNome = document.getElementById('editarNome');
+            if (inputNome) {
+                inputNome.focus();
+            }
+        });
 
     } catch (error) {
         console.error('Erro ao carregar produto:', error);
@@ -342,7 +358,8 @@ async function salvarEdicaoProduto(event) {
 
     const id = document.getElementById('editarId').value;
     const nome = document.getElementById('editarNome').value.trim();
-    const preco = parseFloat(document.getElementById('editarPreco').value);
+    const inputPrecoEdicao = document.getElementById('editarPreco');
+    const preco = inputPrecoEdicao.getValorDecimal ? inputPrecoEdicao.getValorDecimal() : parseFloat(inputPrecoEdicao.value);
     const estoque = parseInt(document.getElementById('editarEstoque').value);
 
     try {
