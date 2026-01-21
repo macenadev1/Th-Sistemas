@@ -133,10 +133,17 @@ async function adicionarProduto(codigo) {
             }
         } else {
             if (quantidadeDesejada <= produto.estoque) {
+                // Calcular preço com desconto já aplicado
+                const descontoPercentual = parseFloat(produto.desconto_percentual) || 0;
+                const precoOriginal = parseFloat(produto.preco);
+                const precoComDesconto = precoOriginal * (1 - descontoPercentual / 100);
+                
                 carrinho.push({
                     codigo: codigo,
                     nome: produto.nome,
-                    preco: parseFloat(produto.preco),
+                    preco: precoComDesconto,
+                    preco_original: precoOriginal,
+                    desconto_percentual: descontoPercentual,
                     quantidade: quantidadeDesejada
                 });
             } else {
@@ -176,11 +183,23 @@ function atualizarCarrinho() {
             </div>
         `;
     } else {
-        cartItemsDiv.innerHTML = carrinho.map((item, index) => `
+        cartItemsDiv.innerHTML = carrinho.map((item, index) => {
+            const temDesconto = item.desconto_percentual && item.desconto_percentual > 0;
+            const precoOriginal = item.preco_original || item.preco;
+            
+            return `
             <div class="cart-item">
                 <div class="item-info">
                     <div class="item-name">${item.nome}</div>
-                    <div class="item-details">R$ ${item.preco.toFixed(2)} cada</div>
+                    <div class="item-details">
+                        ${temDesconto ? 
+                            `<span style="text-decoration: line-through; color: #999; margin-right: 8px;">R$ ${precoOriginal.toFixed(2)}</span>
+                             <span style="color: #28a745; font-weight: bold;">R$ ${item.preco.toFixed(2)}</span>
+                             <span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">-${item.desconto_percentual}%</span>`
+                            :
+                            `R$ ${item.preco.toFixed(2)} cada`
+                        }
+                    </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="display: flex; align-items: center; gap: 5px; background: #f8f9fa; padding: 5px; border-radius: 6px;">
@@ -234,7 +253,8 @@ function atualizarCarrinho() {
                     </button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     const totalQuantidade = carrinho.reduce((sum, item) => sum + item.quantidade, 0);
@@ -353,21 +373,12 @@ function finalizarVenda() {
         mostrarNotificacao('Carrinho vazio! Adicione produtos primeiro.', 'error');
         return;
     }
-
-    // NÃO resetar pagamentos - mantém os pagamentos já adicionados
-    // Apenas atualiza os valores baseado no novo total
     
-    const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
     
-    // Atualizar subtotal
-    document.getElementById('subtotalVenda').textContent = `R$ ${subtotal.toFixed(2)}`;
-    
-    // Resetar desconto
-    document.getElementById('descontoValor').value = '0';
-    document.getElementById('descontoTipo').value = 'reais';
-    
-    // Calcular e atualizar totais
-    calcularTotalComDesconto();
+    // Atualizar valores (sem desconto manual)
+    document.getElementById('subtotalVenda').textContent = `R$ ${total.toFixed(2)}`;
+    document.getElementById('totalFinal').textContent = `R$ ${total.toFixed(2)}`;
     
     // Se já tem pagamentos, mostra o que já foi pago
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
@@ -385,19 +396,6 @@ function finalizarVenda() {
     }
     
     abrirModal('finalizacaoModal', () => {
-        // Configurar listeners de desconto
-        const inputDesconto = document.getElementById('descontoValor');
-        const selectTipo = document.getElementById('descontoTipo');
-        
-        // Wrapper para chamar ambas as funções
-        const atualizarDesconto = () => {
-            calcularTotalComDesconto();
-            atualizarPagamentos();
-        };
-        
-        inputDesconto.addEventListener('input', atualizarDesconto);
-        selectTipo.addEventListener('change', atualizarDesconto);
-        
         // Focar no input de valor
         setTimeout(() => {
             document.getElementById('valorPagamento').focus();
@@ -406,31 +404,6 @@ function finalizarVenda() {
     
     // Atualizar interface com os pagamentos existentes
     atualizarPagamentos();
-}
-
-function calcularTotalComDesconto() {
-    const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-    const descontoValor = parseFloat(document.getElementById('descontoValor').value) || 0;
-    const descontoTipo = document.getElementById('descontoTipo').value;
-    
-    let descontoEmReais = 0;
-    
-    if (descontoTipo === 'percentual') {
-        // Limitar percentual a 100%
-        const percentualLimitado = Math.min(descontoValor, 100);
-        descontoEmReais = (subtotal * percentualLimitado) / 100;
-    } else {
-        // Limitar desconto em reais ao valor do subtotal
-        descontoEmReais = Math.min(descontoValor, subtotal);
-    }
-    
-    const total = Math.max(0, subtotal - descontoEmReais);
-    
-    // Atualizar interface
-    document.getElementById('descontoCalculado').textContent = `(-R$ ${descontoEmReais.toFixed(2)})`;
-    document.getElementById('totalFinal').textContent = `R$ ${total.toFixed(2)}`;
-    
-    return total;
 }
 
 function selecionarFormaPagamento(forma) {
@@ -469,7 +442,7 @@ function selecionarFormaPagamentoComValor(forma) {
         return;
     }
     
-    const total = calcularTotalComDesconto();
+    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     
@@ -524,7 +497,7 @@ function adicionarPagamento() {
         return;
     }
     
-    const total = calcularTotalComDesconto();
+    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     
@@ -553,7 +526,7 @@ function adicionarPagamento() {
 }
 
 function mostrarModalConfirmacaoVenda() {
-    const total = calcularTotalComDesconto();
+    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const troco = Math.max(0, totalPago - total);
     const temDinheiro = pagamentos.some(p => p.forma === 'dinheiro');
@@ -589,7 +562,7 @@ function removerPagamento(index) {
 }
 
 function atualizarPagamentos() {
-    const total = calcularTotalComDesconto();
+    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     const troco = totalPago - total;
@@ -674,10 +647,8 @@ function atualizarPagamentos() {
 
 // Função para inicializar os event listeners do modal de finalização
 function inicializarInputPagamento() {
-    console.log('🔧 Inicializando input de pagamento...');
     const valorPagamentoInput = document.getElementById('valorPagamento');
     if (valorPagamentoInput) {
-        console.log('✅ Input de pagamento encontrado!');
         // Formatar valor ao digitar (estilo PDV - centavos primeiro)
         let valorCentavos = 0;
         
@@ -771,14 +742,11 @@ function inicializarInputPagamento() {
 }
 
 // Inicializar quando os modais forem carregados
-console.log('📋 Registrando listener para modalsLoaded...');
 document.addEventListener('modalsLoaded', () => {
-    console.log('🎯 Evento modalsLoaded recebido!');
     inicializarInputPagamento();
 });
 // Caso os modais já tenham sido carregados antes deste script
 if (document.getElementById('valorPagamento')) {
-    console.log('🔄 Modal já carregado, inicializando agora...');
     inicializarInputPagamento();
 }
 
@@ -789,19 +757,8 @@ async function confirmarVenda() {
     }
 
     const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-    const total = calcularTotalComDesconto();
+    const total = subtotal;
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
-    
-    // Calcular desconto em reais
-    const descontoValor = parseFloat(document.getElementById('descontoValor').value) || 0;
-    const descontoTipo = document.getElementById('descontoTipo').value;
-    let descontoEmReais = 0;
-    
-    if (descontoTipo === 'percentual') {
-        descontoEmReais = (subtotal * Math.min(descontoValor, 100)) / 100;
-    } else {
-        descontoEmReais = Math.min(descontoValor, subtotal);
-    }
     
     if (totalPago < total) {
         mostrarNotificacao('Pagamento insuficiente!', 'error');
@@ -827,7 +784,7 @@ async function confirmarVenda() {
             body: JSON.stringify({
                 itens: carrinho,
                 subtotal: subtotal,
-                desconto: descontoEmReais,
+                desconto: 0,
                 total: total,
                 valor_pago: totalPago,
                 troco: troco,
@@ -856,7 +813,7 @@ async function confirmarVenda() {
             numeroVenda: result.vendaId || '0000',
             itens: [...carrinho],
             subtotal: subtotal,
-            desconto: descontoEmReais,
+            desconto: 0,
             total: total,
             formasPagamento: [...pagamentos],
             troco: troco,
@@ -945,11 +902,8 @@ function mostrarCupom(dados) {
     const tempoFechamento = (typeof configuracoes !== 'undefined' && configuracoes.tempoFechamentoCupom) || 500;
     const timeoutFallback = (typeof configuracoes !== 'undefined' && configuracoes.timeoutFallbackCupom) || 3000;
     
-    console.log('⚙️ Configurações de impressão:', { tempoRenderizacao, tempoFechamento, timeoutFallback });
-    
     // Imprimir automaticamente após delay configurável (para renderizar o conteúdo)
     setTimeout(() => {
-        console.log('🖨️ Iniciando impressão automática...');
         
         let impressaoConcluida = false;
         let timeoutId;
@@ -958,8 +912,6 @@ function mostrarCupom(dados) {
         const fecharCupom = (motivo) => {
             if (impressaoConcluida) return; // Evitar fechar duas vezes
             impressaoConcluida = true;
-            
-            console.log(`✅ Fechando cupom (${motivo})`);
             
             // Limpar timeout
             clearTimeout(timeoutId);
@@ -975,7 +927,6 @@ function mostrarCupom(dados) {
         
         // Handler do evento afterprint
         const handleAfterPrint = () => {
-            console.log('📋 Evento afterprint disparado');
             fecharCupom('afterprint');
         };
         
@@ -988,7 +939,6 @@ function mostrarCupom(dados) {
         // Fallback: se o evento não funcionar, fechar após timeout configurável
         timeoutId = setTimeout(() => {
             if (!impressaoConcluida) {
-                console.log('⏱️ Timeout atingido - fechando por fallback');
                 fecharCupom('timeout fallback');
             }
         }, timeoutFallback);
@@ -1362,15 +1312,12 @@ if (quantidadeInput) {
     });
 }
 
-console.log('🚀 Sistema PDV MySQL inicializado!');
-
 // Inicializar: carregar configurações primeiro, depois estado do caixa
 Promise.all([
     carregarConfiguracoes(),
     carregarEstadoCaixa()
 ]).then(() => {
     atualizarStatusCaixa();
-    console.log('✅ Sistema inicializado com configurações');
 });
 
 // ========================================

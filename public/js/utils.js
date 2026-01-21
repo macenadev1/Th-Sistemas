@@ -146,6 +146,4 @@ function aplicarFormatacaoMoeda(inputOrId, onEnterCallback = null) {
     if (!input.value) {
         input.value = '0,00';
     }
-
-    console.log(`✅ Formatação de moeda aplicada em #${input.id || 'input'}`);
 }

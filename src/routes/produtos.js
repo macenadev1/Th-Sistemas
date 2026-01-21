@@ -62,15 +62,15 @@ router.get('/:codigo', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const pool = getPool();
-        const { codigo_barras, nome, preco, estoque } = req.body;
+        const { codigo_barras, nome, preco, desconto_percentual, estoque } = req.body;
         
         if (!codigo_barras || !nome || preco === undefined) {
             return res.status(400).json({ error: 'Dados incompletos' });
         }
         
         const [result] = await pool.query(
-            'INSERT INTO produtos (codigo_barras, nome, preco, estoque) VALUES (?, ?, ?, ?)',
-            [codigo_barras, nome, preco, estoque || 0]
+            'INSERT INTO produtos (codigo_barras, nome, preco, desconto_percentual, estoque) VALUES (?, ?, ?, ?, ?)',
+            [codigo_barras, nome, preco, desconto_percentual || 0, estoque || 0]
         );
         
         res.json({ 
@@ -91,21 +91,14 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const pool = getPool();
-        const { nome, preco, estoque, ativo } = req.body;
-        
-        console.log('📝 Recebendo atualização de produto:', { id: req.params.id, nome, preco, estoque, ativo });
+        const { nome, preco, desconto_percentual, estoque, ativo } = req.body;
         
         const ativoValue = ativo !== undefined ? (ativo ? 1 : 0) : 1;
         
-        console.log('🔄 Valor convertido de ativo:', ativoValue);
-        
         const [result] = await pool.query(
-            'UPDATE produtos SET nome = ?, preco = ?, estoque = ?, ativo = ? WHERE id = ?',
-            [nome, preco, estoque, ativoValue, req.params.id]
+            'UPDATE produtos SET nome = ?, preco = ?, desconto_percentual = ?, estoque = ?, ativo = ? WHERE id = ?',
+            [nome, preco, desconto_percentual || 0, estoque, ativoValue, req.params.id]
         );
-        
-        console.log('✅ Query executada! Linhas afetadas:', result.affectedRows);
-        console.log('📊 Resultado completo:', result);
         
         res.json({ success: true, message: 'Produto atualizado!' });
     } catch (error) {

@@ -33,6 +33,7 @@ async function salvarProduto(event) {
     const inputPreco = document.getElementById('precoProduto');
     const preco = inputPreco.getValorDecimal ? inputPreco.getValorDecimal() : parseFloat(inputPreco.value);
     const estoque = parseInt(document.getElementById('estoqueProduto').value);
+    const desconto = parseFloat(document.getElementById('descontoProduto').value) || 0;
 
     try {
         const response = await fetch(`${API_URL}/produtos`, {
@@ -42,6 +43,7 @@ async function salvarProduto(event) {
                 codigo_barras: codigo,
                 nome: nome,
                 preco: preco,
+                desconto_percentual: desconto,
                 estoque: estoque
             })
         });
@@ -121,8 +123,6 @@ function aplicarFiltrosProdutos() {
     const busca = document.getElementById('filtroBuscaProduto').value.toLowerCase();
     const status = document.getElementById('filtroStatusProduto').value;
     
-    console.log('🔍 Aplicando filtros - Página atual:', paginaAtualProdutos);
-    
     let produtosFiltrados = [...produtosCompletos];
     
     // Filtro por busca (nome ou código de barras)
@@ -144,9 +144,6 @@ function aplicarFiltrosProdutos() {
         });
     }
     
-    console.log('📊 Total de produtos filtrados:', produtosFiltrados.length);
-    console.log('📄 Mostrando página:', paginaAtualProdutos);
-    
     // Renderizar produtos filtrados
     renderizarProdutos(produtosFiltrados);
 }
@@ -161,8 +158,6 @@ function limparFiltrosProdutos() {
 function renderizarProdutos(produtos) {
     const content = document.getElementById('produtosContent');
     const contador = document.getElementById('contadorProdutos');
-    
-    console.log('🎨 Renderizando produtos - Total:', produtos.length, 'Página:', paginaAtualProdutos);
     
     // Atualizar contador
     contador.textContent = `${produtos.length} produto(s) encontrado(s)`;
@@ -184,8 +179,6 @@ function renderizarProdutos(produtos) {
     const inicio = (paginaAtualProdutos - 1) * itensPorPagina;
     const fim = inicio + itensPorPagina;
     const produtosPagina = produtos.slice(inicio, fim);
-    
-    console.log('✂️ Slice:', inicio, 'até', fim, '- Produtos nesta página:', produtosPagina.length);
 
     let html = '<div style="padding: 10px;">';
     html += '<div style="display: grid; gap: 10px;">';
@@ -331,7 +324,6 @@ function renderizarPaginacaoProdutos(totalPaginas, produtos) {
 }
 
 function mudarPaginaProdutos(novaPagina) {
-    console.log('📄 Mudando para página:', novaPagina);
     paginaAtualProdutos = novaPagina;
     aplicarFiltrosProdutos();
 }
@@ -353,6 +345,7 @@ async function abrirEdicaoProduto(id) {
         document.getElementById('editarCodigoBarras').value = produto.codigo_barras;
         document.getElementById('editarNome').value = produto.nome;
         document.getElementById('editarEstoque').value = produto.estoque;
+        document.getElementById('editarDesconto').value = produto.desconto_percentual || 0;
         document.getElementById('editarAtivo').checked = produto.ativo === 1 || produto.ativo === true;
 
         // NÃO fechar modal principal - mantém em cascata
@@ -410,18 +403,15 @@ async function salvarEdicaoProduto(event) {
     const inputPrecoEdicao = document.getElementById('editarPreco');
     const preco = inputPrecoEdicao.getValorDecimal ? inputPrecoEdicao.getValorDecimal() : parseFloat(inputPrecoEdicao.value);
     const estoque = parseInt(document.getElementById('editarEstoque').value);
+    const desconto = parseFloat(document.getElementById('editarDesconto').value) || 0;
     const ativo = document.getElementById('editarAtivo').checked;
-    
-    console.log('📝 Salvando produto:', { id, nome, preco, estoque, ativo });
 
     try {
         const response = await fetch(`${API_URL}/produtos/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, preco, estoque, ativo })
+            body: JSON.stringify({ nome, preco, desconto_percentual: desconto, estoque, ativo })
         });
-        
-        console.log('📡 Resposta da API:', response.status);
 
         if (!response.ok) {
             const error = await response.json();

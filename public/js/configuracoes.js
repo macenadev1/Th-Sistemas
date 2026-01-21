@@ -19,7 +19,6 @@ async function carregarConfiguracoes() {
             const data = await response.json();
             if (data.configuracoes) {
                 configuracoes = data.configuracoes;
-                console.log('⚙️ Configurações carregadas:', configuracoes);
             }
         }
     } catch (error) {
@@ -133,7 +132,6 @@ async function salvarConfiguracoes() {
         
         if (response.ok) {
             configuracoes = novasConfiguracoes;
-            console.log('✅ Configurações salvas:', configuracoes);
             mostrarNotificacao('✅ Configurações salvas com sucesso!', 'success');
             fecharModal('configuracoesModal');
             
@@ -155,7 +153,6 @@ async function salvarConfiguracoes() {
 
 // Inicializar ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔧 Iniciando carregamento de configurações...');
     carregarConfiguracoes();
 });
 

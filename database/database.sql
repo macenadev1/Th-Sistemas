@@ -18,6 +18,7 @@ CREATE TABLE produtos (
     codigo_barras VARCHAR(100) UNIQUE NOT NULL,
     nome VARCHAR(255) NOT NULL,
     preco DECIMAL(10, 2) NOT NULL,
+    desconto_percentual DECIMAL(5, 2) NOT NULL DEFAULT 0,
     estoque INT NOT NULL DEFAULT 0,
     ativo BOOLEAN DEFAULT TRUE,
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

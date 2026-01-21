@@ -72,7 +72,6 @@
         });
 
         // Dispara evento customizado quando todos os modais forem carregados
-        console.log('✅ Todos os modais foram carregados');
         document.dispatchEvent(new CustomEvent('modalsLoaded'));
     }
 

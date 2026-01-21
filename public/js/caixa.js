@@ -17,12 +17,10 @@ async function carregarEstadoCaixa() {
     try {
         const response = await fetch(`${API_URL}/caixa/status`);
         if (!response.ok) {
-            console.log('❌ Erro ao buscar status do caixa:', response.status);
             return;
         }
         
         const data = await response.json();
-        console.log('📦 Status do caixa recebido:', data);
         
         if (data.aberto && data.caixa) {
             caixaAberto = true;
@@ -35,9 +33,6 @@ async function carregarEstadoCaixa() {
                 totalSangrias: parseFloat(data.caixa.totalSangrias),
                 movimentacoes: data.caixa.movimentacoes || []
             };
-            console.log('✅ Caixa carregado como ABERTO:', caixaData.operador);
-        } else {
-            console.log('🔒 Caixa está FECHADO');
         }
     } catch (error) {
         console.error('❌ Erro ao carregar estado do caixa:', error);
@@ -453,7 +448,6 @@ function confirmarFechamentoCaixa(event) {
     
     // Adicionar event listener para Enter após abrir o modal
     setTimeout(() => {
-        console.log('🔧 Configurando Enter para confirmação de fechamento...');
         
         // Remover listener antigo se existir
         if (window.enterFechamentoHandler) {
@@ -464,11 +458,8 @@ function confirmarFechamentoCaixa(event) {
         window.enterFechamentoHandler = function(e) {
             const modalConfirmacao = document.getElementById('confirmacaoFechamentoCaixaModal');
             
-            console.log('🎯 Tecla pressionada:', e.key, 'Modal ativo?', modalConfirmacao?.classList.contains('active'));
-            
             // Verificar se o modal ainda está aberto
             if (modalConfirmacao && modalConfirmacao.classList.contains('active') && e.key === 'Enter') {
-                console.log('✅ Confirmando fechamento via Enter!');
                 e.preventDefault();
                 e.stopPropagation();
                 confirmarFechamentoCaixaFinal();
@@ -477,12 +468,10 @@ function confirmarFechamentoCaixa(event) {
         
         // Adicionar listener no document para garantir captura
         document.addEventListener('keydown', window.enterFechamentoHandler, true);
-        console.log('✅ Listener de Enter adicionado!');
     }, 150);
 }
 
 function cancelarConfirmacaoFechamentoCaixa() {
-    console.log('❌ Cancelando confirmação de fechamento...');
     fecharModal('confirmacaoFechamentoCaixaModal');
     window.dadosFechamentoPendente = null;
     
@@ -490,7 +479,6 @@ function cancelarConfirmacaoFechamentoCaixa() {
     if (window.enterFechamentoHandler) {
         document.removeEventListener('keydown', window.enterFechamentoHandler, true);
         window.enterFechamentoHandler = null;
-        console.log('✅ Listener de Enter removido!');
     }
 }
 
@@ -542,9 +530,7 @@ function confirmarFechamentoCaixaFinal() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            console.log('Fechamento salvo no banco:', data.fechamentoId);
-        } else {
+        if (!data.success) {
             console.error('Erro ao salvar fechamento:', data.message);
         }
     })
@@ -590,7 +576,6 @@ function confirmarFechamentoCaixaFinal() {
     if (window.enterFechamentoHandler) {
         document.removeEventListener('keydown', window.enterFechamentoHandler, true);
         window.enterFechamentoHandler = null;
-        console.log('✅ Listener de Enter removido após confirmação!');
     }
     
     alert(resumo);
