@@ -842,17 +842,26 @@ function mostrarCupom(dados) {
     document.getElementById('cupomNumeroVenda').textContent = String(dados.numeroVenda).padStart(4, '0');
     
     // Preencher itens
-    const itensHtml = dados.itens.map(item => `
+    const itensHtml = dados.itens.map(item => {
+        const temDesconto = item.desconto_percentual && item.desconto_percentual > 0;
+        const precoOriginal = item.preco_original || item.preco;
+        
+        return `
         <div style="margin-bottom: 8px;">
             <div style="display: flex; justify-content: space-between;">
                 <span>${item.nome}</span>
             </div>
             <div style="display: flex; justify-content: space-between; color: #666; padding-left: 10px;">
-                <span>${item.quantidade} x R$ ${item.preco.toFixed(2)}</span>
+                ${temDesconto ? 
+                    `<span>${item.quantidade} x <s>R$ ${precoOriginal.toFixed(2)}</s> R$ ${item.preco.toFixed(2)} (-${item.desconto_percentual}%)</span>`
+                    :
+                    `<span>${item.quantidade} x R$ ${item.preco.toFixed(2)}</span>`
+                }
                 <span>R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
     document.getElementById('cupomItens').innerHTML = itensHtml;
     
     // Preencher totais
