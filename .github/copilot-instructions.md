@@ -1,21 +1,29 @@
 # PDV Bomboniere - AI Coding Agent Instructions
 
 ## Visão Geral do Sistema
-Sistema PDV (Ponto de Venda) com gestão completa de caixa, operável via teclado e leitor de código de barras. Stack: Node.js/Express backend com frontend vanilla JS, MySQL para persistência.
+Sistema PDV (Ponto de Venda) com gestão completa de caixa, operável via teclado e leitor de código de barras. Stack: Node.js/Express backend com frontend vanilla JS, MySQL para persistência. Foco em operação rápida por teclado/barcode scanner.
 
 ## Arquitetura e Componentes
 
 ### Backend (Express/MySQL)
-- **[src/server.js](../src/server.js)**: Entry point, configura middleware e rotas
+- **[src/server.js](../src/server.js)**: Entry point, configura middleware e rotas (porta 3000)
 - **[src/config/database.js](../src/config/database.js)**: Pool MySQL2/promise (sempre use `getPool()` para obter conexão)
 - **[src/routes/](../src/routes/)**: RESTful API separada por domínio (produtos, vendas, caixa, configuracoes)
-- **Database**: BomboniereERP (config hardcoded em database.js, não em variáveis de ambiente)
+  - `produtos.js`: CRUD + busca por nome/código (endpoint `/buscar` para autocomplete)
+  - `vendas.js`: Finalização com pagamentos múltiplos e atualização automática de estoque
+  - `caixa.js`: Operações de caixa com validação singleton
+  - `configuracoes.js`: Alertas de caixa e comportamento de cupom
+- **Database**: BomboniereERP (credenciais hardcoded em database.js - projeto interno, sem .env)
 
 ### Frontend (Vanilla JS)
-- **Modal-based UI**: [public/js/modal-loader.js](../public/js/modal-loader.js) carrega todos os HTMLs de [public/modals/](../public/modals/) no boot
-- **[public/js/pdv.js](../public/js/pdv.js)**: Lógica principal - carrinho, vendas, pagamentos múltiplos
-- **[public/js/caixa.js](../public/js/caixa.js)**: Abertura, fechamento, reforços, sangrias
-- **Estado global**: Variáveis globais `carrinho`, `caixaAberto`, `pagamentos` compartilhadas entre módulos
+- **Modal-based UI**: [public/js/modal-loader.js](../public/js/modal-loader.js) carrega todos HTMLs de [public/modals/](../public/modals/) no boot via fetch
+- **[public/js/pdv.js](../public/js/pdv.js)**: Core do PDV - carrinho, vendas, pagamentos múltiplos, atalhos F1-F12
+- **[public/js/caixa.js](../public/js/caixa.js)**: Ciclo completo de caixa (abertura → movimentações → fechamento)
+- **[public/js/produtos.js](../public/js/produtos.js)**: CRUD de produtos, gerenciamento de estoque, busca paginada
+- **[public/js/configuracoes.js](../public/js/configuracoes.js)**: Alertas de caixa aberto e configuração de impressão de cupom
+- **[public/js/utils.js](../public/js/utils.js)**: Funções compartilhadas (notificações, modais, formatação de moeda PDV-style)
+- **[public/js/modal-handler.js](../public/js/modal-handler.js)**: Gerencia fechamento de modais por ESC ou clique no backdrop
+- **Estado global**: Variáveis `carrinho`, `caixaAberto`, `caixaData`, `pagamentos`, `configuracoes` compartilhadas entre módulos
 
 ## Convenções Críticas
 
@@ -76,8 +84,10 @@ Para modais de terceiro nível: usar classe `modal-nested-level-2`
 
 ### Atalhos de Teclado (já implementados)
 - `F1`: Ajuda | `F2`: Finalizar venda | `F3`: Cancelar venda | `F4`: Novo produto
-- `F7`: Menu caixa | `F8`: Configurações | `F12`: Lista produtos
-- `+/-`: Ajustar quantidade no input | `Enter`: Adicionar produto
+- `F5`: Histórico de vendas | `F6`: Gerenciar produtos
+- `F7`: Menu caixa | `F8`: Configurações | `F9`: Buscar produto por nome
+- `+/-`: Ajustar quantidade no input | `Enter`: Adicionar produto | `Delete`: Remover último item do carrinho
+- `ESC`: Fecha modal mais recente (respeita hierarquia de modais aninhadas)
 - Leitores de código de barras: buffer de 100ms para input ≥8 chars ([pdv.js](../public/js/pdv.js#L75-L82))
 
 ## Fluxos Complexos
@@ -128,12 +138,15 @@ Sempre atualizar em transação junto com `itens_venda` (ver [routes/vendas.js](
 - **Não usar variáveis de ambiente**: Credenciais MySQL hardcoded em `database.js` (projeto interno)
 - **JSON no MySQL**: `movimentacoes` usa tipo JSON nativo (MySQL 5.7+), não string serializada
 - **Notificações**: `mostrarNotificacao(msg, tipo)` em [utils.js](../public/js/utils.js) - sempre preferir vs `alert()`
+- **Formatação de inputs monetários**: Use `aplicarFormatacaoMoeda(inputOrId, onEnterCallback)` em [utils.js](../public/js/utils.js) para inputs de valores - digita centavos primeiro estilo PDV
 - **Histórico vendas**: Filtro por data/operador implementado client-side após fetch completo
+- **Configurações**: Sistema de alertas de caixa aberto e configuração de impressão automática de cupom via tabela `configuracoes` (singleton ID=1)
 
 ## Estrutura de Tabelas Principais
 
-- `produtos`: estoque rastreado, `ativo` para soft-delete
+- `produtos`: estoque rastreado, `ativo` para soft-delete, `desconto_percentual` para descontos permanentes
 - `vendas` → `itens_venda` (1:N) + `formas_pagamento_venda` (1:N)
-- `caixa_aberto` (singleton) ↔ `fechamentos_caixa` (histórico)
+- `caixa_aberto` (singleton) ↔ `fechamentos_caixa` (histórico) + `movimentacoes_caixa` (detalhes)
+- `configuracoes` (singleton ID=1): alertas de caixa e comportamento de cupom
 
 Ao modificar estrutura do banco, sempre atualizar [database/database.sql](../database/database.sql) e criar migration em `database/UPDATE.md`.

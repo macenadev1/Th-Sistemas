@@ -2,6 +2,42 @@
 
 ## 📋 Histórico de Atualizações
 
+### ✅ Atualização 001: Sistema de Autenticação ERP (21/01/2026)
+**Descrição:** Adiciona sistema completo de autenticação com usuários, sessões e controle de acesso.
+
+**Tabelas criadas:**
+- `usuarios` - Cadastro de usuários do sistema (admin/operador)
+- `sessoes` - Controle de sessões com suporte a "remember me"
+
+**Alterações em tabelas existentes:**
+- `vendas` - Campo `usuario_id INT NULL` (FK para usuarios)
+- `caixa_aberto` - Campo `usuario_id INT NULL` (FK para usuarios, mantém campo `operador`)
+- `fechamentos_caixa` - Campo `usuario_id INT NULL` (FK para usuarios, mantém campo `operador`)
+
+**Como aplicar:**
+```bash
+# Opção 1: Migration incremental (recomendado para bancos em produção)
+mysql -u root -p@Bomboniere2025 BomboniereERP < database/001_erp_auth.sql
+
+# Opção 2: Recriar banco completo (apenas em desenvolvimento)
+mysql -u root -p@Bomboniere2025 < database/database.sql
+```
+
+**Credenciais padrão:**
+- Email: `admin@bomboniere.com`
+- Senha: `@Bomboniere2025`
+- ⚠️ **IMPORTANTE:** Troque a senha após primeiro login!
+
+**Benefícios:**
+- ✅ Autenticação segura com bcrypt
+- ✅ Sessões com tokens de 30 minutos
+- ✅ "Manter conectado" com tokens de 30 dias
+- ✅ Controle de acesso por role (admin/operador)
+- ✅ Auditoria de usuários em vendas e caixa
+- ✅ Compatibilidade com dados históricos (campos NULL)
+
+---
+
 ### ✅ Atualização 1: Tabela Caixa Aberto
 **Descrição:** Adiciona a tabela `caixa_aberto` que armazena o estado atual do caixa (se está aberto ou fechado).
 

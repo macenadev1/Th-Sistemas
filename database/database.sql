@@ -4,6 +4,8 @@ CREATE DATABASE IF NOT EXISTS BomboniereERP CHARACTER SET utf8mb4 COLLATE utf8mb
 USE BomboniereERP;
 
 -- Remover tabelas se existirem (garante estrutura limpa)
+DROP TABLE IF EXISTS sessoes;
+DROP TABLE IF EXISTS usuarios;
 DROP TABLE IF EXISTS caixa_aberto;
 DROP TABLE IF EXISTS movimentacoes_caixa;
 DROP TABLE IF EXISTS fechamentos_caixa;
@@ -11,6 +13,45 @@ DROP TABLE IF EXISTS formas_pagamento_venda;
 DROP TABLE IF EXISTS itens_venda;
 DROP TABLE IF EXISTS vendas;
 DROP TABLE IF EXISTS produtos;
+
+-- ==========================================
+-- TABELAS DE AUTENTICAÇÃO E USUÁRIOS
+-- ==========================================
+
+-- Tabela de usuários
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    senha_hash VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'operador') NOT NULL DEFAULT 'operador',
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_ativo (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de sessões
+CREATE TABLE sessoes (
+    id VARCHAR(255) PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    token VARCHAR(500) UNIQUE NOT NULL,
+    remember_token VARCHAR(500) UNIQUE,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    expira_em TIMESTAMP NOT NULL,
+    remember_expira_em TIMESTAMP,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    INDEX idx_usuario_id (usuario_id),
+    INDEX idx_token (token),
+    INDEX idx_expira_em (expira_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABELAS DE PRODUTOS E VENDAS
+-- ==========================================
 
 -- Tabela de produtos
 CREATE TABLE produtos (
@@ -30,12 +71,15 @@ CREATE TABLE produtos (
 -- Tabela de vendas
 CREATE TABLE vendas (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NULL,
     total DECIMAL(10, 2) NOT NULL,
     valor_pago DECIMAL(10, 2) NOT NULL,
     troco DECIMAL(10, 2) NOT NULL,
     quantidade_itens INT NOT NULL,
     desconto DECIMAL(10, 2) NOT NULL DEFAULT 0,
     data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_usuario_id (usuario_id),
     INDEX idx_data_venda (data_venda)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -68,6 +112,7 @@ CREATE TABLE formas_pagamento_venda (
 -- Tabela de caixa aberto (estado atual)
 CREATE TABLE caixa_aberto (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NULL,
     operador VARCHAR(255) NOT NULL,
     data_hora_abertura TIMESTAMP NOT NULL,
     valor_abertura DECIMAL(10, 2) NOT NULL,
@@ -75,12 +120,15 @@ CREATE TABLE caixa_aberto (
     total_reforcos DECIMAL(10, 2) NOT NULL DEFAULT 0,
     total_sangrias DECIMAL(10, 2) NOT NULL DEFAULT 0,
     movimentacoes JSON,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_usuario_id (usuario_id),
     INDEX idx_operador (operador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabela de fechamentos de caixa
 CREATE TABLE fechamentos_caixa (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NULL,
     operador VARCHAR(255) NOT NULL,
     data_hora_abertura TIMESTAMP NOT NULL,
     data_hora_fechamento TIMESTAMP NOT NULL,
@@ -91,6 +139,8 @@ CREATE TABLE fechamentos_caixa (
     saldo_esperado DECIMAL(10, 2) NOT NULL,
     saldo_real DECIMAL(10, 2) NOT NULL,
     diferenca DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_usuario_id (usuario_id),
     INDEX idx_data_fechamento (data_hora_fechamento),
     INDEX idx_operador (operador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -131,6 +181,14 @@ INSERT INTO configuracoes (id, tipo_alerta, horas_alerta, imprimir_cupom, tempo_
 VALUES (1, 'dia_diferente', 24, TRUE, 500, 500, 3000)
 ON DUPLICATE KEY UPDATE id = id;
 
+-- Inserir usuário administrador padrão
+-- Email: admin@bomboniere.com
+-- Senha: @Bomboniere2025
+-- IMPORTANTE: Troque a senha após primeiro login!
+INSERT INTO usuarios (nome, email, senha_hash, role, ativo) VALUES
+('Administrador', 'admin@bomboniere.com', '$2b$10$5Anx8VAnYODLYXJyxM79eOY./.VAuH8QWJVVqgtLFUAbAJwZOlVma', 'admin', TRUE)
+ON DUPLICATE KEY UPDATE id = id;
+
 -- Inserir produtos de exemplo
 INSERT INTO produtos (codigo_barras, nome, preco, estoque) VALUES
 ('7891234567890', 'Coca-Cola 2L', 9.99, 50),
@@ -148,3 +206,6 @@ ON DUPLICATE KEY UPDATE nome=VALUES(nome);
 
 SELECT 'Banco de dados criado com sucesso!' AS mensagem;
 SELECT COUNT(*) AS total_produtos FROM produtos;
+SELECT COUNT(*) AS total_usuarios FROM usuarios;
+SELECT CONCAT('Login: ', email, ' | Senha: @Bomboniere2025') AS credenciais_admin FROM usuarios WHERE role = 'admin' LIMIT 1;
+

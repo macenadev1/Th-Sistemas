@@ -13,12 +13,14 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Importar rotas
+const authRoutes = require('./routes/auth');
 const produtosRoutes = require('./routes/produtos');
 const vendasRoutes = require('./routes/vendas');
 const caixaRoutes = require('./routes/caixa');
 const configuracoesRoutes = require('./routes/configuracoes');
 
 // Usar rotas
+app.use('/api/auth', authRoutes);
 app.use('/api/produtos', produtosRoutes);
 app.use('/api/vendas', vendasRoutes);
 app.use('/api/caixa', caixaRoutes);
