@@ -13,7 +13,12 @@ router.get('/buscar', async (req, res) => {
         }
         
         const [rows] = await pool.query(
-            'SELECT * FROM produtos WHERE ativo = TRUE AND (nome LIKE ? OR codigo_barras LIKE ?) ORDER BY nome LIMIT 50',
+            `SELECT p.*, f.nome_fantasia as fornecedor_nome, c.nome as categoria_nome 
+             FROM produtos p 
+             LEFT JOIN fornecedores f ON p.fornecedor_id = f.id 
+             LEFT JOIN categorias_produtos c ON p.categoria_id = c.id 
+             WHERE p.ativo = TRUE AND (p.nome LIKE ? OR p.codigo_barras LIKE ?) 
+             ORDER BY p.nome LIMIT 50`,
             [`%${termo}%`, `%${termo}%`]
         );
         
@@ -29,7 +34,11 @@ router.get('/', async (req, res) => {
     try {
         const pool = getPool();
         const [rows] = await pool.query(
-            'SELECT * FROM produtos ORDER BY nome'
+            `SELECT p.*, f.nome_fantasia as fornecedor_nome, c.nome as categoria_nome 
+             FROM produtos p 
+             LEFT JOIN fornecedores f ON p.fornecedor_id = f.id 
+             LEFT JOIN categorias_produtos c ON p.categoria_id = c.id 
+             ORDER BY p.nome`
         );
         res.json(rows);
     } catch (error) {
@@ -43,7 +52,11 @@ router.get('/:codigo', async (req, res) => {
     try {
         const pool = getPool();
         const [rows] = await pool.query(
-            'SELECT * FROM produtos WHERE codigo_barras = ? AND ativo = TRUE',
+            `SELECT p.*, f.nome_fantasia as fornecedor_nome, c.nome as categoria_nome 
+             FROM produtos p 
+             LEFT JOIN fornecedores f ON p.fornecedor_id = f.id 
+             LEFT JOIN categorias_produtos c ON p.categoria_id = c.id 
+             WHERE p.codigo_barras = ? AND p.ativo = TRUE`,
             [req.params.codigo]
         );
         
@@ -62,15 +75,15 @@ router.get('/:codigo', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const pool = getPool();
-        const { codigo_barras, nome, preco, desconto_percentual, estoque } = req.body;
+        const { codigo_barras, nome, preco, desconto_percentual, estoque, fornecedor_id, categoria_id } = req.body;
         
         if (!codigo_barras || !nome || preco === undefined) {
             return res.status(400).json({ error: 'Dados incompletos' });
         }
         
         const [result] = await pool.query(
-            'INSERT INTO produtos (codigo_barras, nome, preco, desconto_percentual, estoque) VALUES (?, ?, ?, ?, ?)',
-            [codigo_barras, nome, preco, desconto_percentual || 0, estoque || 0]
+            'INSERT INTO produtos (codigo_barras, nome, preco, desconto_percentual, estoque, fornecedor_id, categoria_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [codigo_barras, nome, preco, desconto_percentual || 0, estoque || 0, fornecedor_id || null, categoria_id || null]
         );
         
         res.json({ 
@@ -91,13 +104,13 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const pool = getPool();
-        const { nome, preco, desconto_percentual, estoque, ativo } = req.body;
+        const { nome, preco, desconto_percentual, estoque, ativo, fornecedor_id, categoria_id } = req.body;
         
         const ativoValue = ativo !== undefined ? (ativo ? 1 : 0) : 1;
         
         const [result] = await pool.query(
-            'UPDATE produtos SET nome = ?, preco = ?, desconto_percentual = ?, estoque = ?, ativo = ? WHERE id = ?',
-            [nome, preco, desconto_percentual || 0, estoque, ativoValue, req.params.id]
+            'UPDATE produtos SET nome = ?, preco = ?, desconto_percentual = ?, estoque = ?, ativo = ?, fornecedor_id = ?, categoria_id = ? WHERE id = ?',
+            [nome, preco, desconto_percentual || 0, estoque, ativoValue, fornecedor_id || null, categoria_id || null, req.params.id]
         );
         
         res.json({ success: true, message: 'Produto atualizado!' });

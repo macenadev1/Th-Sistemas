@@ -1222,6 +1222,18 @@ document.addEventListener('keydown', function(e) {
         abrirBuscaPorNome();
     }
     
+    // F10 para gerenciar clientes
+    if (e.key === 'F10') {
+        e.preventDefault();
+        abrirGerenciarClientes();
+    }
+    
+    // F11 para gerenciar fornecedores
+    if (e.key === 'F11') {
+        e.preventDefault();
+        abrirGerenciarFornecedores();
+    }
+    
     // Atalho Delete para remover último item do carrinho
     if (e.key === 'Delete') {
         // Só funciona se não houver modal aberto

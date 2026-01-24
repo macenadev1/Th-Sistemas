@@ -1,0 +1,45 @@
+<!-- Modal de Lista de Fornecedores -->
+<div id="listaFornecedoresModal" class="modal">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2>🏭 Gerenciar Fornecedores</h2>
+        </div>
+        
+        <!-- Filtros -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding: 0 20px;">
+            <input 
+                type="text" 
+                id="filtroBuscaFornecedor" 
+                placeholder="🔍 Buscar por nome, razão social ou CNPJ..." 
+                style="flex: 1; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px;">
+            <select id="filtroStatusFornecedor" style="padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px;">
+                <option value="todos">📋 Todos</option>
+                <option value="ativo">✓ Ativos</option>
+                <option value="inativo">✗ Inativos</option>
+            </select>
+            <button onclick="limparFiltrosFornecedores()" class="btn btn-secondary" style="padding: 12px 20px;">
+                🔄 Limpar
+            </button>
+        </div>
+        
+        <!-- Contador -->
+        <div style="text-align: center; color: #666; margin-bottom: 15px; font-weight: bold;" id="contadorFornecedores">
+            0 fornecedor(es) encontrado(s)
+        </div>
+        
+        <!-- Lista de Fornecedores -->
+        <div id="fornecedoresContent" style="max-height: 400px; overflow-y: auto;"></div>
+        
+        <!-- Paginação -->
+        <div id="paginacaoFornecedores" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap;"></div>
+        
+        <div class="modal-actions">
+            <button type="button" class="btn btn-success" onclick="abrirCadastroFornecedor()" style="flex: 1;">
+                ➕ Novo Fornecedor
+            </button>
+            <button type="button" class="btn btn-primary" onclick="fecharModal('listaFornecedoresModal')" style="flex: 1;">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>

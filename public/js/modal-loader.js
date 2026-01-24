@@ -26,7 +26,13 @@
         'editar-produto',
         'historico-vendas',
         'configuracoes',
-        'buscar-produto'
+        'buscar-produto',
+        'lista-clientes',
+        'cadastro-cliente',
+        'editar-cliente',
+        'lista-fornecedores',
+        'cadastro-fornecedor',
+        'editar-fornecedor'
     ];
 
     /**
