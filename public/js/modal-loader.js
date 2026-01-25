@@ -37,7 +37,8 @@
         'relatorio-vendas-periodo',
         'relatorio-caixa-periodo',
         'relatorio-produtos-vendidos',
-        'relatorio-estoque-baixo'
+        'relatorio-estoque-baixo',
+        'relatorio-vendas-horario'
     ];
 
     /**

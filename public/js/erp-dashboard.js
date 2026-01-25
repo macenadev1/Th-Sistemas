@@ -2973,3 +2973,12 @@ async function carregarItensVendasRelatorio(vendas, dataInicial, dataFinal) {
     }
 }
 
+
+// ==================== RELATÓRIO DE VENDAS POR HORÁRIO ====================
+
+function abrirRelatorioVendasHorario() {
+    abrirModal('relatorioVendasHorarioModal', () => {
+        setarPeriodoRelatorioHorario('mes');
+    });
+}
+
