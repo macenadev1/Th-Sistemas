@@ -1,0 +1,52 @@
+<!-- Modal de Relatório de Vendas por Período -->
+<div id="relatorioVendasPeriodoModal" class="modal">
+    <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>📊 Relatório de Vendas por Período</h2>
+        </div>
+        
+        <div style="padding: 20px;">
+            <!-- Filtros -->
+            <div style="display: flex; gap: 15px; margin-bottom: 30px; background: #f8f9fa; padding: 20px; border-radius: 8px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📅 Data Inicial:</label>
+                    <input type="date" id="dataInicialRelatorio" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📅 Data Final:</label>
+                    <input type="date" id="dataFinalRelatorio" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button onclick="gerarRelatorioVendas()" class="btn btn-primary" style="padding: 10px 25px; white-space: nowrap;">
+                        🔍 Gerar Relatório
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Atalhos de Período -->
+            <div style="display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
+                <button onclick="setarPeriodoRelatorio('hoje')" class="btn" style="background: #17a2b8; color: white; padding: 8px 16px; font-size: 14px;">📅 Hoje</button>
+                <button onclick="setarPeriodoRelatorio('ontem')" class="btn" style="background: #6c757d; color: white; padding: 8px 16px; font-size: 14px;">📅 Ontem</button>
+                <button onclick="setarPeriodoRelatorio('semana')" class="btn" style="background: #28a745; color: white; padding: 8px 16px; font-size: 14px;">📅 Esta Semana</button>
+                <button onclick="setarPeriodoRelatorio('mes')" class="btn" style="background: #007bff; color: white; padding: 8px 16px; font-size: 14px;">📅 Este Mês</button>
+                <button onclick="setarPeriodoRelatorio('ano')" class="btn" style="background: #6f42c1; color: white; padding: 8px 16px; font-size: 14px;">📅 Este Ano</button>
+            </div>
+            
+            <!-- Resultado do Relatório -->
+            <div id="resultadoRelatorioVendas" style="min-height: 200px;">
+                <p style="text-align: center; color: #999; padding: 60px 20px; font-size: 16px;">
+                    Selecione um período e clique em "Gerar Relatório" para visualizar os dados
+                </p>
+            </div>
+        </div>
+        
+        <div class="modal-actions" style="position: sticky; bottom: 0; background: white; border-top: 1px solid #ddd; margin: 0 -20px -20px; padding: 15px 20px;">
+            <button type="button" class="btn btn-success" onclick="imprimirRelatorioVendas()" id="btnImprimirRelatorio" disabled style="background: #28a745;">
+                🖨️ Imprimir Relatório
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('relatorioVendasPeriodoModal')">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>

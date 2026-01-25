@@ -1,0 +1,139 @@
+<!-- Modal Menu ERP -->
+<div id="menuErpModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2>🏢 Menu ERP - Gestão Completa</h2>
+            <p style="margin-top: 10px; font-size: 14px; opacity: 0.9;">Gerenciamento administrativo do sistema</p>
+        </div>
+        
+        <div style="padding: 30px;">
+            <!-- Grid de Opções -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                
+                <!-- Produtos -->
+                <div onclick="fecharModal('menuErpModal'); abrirGerenciarProdutos();" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 15px rgba(0,0,0,0.2)'" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📦</div>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px;">Produtos</h3>
+                    <p style="margin: 0; font-size: 14px; opacity: 0.9;">Gerenciar estoque</p>
+                    <span style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.8;">Atalho: F6</span>
+                </div>
+
+                <!-- Clientes -->
+                <div onclick="fecharModal('menuErpModal'); abrirGerenciarClientes();" style="
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    color: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 15px rgba(0,0,0,0.2)'" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                    <div style="font-size: 48px; margin-bottom: 15px;">👥</div>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px;">Clientes</h3>
+                    <p style="margin: 0; font-size: 14px; opacity: 0.9;">Cadastro e consulta</p>
+                    <span style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.8;">Atalho: F10</span>
+                </div>
+
+                <!-- Fornecedores -->
+                <div onclick="fecharModal('menuErpModal'); abrirGerenciarFornecedores();" style="
+                    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                    color: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 15px rgba(0,0,0,0.2)'" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                    <div style="font-size: 48px; margin-bottom: 15px;">🏢</div>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px;">Fornecedores</h3>
+                    <p style="margin: 0; font-size: 14px; opacity: 0.9;">Gestão de parceiros</p>
+                    <span style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.8;">Atalho: F11</span>
+                </div>
+
+                <!-- Caixa -->
+                <div onclick="fecharModal('menuErpModal'); abrirMenuCaixa();" style="
+                    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+                    color: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 15px rgba(0,0,0,0.2)'" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                    <div style="font-size: 48px; margin-bottom: 15px;">💰</div>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px;">Caixa</h3>
+                    <p style="margin: 0; font-size: 14px; opacity: 0.9;">Abertura e fechamento</p>
+                    <span style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.8;">Atalho: F7</span>
+                </div>
+
+                <!-- Relatórios -->
+                <div onclick="fecharModal('menuErpModal'); abrirHistorico();" style="
+                    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                    color: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 15px rgba(0,0,0,0.2)'" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px;">Relatórios</h3>
+                    <p style="margin: 0; font-size: 14px; opacity: 0.9;">Histórico de vendas</p>
+                    <span style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.8;">Atalho: F5</span>
+                </div>
+
+                <!-- Configurações -->
+                <div onclick="fecharModal('menuErpModal'); abrirConfiguracoes();" style="
+                    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+                    color: #333;
+                    padding: 30px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 15px rgba(0,0,0,0.2)'" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                    <div style="font-size: 48px; margin-bottom: 15px;">⚙️</div>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px;">Configurações</h3>
+                    <p style="margin: 0; font-size: 14px; opacity: 0.8;">Sistema e preferências</p>
+                    <span style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.7;">Atalho: F8</span>
+                </div>
+
+            </div>
+
+            <!-- Informações Adicionais -->
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                <h4 style="margin: 0 0 10px 0; color: #667eea;">ℹ️ Informações</h4>
+                <p style="margin: 0; font-size: 14px; color: #666;">
+                    Use as teclas de atalho para acesso rápido às funcionalidades administrativas.<br>
+                    Pressione <strong>ESC</strong> para fechar este menu e voltar ao PDV.
+                </p>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" class="btn btn-primary" onclick="fecharModal('menuErpModal')" style="width: 100%; font-size: 16px; padding: 12px;">
+                ← Voltar ao PDV
+            </button>
+        </div>
+    </div>
+</div>

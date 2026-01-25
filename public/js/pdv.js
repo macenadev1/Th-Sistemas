@@ -1234,6 +1234,12 @@ document.addEventListener('keydown', function(e) {
         abrirGerenciarFornecedores();
     }
     
+    // F12 para abrir Menu ERP
+    if (e.key === 'F12') {
+        e.preventDefault();
+        window.location.href = 'erp.html';
+    }
+    
     // Atalho Delete para remover último item do carrinho
     if (e.key === 'Delete') {
         // Só funciona se não houver modal aberto

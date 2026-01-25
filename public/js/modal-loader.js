@@ -8,6 +8,7 @@
 
     // Lista de modais para carregar
     const modals = [
+        'menu-erp',
         'cadastro-produto',
         'finalizacao-venda',
         'forma-pagamento',
@@ -32,7 +33,8 @@
         'editar-cliente',
         'lista-fornecedores',
         'cadastro-fornecedor',
-        'editar-fornecedor'
+        'editar-fornecedor',
+        'relatorio-vendas-periodo'
     ];
 
     /**
