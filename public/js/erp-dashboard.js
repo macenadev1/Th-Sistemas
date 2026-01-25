@@ -1308,94 +1308,86 @@ async function carregarItensVendasRelatorio(vendas) {
         
         const vendasComItens = await Promise.all(promises);
         
-        // Renderizar vendas com seus itens
-        container.innerHTML = vendasComItens.map(({ venda, itens, formas_pagamento }) => {
-            const data = new Date(venda.data_venda.replace(' ', 'T'));
-            const dataFormatada = data.toLocaleString('pt-BR');
-            
-            // Mapear nomes das formas de pagamento
-            const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
-            const nomes = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'PIX' };
-            
-            return `
-                <div style="padding: 20px; border-bottom: 2px solid #e0e0e0; margin-bottom: 15px; background: #fafafa; border-radius: 8px;">
-                    <!-- Cabeçalho da Venda -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-                        <div>
-                            <div style="font-weight: bold; color: #333; font-size: 18px; margin-bottom: 5px;">
-                                🧾 Venda #${venda.id}
-                                <span style="background: #007bff; color: white; padding: 3px 10px; border-radius: 12px; font-size: 13px; margin-left: 10px;">
-                                    ${venda.quantidade_itens} item(ns)
-                                </span>
-                            </div>
-                            <div style="font-size: 14px; color: #666;">
-                                📅 ${dataFormatada}
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 24px; font-weight: bold; color: #28a745;">
-                                R$ ${parseFloat(venda.total).toFixed(2)}
-                            </div>
-                            ${parseFloat(venda.troco) > 0 ? `
-                                <div style="font-size: 13px; color: #999;">
-                                    💰 Troco: R$ ${parseFloat(venda.troco).toFixed(2)}
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                    
-                    <!-- Itens da Venda -->
-                    <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                        <div style="font-weight: bold; color: #555; margin-bottom: 10px; font-size: 14px;">📦 Itens:</div>
-                        <table style="width: 100%; font-size: 14px;">
-                            <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
-                                    <th style="padding: 8px; text-align: left;">Produto</th>
-                                    <th style="padding: 8px; text-align: center;">Qtd</th>
-                                    <th style="padding: 8px; text-align: right;">Preço Unit.</th>
-                                    <th style="padding: 8px; text-align: right;">Subtotal</th>
+        // Mapear nomes das formas de pagamento
+        const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
+        const nomes = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'PIX' };
+        
+        // Renderizar todas as vendas em uma única tabela
+        container.innerHTML = `
+            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Venda</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Data/Hora</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Produto</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Qtd</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Preço Unit.</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Subtotal</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Total Venda</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Pagamento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${vendasComItens.map(({ venda, itens, formas_pagamento }) => {
+                            const data = new Date(venda.data_venda.replace(' ', 'T'));
+                            const dataFormatada = data.toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            
+                            // Criar string de formas de pagamento
+                            let pagamentosTexto = '';
+                            if (formas_pagamento && formas_pagamento.length > 0) {
+                                pagamentosTexto = formas_pagamento.map(fp => 
+                                    `${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}`
+                                ).join('<br>');
+                            }
+                            
+                            // Renderizar cada item da venda como uma linha
+                            return itens.map((item, index) => `
+                                <tr style="border-bottom: 1px solid #eee; ${index === 0 ? 'border-top: 2px solid #007bff;' : ''}">
+                                    ${index === 0 ? `
+                                        <td rowspan="${itens.length}" style="padding: 12px; font-weight: bold; background: #f8f9fa; color: #007bff; border-right: 1px solid #ddd; vertical-align: top;">
+                                            🧾 #${venda.id}<br>
+                                            <span style="font-size: 11px; color: #666; font-weight: normal;">${venda.quantidade_itens} item(ns)</span>
+                                        </td>
+                                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; border-right: 1px solid #ddd; vertical-align: top; white-space: nowrap;">
+                                            ${dataFormatada}
+                                        </td>
+                                    ` : ''}
+                                    <td style="padding: 12px;">
+                                        <strong>${item.nome_produto}</strong><br>
+                                        <span style="font-size: 11px; color: #999;">Cód: ${item.codigo_barras}</span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: #007bff;">
+                                        ${item.quantidade}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; color: #666;">
+                                        R$ ${parseFloat(item.preco_unitario).toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">
+                                        R$ ${parseFloat(item.subtotal).toFixed(2)}
+                                    </td>
+                                    ${index === 0 ? `
+                                        <td rowspan="${itens.length}" style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745; background: #f8f9fa; border-left: 1px solid #ddd; vertical-align: top;">
+                                            R$ ${parseFloat(venda.total).toFixed(2)}
+                                            ${parseFloat(venda.troco) > 0 ? `<br><span style="font-size: 11px; color: #999; font-weight: normal;">Troco: R$ ${parseFloat(venda.troco).toFixed(2)}</span>` : ''}
+                                        </td>
+                                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; font-size: 12px; border-left: 1px solid #ddd; vertical-align: top;">
+                                            ${pagamentosTexto}
+                                        </td>
+                                    ` : ''}
                                 </tr>
-                            </thead>
-                            <tbody>
-                                ${itens.map(item => `
-                                    <tr style="border-bottom: 1px solid #eee;">
-                                        <td style="padding: 8px;">
-                                            <strong>${item.nome_produto}</strong><br>
-                                            <span style="font-size: 12px; color: #999;">Cód: ${item.codigo_barras}</span>
-                                        </td>
-                                        <td style="padding: 8px; text-align: center; font-weight: bold; color: #007bff;">
-                                            ${item.quantidade}
-                                        </td>
-                                        <td style="padding: 8px; text-align: right; color: #666;">
-                                            R$ ${parseFloat(item.preco_unitario).toFixed(2)}
-                                        </td>
-                                        <td style="padding: 8px; text-align: right; font-weight: bold; color: #28a745;">
-                                            R$ ${parseFloat(item.subtotal).toFixed(2)}
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Formas de Pagamento -->
-                    ${formas_pagamento && formas_pagamento.length > 0 ? `
-                        <div style="background: white; padding: 15px; border-radius: 6px;">
-                            <div style="font-weight: bold; color: #555; margin-bottom: 10px; font-size: 14px;">💳 Pagamento:</div>
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                ${formas_pagamento.map(fp => `
-                                    <div style="background: #f8f9fa; padding: 8px 15px; border-radius: 6px; border-left: 3px solid #28a745;">
-                                        <span style="font-size: 16px;">${icones[fp.forma_pagamento]}</span>
-                                        <strong style="margin-left: 5px;">${nomes[fp.forma_pagamento]}:</strong>
-                                        <span style="color: #28a745; font-weight: bold; margin-left: 5px;">R$ ${parseFloat(fp.valor).toFixed(2)}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
+                            `).join('');
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
         
     } catch (error) {
         console.error('Erro ao carregar itens:', error);

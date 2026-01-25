@@ -1222,22 +1222,10 @@ document.addEventListener('keydown', function(e) {
         abrirBuscaPorNome();
     }
     
-    // F10 para gerenciar clientes
+    // F10 para abrir Menu ERP em nova aba
     if (e.key === 'F10') {
         e.preventDefault();
-        abrirGerenciarClientes();
-    }
-    
-    // F11 para gerenciar fornecedores
-    if (e.key === 'F11') {
-        e.preventDefault();
-        abrirGerenciarFornecedores();
-    }
-    
-    // F12 para abrir Menu ERP
-    if (e.key === 'F12') {
-        e.preventDefault();
-        window.location.href = 'erp.html';
+        window.open('erp.html', '_blank');
     }
     
     // Atalho Delete para remover último item do carrinho

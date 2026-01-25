@@ -96,11 +96,11 @@ Para modais de terceiro nível: usar classe `modal-nested-level-2`
 - `+/-`: Ajustar quantidade no input | `Enter`: Adicionar produto | `Delete`: Remover último item do carrinho
 - `ESC`: Fecha modal mais recente (respeita hierarquia de modais aninhadas)
 
-#### **Menu ERP - Administrativo (F12)**
-- `F12`: Abre Menu ERP com acesso visual a todas funções administrativas
+#### **Menu ERP - Administrativo (F10)**
+- `F10`: Abre Menu ERP com acesso visual a todas funções administrativas
 - `F6`: Gerenciar produtos | `F8`: Configurações
-- `F10`: Clientes | `F11`: Fornecedores
 - **Separação clara**: PDV focado em vendas, ERP focado em gestão
+- **Clientes e Fornecedores**: Acessar via Menu ERP (removido F10/F11 do PDV)
 
 #### **Outros**
 - Leitores de código de barras: buffer de 100ms para input ≥8 chars ([pdv.js](../public/js/pdv.js#L75-L82))
