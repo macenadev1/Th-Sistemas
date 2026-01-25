@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP - Bomboniere Dois Primos</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/erp-style.css">
+</head>
+<body class="erp-body">
+    <!-- Sidebar Menu -->
+    <aside class="erp-sidebar">
+        <div class="erp-logo">
+            <h2>🏢 Bomboniere ERP</h2>
+            <p>Gestão Completa</p>
+        </div>
+
+        <nav class="erp-menu">
+            <a href="#" class="erp-menu-item active" onclick="navegarPara(event, 'dashboard')">
+                <span class="menu-icon">📊</span>
+                <span class="menu-text">Dashboard</span>
+            </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'produtos')">
+                <span class="menu-icon">📦</span>
+                <span class="menu-text">Produtos</span>
+            </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'clientes')">
+                <span class="menu-icon">👥</span>
+                <span class="menu-text">Clientes</span>
+            </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'fornecedores')">
+                <span class="menu-icon">🏢</span>
+                <span class="menu-text">Fornecedores</span>
+            </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'caixa')">
+                <span class="menu-icon">💰</span>
+                <span class="menu-text">Caixa</span>
+            </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'vendas')">
+                <span class="menu-icon">🛒</span>
+                <span class="menu-text">Vendas</span>
+            </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'relatorios')">
+                <span class="menu-icon">📈</span>
+                <span class="menu-text">Relatórios</span>
+            </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'configuracoes')">
+                <span class="menu-icon">⚙️</span>
+                <span class="menu-text">Configurações</span>
+            </a>
+        </nav>
+
+        <div class="erp-sidebar-footer">
+            <a href="index.html" class="btn-voltar-pdv">
+                ← Voltar ao PDV
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="erp-main">
+        <!-- Header -->
+        <header class="erp-header">
+            <div class="erp-header-left">
+                <h1 id="pageTitle">📊 Dashboard</h1>
+            </div>
+            <div class="erp-header-right">
+                <span id="statusBadge" class="status-badge offline">● Conectando...</span>
+                <div class="user-info">
+                    <span>👤 Administrador</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="erp-content">
+            <!-- Dashboard Section (Default) -->
+            <section id="dashboard-section" class="erp-section active">
+                <div class="dashboard-cards">
+                    <!-- Card Vendas Hoje -->
+                    <div class="dashboard-card card-vendas">
+                        <div class="card-icon">💵</div>
+                        <div class="card-content">
+                            <h3>Vendas Hoje</h3>
+                            <p class="card-value" id="vendasHoje">R$ 0,00</p>
+                            <span class="card-subtitle" id="qtdVendasHoje">0 vendas</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Caixa Atual -->
+                    <div class="dashboard-card card-caixa">
+                        <div class="card-icon">💰</div>
+                        <div class="card-content">
+                            <h3>Caixa Atual</h3>
+                            <p class="card-value" id="saldoCaixa">R$ 0,00</p>
+                            <span class="card-subtitle" id="statusCaixa">Caixa fechado</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Produtos -->
+                    <div class="dashboard-card card-produtos">
+                        <div class="card-icon">📦</div>
+                        <div class="card-content">
+                            <h3>Produtos Ativos</h3>
+                            <p class="card-value" id="totalProdutos">0</p>
+                            <span class="card-subtitle" id="produtosEstoque">0 em estoque</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Alertas -->
+                    <div class="dashboard-card card-alertas">
+                        <div class="card-icon">⚠️</div>
+                        <div class="card-content">
+                            <h3>Alertas</h3>
+                            <p class="card-value" id="totalAlertas">0</p>
+                            <span class="card-subtitle">Requerem atenção</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráficos e Tabelas -->
+                <div class="dashboard-grid">
+                    <!-- Vendas Recentes -->
+                    <div class="dashboard-widget">
+                        <div class="widget-header">
+                            <h3>🛒 Últimas Vendas</h3>
+                            <button onclick="navegarPara(event, 'vendas')" class="btn-link">Ver todas →</button>
+                        </div>
+                        <div class="widget-content">
+                            <div id="vendasRecentes" class="vendas-lista">
+                                <p style="text-align: center; color: #999; padding: 20px;">Carregando vendas...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Produtos com Estoque Baixo -->
+                    <div class="dashboard-widget">
+                        <div class="widget-header">
+                            <h3>⚠️ Estoque Baixo</h3>
+                            <button onclick="navegarPara(event, 'produtos')" class="btn-link">Ver todos →</button>
+                        </div>
+                        <div class="widget-content">
+                            <div id="produtosEstoqueBaixo" class="produtos-lista">
+                                <p style="text-align: center; color: #999; padding: 20px;">Carregando produtos...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Produtos Section -->
+            <section id="produtos-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Gerenciar Produtos</h2>
+                    <button onclick="abrirCadastro()" class="btn btn-success">+ Novo Produto</button>
+                </div>
+                <div id="produtos-content">
+                    <!-- Conteúdo será carregado via produtos.js -->
+                    <p>Carregando produtos...</p>
+                </div>
+            </section>
+
+            <!-- Clientes Section -->
+            <section id="clientes-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Gerenciar Clientes</h2>
+                    <button onclick="abrirCadastroCliente()" class="btn btn-success">+ Novo Cliente</button>
+                </div>
+                <div id="clientes-content">
+                    <p>Carregando clientes...</p>
+                </div>
+            </section>
+
+            <!-- Fornecedores Section -->
+            <section id="fornecedores-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Gerenciar Fornecedores</h2>
+                    <button onclick="abrirCadastroFornecedor()" class="btn btn-success">+ Novo Fornecedor</button>
+                </div>
+                <div id="fornecedores-content">
+                    <p>Carregando fornecedores...</p>
+                </div>
+            </section>
+
+            <!-- Caixa Section -->
+            <section id="caixa-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Gerenciar Caixa</h2>
+                </div>
+                <div id="caixa-content">
+                    <p>Gerenciamento de caixa...</p>
+                </div>
+            </section>
+
+            <!-- Vendas Section -->
+            <section id="vendas-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Histórico de Vendas</h2>
+                </div>
+                <div id="vendas-content">
+                    <p>Carregando histórico...</p>
+                </div>
+            </section>
+
+            <!-- Relatórios Section -->
+            <section id="relatorios-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Relatórios</h2>
+                </div>
+                <div class="relatorios-grid">
+                    <div class="relatorio-card">
+                        <h3>📊 Vendas por Período</h3>
+                        <p>Análise de vendas com filtros personalizados</p>
+                        <button class="btn btn-primary" onclick="abrirRelatorioVendasPeriodo()">Gerar Relatório</button>
+                    </div>
+                    <div class="relatorio-card">
+                        <h3>💰 Movimento de Caixa</h3>
+                        <p>Histórico de aberturas e fechamentos</p>
+                        <button class="btn btn-primary" onclick="abrirHistoricoFechamentos()">Gerar Relatório</button>
+                    </div>
+                    <div class="relatorio-card">
+                        <h3>📦 Produtos Mais Vendidos</h3>
+                        <p>Ranking de produtos por quantidade</p>
+                        <button class="btn btn-primary">Gerar Relatório</button>
+                    </div>
+                    <div class="relatorio-card">
+                        <h3>👥 Clientes</h3>
+                        <p>Análise de clientes e compras</p>
+                        <button class="btn btn-primary">Gerar Relatório</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configurações Section -->
+            <section id="configuracoes-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Configurações do Sistema</h2>
+                </div>
+                <div id="configuracoes-content">
+                    <button onclick="abrirConfiguracoes()" class="btn btn-primary">Abrir Configurações</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Container para os modais -->
+    <div id="modals-container"></div>
+
+    <!-- Notificação -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Scripts -->
+    <script>
+        // Definir variável API_URL global antes de carregar outros scripts
+        const API_URL = 'http://localhost:3000/api';
+        let serverOnline = false;
+    </script>
+    <script src="js/auth.js"></script>
+    <script src="js/modal-loader.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/modal-handler.js"></script>
+    <script src="js/configuracoes.js"></script>
+    <script src="js/caixa.js"></script>
+    <script src="js/historico.js"></script>
+    <script src="js/clientes.js"></script>
+    <script src="js/fornecedores.js"></script>
+    <script src="js/produtos.js"></script>
+    <script src="js/erp.js"></script>
+    <script src="js/erp-dashboard.js"></script>
+</body>
+</html>

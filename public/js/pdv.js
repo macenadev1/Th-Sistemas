@@ -1222,6 +1222,12 @@ document.addEventListener('keydown', function(e) {
         abrirBuscaPorNome();
     }
     
+    // F10 para abrir Menu ERP em nova aba
+    if (e.key === 'F10') {
+        e.preventDefault();
+        window.open('erp.html', '_blank');
+    }
+    
     // Atalho Delete para remover último item do carrinho
     if (e.key === 'Delete') {
         // Só funciona se não houver modal aberto

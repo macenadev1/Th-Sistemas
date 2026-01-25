@@ -70,76 +70,79 @@ function atualizarStatusCaixa() {
     if (caixaAberto) {
         const saldoAtual = caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias;
         
-        // Verificar se deve exibir alerta baseado nas configurações
-        let deveAlertar = false;
-        let mensagemAlerta = '';
-        let diasOuHoras = '';
-        
-        if (typeof configuracoes !== 'undefined' && configuracoes.tipoAlerta !== 'desabilitado') {
-            const agora = new Date();
-            const dataAbertura = new Date(caixaData.dataHoraAbertura);
+        // Verificar se statusBadge existe (no PDV)
+        if (statusBadge) {
+            // Verificar se deve exibir alerta baseado nas configurações
+            let deveAlertar = false;
+            let mensagemAlerta = '';
+            let diasOuHoras = '';
             
-            if (configuracoes.tipoAlerta === 'dia_diferente') {
-                // Alertar se for de dia diferente
-                const hoje = new Date();
-                hoje.setHours(0, 0, 0, 0);
+            if (typeof configuracoes !== 'undefined' && configuracoes.tipoAlerta !== 'desabilitado') {
+                const agora = new Date();
+                const dataAbertura = new Date(caixaData.dataHoraAbertura);
                 
-                const dataAberturaZerada = new Date(dataAbertura);
-                dataAberturaZerada.setHours(0, 0, 0, 0);
-                
-                if (dataAberturaZerada.getTime() < hoje.getTime()) {
-                    deveAlertar = true;
-                    const diasDiferenca = Math.floor((hoje - dataAberturaZerada) / (1000 * 60 * 60 * 24));
-                    diasOuHoras = `${diasDiferenca} dia(s) atrás`;
-                    mensagemAlerta = `⚠️ ATENÇÃO: Caixa aberto desde ${dataAbertura.toLocaleDateString('pt-BR')} às ${dataAbertura.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+                if (configuracoes.tipoAlerta === 'dia_diferente') {
+                    // Alertar se for de dia diferente
+                    const hoje = new Date();
+                    hoje.setHours(0, 0, 0, 0);
+                    
+                    const dataAberturaZerada = new Date(dataAbertura);
+                    dataAberturaZerada.setHours(0, 0, 0, 0);
+                    
+                    if (dataAberturaZerada.getTime() < hoje.getTime()) {
+                        deveAlertar = true;
+                        const diasDiferenca = Math.floor((hoje - dataAberturaZerada) / (1000 * 60 * 60 * 24));
+                        diasOuHoras = `${diasDiferenca} dia(s) atrás`;
+                        mensagemAlerta = `⚠️ ATENÇÃO: Caixa aberto desde ${dataAbertura.toLocaleDateString('pt-BR')} às ${dataAbertura.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+                    }
+                } else if (configuracoes.tipoAlerta === 'horas') {
+                    // Alertar após X horas
+                    const horasAbertas = (agora - dataAbertura) / (1000 * 60 * 60);
+                    const limiteHoras = configuracoes.horasAlerta || 24;
+                    
+                    if (horasAbertas >= limiteHoras) {
+                        deveAlertar = true;
+                        diasOuHoras = `${Math.floor(horasAbertas)} hora(s)`;
+                        mensagemAlerta = `⚠️ ATENÇÃO: Caixa aberto há mais de ${limiteHoras} hora(s)`;
+                    }
                 }
-            } else if (configuracoes.tipoAlerta === 'horas') {
-                // Alertar após X horas
-                const horasAbertas = (agora - dataAbertura) / (1000 * 60 * 60);
-                const limiteHoras = configuracoes.horasAlerta || 24;
+            }
+            
+            if (deveAlertar) {
+                // Exibir alerta
+                const dataAbertura = new Date(caixaData.dataHoraAbertura);
+                statusBadge.style.background = '#ff9800';
+                statusBadge.innerHTML = `⚠️ Caixa Aberto desde ${dataAbertura.toLocaleDateString('pt-BR')}`;
+                statusBadge.style.animation = 'pulse 2s infinite';
                 
-                if (horasAbertas >= limiteHoras) {
-                    deveAlertar = true;
-                    diasOuHoras = `${Math.floor(horasAbertas)} hora(s)`;
-                    mensagemAlerta = `⚠️ ATENÇÃO: Caixa aberto há mais de ${limiteHoras} hora(s)`;
+                if (saldoTexto) {
+                    saldoTexto.innerHTML = `
+                        <div style="color: #ff9800; font-weight: bold; margin-bottom: 5px;">
+                            ${mensagemAlerta}
+                            <br><small>(${diasOuHoras})</small>
+                        </div>
+                        Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>
+                    `;
                 }
-            }
-        }
-        
-        if (deveAlertar) {
-            // Exibir alerta
-            const dataAbertura = new Date(caixaData.dataHoraAbertura);
-            statusBadge.style.background = '#ff9800';
-            statusBadge.innerHTML = `⚠️ Caixa Aberto desde ${dataAbertura.toLocaleDateString('pt-BR')}`;
-            statusBadge.style.animation = 'pulse 2s infinite';
-            
-            if (saldoTexto) {
-                saldoTexto.innerHTML = `
-                    <div style="color: #ff9800; font-weight: bold; margin-bottom: 5px;">
-                        ${mensagemAlerta}
-                        <br><small>(${diasOuHoras})</small>
-                    </div>
-                    Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>
-                `;
-            }
-            
-            // Mostrar notificação na primeira vez
-            if (!window.alertaCaixaAbertoMostrado) {
-                window.alertaCaixaAbertoMostrado = true;
-                setTimeout(() => {
-                    mostrarNotificacao(
-                        `${mensagemAlerta}! Recomenda-se fazer o fechamento.`,
-                        'error'
-                    );
-                }, 1000);
-            }
-        } else {
-            // Caixa aberto normalmente (sem alerta)
-            statusBadge.style.background = '#28a745';
-            statusBadge.innerHTML = '🔓 Caixa Aberto';
-            statusBadge.style.animation = 'none';
-            if (saldoTexto) {
-                saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>`;
+                
+                // Mostrar notificação na primeira vez
+                if (!window.alertaCaixaAbertoMostrado) {
+                    window.alertaCaixaAbertoMostrado = true;
+                    setTimeout(() => {
+                        mostrarNotificacao(
+                            `${mensagemAlerta}! Recomenda-se fazer o fechamento.`,
+                            'error'
+                        );
+                    }, 1000);
+                }
+            } else {
+                // Caixa aberto normalmente (sem alerta)
+                statusBadge.style.background = '#28a745';
+                statusBadge.innerHTML = '🔓 Caixa Aberto';
+                statusBadge.style.animation = 'none';
+                if (saldoTexto) {
+                    saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>`;
+                }
             }
         }
         
@@ -148,9 +151,11 @@ function atualizarStatusCaixa() {
         if (btnSangria) btnSangria.disabled = false;
         if (btnFecharCaixa) btnFecharCaixa.disabled = false;
     } else {
-        statusBadge.style.background = '#dc3545';
-        statusBadge.innerHTML = '🔒 Caixa Fechado';
-        statusBadge.style.animation = 'none';
+        if (statusBadge) {
+            statusBadge.style.background = '#dc3545';
+            statusBadge.innerHTML = '🔒 Caixa Fechado';
+            statusBadge.style.animation = 'none';
+        }
         if (saldoTexto) {
             saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #666;">R$ 0,00</strong>`;
         }

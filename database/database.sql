@@ -13,6 +13,10 @@ DROP TABLE IF EXISTS formas_pagamento_venda;
 DROP TABLE IF EXISTS itens_venda;
 DROP TABLE IF EXISTS vendas;
 DROP TABLE IF EXISTS produtos;
+DROP TABLE IF EXISTS clientes;
+DROP TABLE IF EXISTS fornecedores;
+DROP TABLE IF EXISTS categorias_produtos;
+DROP TABLE IF EXISTS categorias_financeiras;
 
 -- ==========================================
 -- TABELAS DE AUTENTICAÇÃO E USUÁRIOS
@@ -61,12 +65,94 @@ CREATE TABLE produtos (
     preco DECIMAL(10, 2) NOT NULL,
     desconto_percentual DECIMAL(5, 2) NOT NULL DEFAULT 0,
     estoque INT NOT NULL DEFAULT 0,
+    fornecedor_id INT NULL,
+    categoria_id INT NULL,
     ativo BOOLEAN DEFAULT TRUE,
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_codigo_barras (codigo_barras),
-    INDEX idx_nome (nome)
+    INDEX idx_nome (nome),
+    INDEX idx_fornecedor_id (fornecedor_id),
+    INDEX idx_categoria_id (categoria_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABELAS DE CADASTROS BASE (ERP)
+-- ==========================================
+
+-- Tabela de clientes
+CREATE TABLE clientes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    cpf_cnpj VARCHAR(18) UNIQUE,
+    telefone VARCHAR(20),
+    email VARCHAR(255),
+    endereco VARCHAR(255),
+    cep VARCHAR(10),
+    cidade VARCHAR(100),
+    estado VARCHAR(2),
+    limite_credito DECIMAL(10, 2) DEFAULT 0,
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_nome (nome),
+    INDEX idx_cpf_cnpj (cpf_cnpj),
+    INDEX idx_ativo (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de fornecedores
+CREATE TABLE fornecedores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome_fantasia VARCHAR(255) NOT NULL,
+    razao_social VARCHAR(255),
+    cnpj VARCHAR(18) UNIQUE,
+    telefone VARCHAR(20),
+    email VARCHAR(255),
+    endereco VARCHAR(255),
+    cep VARCHAR(10),
+    cidade VARCHAR(100),
+    estado VARCHAR(2),
+    contato_principal VARCHAR(255),
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_nome_fantasia (nome_fantasia),
+    INDEX idx_cnpj (cnpj),
+    INDEX idx_ativo (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de categorias de produtos
+CREATE TABLE categorias_produtos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) UNIQUE NOT NULL,
+    descricao TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_nome (nome),
+    INDEX idx_ativo (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de categorias financeiras
+CREATE TABLE categorias_financeiras (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) UNIQUE NOT NULL,
+    tipo ENUM('receita', 'despesa') NOT NULL,
+    descricao TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_nome (nome),
+    INDEX idx_tipo (tipo),
+    INDEX idx_ativo (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Adicionar foreign keys em produtos
+ALTER TABLE produtos
+    ADD CONSTRAINT fk_produtos_fornecedor FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_produtos_categoria FOREIGN KEY (categoria_id) REFERENCES categorias_produtos(id) ON DELETE SET NULL;
 
 -- Tabela de vendas
 CREATE TABLE vendas (
@@ -189,23 +275,65 @@ INSERT INTO usuarios (nome, email, senha_hash, role, ativo) VALUES
 ('Administrador', 'admin@bomboniere.com', '$2b$10$5Anx8VAnYODLYXJyxM79eOY./.VAuH8QWJVVqgtLFUAbAJwZOlVma', 'admin', TRUE)
 ON DUPLICATE KEY UPDATE id = id;
 
--- Inserir produtos de exemplo
-INSERT INTO produtos (codigo_barras, nome, preco, estoque) VALUES
-('7891234567890', 'Coca-Cola 2L', 9.99, 50),
-('7891234567891', 'Arroz 5kg', 25.90, 30),
-('7891234567892', 'Feijão 1kg', 8.50, 40),
-('7891234567893', 'Açúcar 1kg', 4.99, 60),
-('7891234567894', 'Café 500g', 15.90, 25),
-('7891234567895', 'Leite 1L', 5.50, 80),
-('7891234567896', 'Óleo de Soja 900ml', 7.90, 45),
-('7891234567897', 'Macarrão 500g', 4.50, 70),
-('7891234567898', 'Sal 1kg', 2.99, 90),
-('7891234567899', 'Achocolatado 400g', 8.90, 35),
-('123', 'Produto Teste', 10.00, 100)
+-- Inserir fornecedores de exemplo
+INSERT INTO fornecedores (nome_fantasia, razao_social, cnpj, telefone, email, cidade, estado, contato_principal) VALUES
+('Distribuidora Alimentos Ltda', 'Distribuidora Alimentos Ltda ME', '12.345.678/0001-90', '(11) 3456-7890', 'contato@distribuidoraalimentos.com.br', 'São Paulo', 'SP', 'João Silva'),
+('Bebidas & Cia', 'Bebidas e Cia Comércio Ltda', '98.765.432/0001-10', '(19) 2345-6789', 'vendas@bebidasecia.com.br', 'Campinas', 'SP', 'Maria Santos'),
+('Atacado Brasil', 'Atacado Brasil Distribuição SA', '11.222.333/0001-44', '(21) 3344-5566', 'comercial@atacadobrasil.com.br', 'Rio de Janeiro', 'RJ', 'Carlos Oliveira')
+ON DUPLICATE KEY UPDATE nome_fantasia=VALUES(nome_fantasia);
+
+-- Inserir categorias de produtos
+INSERT INTO categorias_produtos (nome, descricao) VALUES
+('Bebidas', 'Refrigerantes, sucos, águas e bebidas em geral'),
+('Alimentos Básicos', 'Arroz, feijão, açúcar, sal e produtos essenciais'),
+('Higiene e Limpeza', 'Produtos de limpeza e higiene pessoal'),
+('Mercearia', 'Produtos diversos de mercearia'),
+('Laticínios', 'Leite, queijos, iogurtes e derivados'),
+('Padaria', 'Pães, bolos e produtos de padaria')
+ON DUPLICATE KEY UPDATE nome=VALUES(nome);
+
+-- Inserir categorias financeiras
+INSERT INTO categorias_financeiras (nome, tipo, descricao) VALUES
+('Vendas', 'receita', 'Receitas de vendas de produtos'),
+('Serviços', 'receita', 'Receitas de prestação de serviços'),
+('Compras', 'despesa', 'Despesas com compra de mercadorias'),
+('Salários', 'despesa', 'Pagamento de salários e encargos'),
+('Aluguel', 'despesa', 'Pagamento de aluguel'),
+('Energia', 'despesa', 'Conta de energia elétrica'),
+('Água', 'despesa', 'Conta de água'),
+('Internet/Telefone', 'despesa', 'Despesas com internet e telefone'),
+('Manutenção', 'despesa', 'Despesas com manutenção e reparos'),
+('Impostos', 'despesa', 'Pagamento de impostos e taxas')
+ON DUPLICATE KEY UPDATE nome=VALUES(nome);
+
+-- Inserir clientes de exemplo
+INSERT INTO clientes (nome, cpf_cnpj, telefone, email, cidade, estado, limite_credito) VALUES
+('João Silva', '123.456.789-00', '(11) 98765-4321', 'joao.silva@email.com', 'São Paulo', 'SP', 500.00),
+('Maria Santos', '987.654.321-00', '(11) 97654-3210', 'maria.santos@email.com', 'São Paulo', 'SP', 1000.00),
+('Mercadinho do Zé', '12.345.678/0001-99', '(11) 3333-4444', 'contato@mercadinhodoze.com.br', 'Guarulhos', 'SP', 5000.00)
+ON DUPLICATE KEY UPDATE nome=VALUES(nome);
+
+-- Inserir produtos de exemplo (com fornecedores e categorias)
+INSERT INTO produtos (codigo_barras, nome, preco, estoque, fornecedor_id, categoria_id) VALUES
+('7891234567890', 'Coca-Cola 2L', 9.99, 50, 2, 1),
+('7891234567891', 'Arroz 5kg', 25.90, 30, 1, 2),
+('7891234567892', 'Feijão 1kg', 8.50, 40, 1, 2),
+('7891234567893', 'Açúcar 1kg', 4.99, 60, 1, 2),
+('7891234567894', 'Café 500g', 15.90, 25, 1, 2),
+('7891234567895', 'Leite 1L', 5.50, 80, 1, 5),
+('7891234567896', 'Óleo de Soja 900ml', 7.90, 45, 1, 2),
+('7891234567897', 'Macarrão 500g', 4.50, 70, 1, 4),
+('7891234567898', 'Sal 1kg', 2.99, 90, 1, 2),
+('7891234567899', 'Achocolatado 400g', 8.90, 35, 1, 1),
+('123', 'Produto Teste', 10.00, 100, NULL, NULL)
 ON DUPLICATE KEY UPDATE nome=VALUES(nome);
 
 SELECT 'Banco de dados criado com sucesso!' AS mensagem;
 SELECT COUNT(*) AS total_produtos FROM produtos;
+SELECT COUNT(*) AS total_clientes FROM clientes;
+SELECT COUNT(*) AS total_fornecedores FROM fornecedores;
+SELECT COUNT(*) AS total_categorias_produtos FROM categorias_produtos;
+SELECT COUNT(*) AS total_categorias_financeiras FROM categorias_financeiras;
 SELECT COUNT(*) AS total_usuarios FROM usuarios;
 SELECT CONCAT('Login: ', email, ' | Senha: @Bomboniere2025') AS credenciais_admin FROM usuarios WHERE role = 'admin' LIMIT 1;
 

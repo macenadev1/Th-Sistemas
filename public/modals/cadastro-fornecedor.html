@@ -1,0 +1,72 @@
+<!-- Modal de Cadastro de Fornecedor -->
+<div id="cadastroFornecedorModal" class="modal modal-nested">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h2>➕ Cadastrar Fornecedor</h2>
+        </div>
+        <form id="formCadastroFornecedor" onsubmit="salvarFornecedor(event)">
+            <div style="display: grid; gap: 15px; padding: 20px;">
+                <div class="form-group">
+                    <label>Nome Fantasia: *</label>
+                    <input type="text" id="nomeFornecedor" required placeholder="Nome fantasia do fornecedor">
+                </div>
+                
+                <div class="form-group">
+                    <label>Razão Social:</label>
+                    <input type="text" id="razaoSocialFornecedor" placeholder="Razão social completa">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>CNPJ:</label>
+                        <input type="text" id="cnpjFornecedor" placeholder="00.000.000/0000-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone:</label>
+                        <input type="text" id="telefoneFornecedor" placeholder="(00) 0000-0000">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>E-mail:</label>
+                    <input type="email" id="emailFornecedor" placeholder="contato@fornecedor.com.br">
+                </div>
+                
+                <div class="form-group">
+                    <label>Endereço:</label>
+                    <textarea id="enderecoFornecedor" rows="2" placeholder="Rua, número, bairro"></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>CEP:</label>
+                        <input type="text" id="cepFornecedor" placeholder="00000-000">
+                    </div>
+                    <div class="form-group">
+                        <label>Cidade:</label>
+                        <input type="text" id="cidadeFornecedor" placeholder="Cidade">
+                    </div>
+                    <div class="form-group">
+                        <label>UF:</label>
+                        <input type="text" id="estadoFornecedor" placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Contato Principal:</label>
+                    <input type="text" id="contatoFornecedor" placeholder="Nome do contato">
+                </div>
+                
+                <div class="form-group">
+                    <label>Observações:</label>
+                    <textarea id="observacoesFornecedor" rows="2" placeholder="Observações adicionais"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success" style="flex: 1;">✓ Salvar Fornecedor</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'cadastroFornecedorModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -30,4 +30,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+    
+    // Listener global para tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            // Verificar se há modal aberto
+            const modaisNivel2 = document.querySelectorAll('.modal-nested-level-2.active');
+            if (modaisNivel2.length > 0) {
+                // Fechar último modal nível 2
+                const ultimoNivel2 = modaisNivel2[modaisNivel2.length - 1];
+                fecharModal(ultimoNivel2.id);
+                e.preventDefault();
+                return;
+            }
+            
+            const modaisAninhados = document.querySelectorAll('.modal-nested.active');
+            if (modaisAninhados.length > 0) {
+                // Fechar último modal aninhado
+                const ultimoAninhado = modaisAninhados[modaisAninhados.length - 1];
+                fecharModal(ultimoAninhado.id);
+                e.preventDefault();
+                return;
+            }
+            
+            const modaisPrincipais = document.querySelectorAll('.modal.active:not(.modal-nested):not(.modal-nested-level-2)');
+            if (modaisPrincipais.length > 0) {
+                // Fechar último modal principal
+                const ultimoPrincipal = modaisPrincipais[modaisPrincipais.length - 1];
+                fecharModal(ultimoPrincipal.id);
+                e.preventDefault();
+            }
+        }
+    });
 });

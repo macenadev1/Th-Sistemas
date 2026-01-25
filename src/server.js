@@ -18,6 +18,9 @@ const produtosRoutes = require('./routes/produtos');
 const vendasRoutes = require('./routes/vendas');
 const caixaRoutes = require('./routes/caixa');
 const configuracoesRoutes = require('./routes/configuracoes');
+const clientesRoutes = require('./routes/clientes');
+const fornecedoresRoutes = require('./routes/fornecedores');
+const categoriasRoutes = require('./routes/categorias');
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
@@ -25,6 +28,9 @@ app.use('/api/produtos', produtosRoutes);
 app.use('/api/vendas', vendasRoutes);
 app.use('/api/caixa', caixaRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
+app.use('/api/clientes', clientesRoutes);
+app.use('/api/fornecedores', fornecedoresRoutes);
+app.use('/api/categorias', categoriasRoutes);
 
 // Rota principal
 app.get('/', (req, res) => {

@@ -1,0 +1,135 @@
+<!-- Modal de Edição de Cliente -->
+<div id="editarClienteModal" class="modal modal-nested">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h2>✏️ Editar Cliente</h2>
+        </div>
+        <form id="formEditarCliente" onsubmit="salvarEdicaoCliente(event)">
+            <input type="hidden" id="editarIdCliente">
+            
+            <div style="display: grid; gap: 15px; padding: 20px;">
+                <div class="form-group">
+                    <label>Nome: *</label>
+                    <input type="text" id="editarNomeCliente" required placeholder="Nome completo do cliente">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>CPF/CNPJ:</label>
+                        <input type="text" id="editarCpfCnpjCliente" placeholder="000.000.000-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone:</label>
+                        <input type="text" id="editarTelefoneCliente" placeholder="(00) 00000-0000">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>E-mail:</label>
+                    <input type="email" id="editarEmailCliente" placeholder="cliente@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label>Endereço:</label>
+                    <textarea id="editarEnderecoCliente" rows="2" placeholder="Rua, número, bairro"></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>CEP:</label>
+                        <input type="text" id="editarCepCliente" placeholder="00000-000">
+                    </div>
+                    <div class="form-group">
+                        <label>Cidade:</label>
+                        <input type="text" id="editarCidadeCliente" placeholder="Cidade">
+                    </div>
+                    <div class="form-group">
+                        <label>UF:</label>
+                        <input type="text" id="editarEstadoCliente" placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Limite de Crédito (R$):</label>
+                    <input type="text" id="editarLimiteCreditoCliente" placeholder="0,00">
+                </div>
+                
+                <div class="form-group">
+                    <label>Observações:</label>
+                    <textarea id="editarObservacoesCliente" rows="2" placeholder="Observações adicionais"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 10px;">
+                        <span style="font-weight: 600; font-size: 14px; color: #333;">Status do Cliente</span>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 2px solid #e0e0e0;">
+                        <div style="flex: 1;">
+                            <div id="statusTextoEditarCliente" style="font-weight: bold; font-size: 16px; color: #28a745; margin-bottom: 5px;">
+                                ✓ Ativo
+                            </div>
+                            <small style="color: #666; font-size: 12px;">
+                                Clientes inativos não aparecem nas listagens
+                            </small>
+                        </div>
+                        <label class="toggle-switch-cliente" style="position: relative; display: inline-block; width: 60px; height: 30px; cursor: pointer;">
+                            <input type="checkbox" id="editarAtivoCliente" style="opacity: 0; width: 0; height: 0;">
+                            <span class="toggle-slider-cliente" style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                background-color: #28a745;
+                                border-radius: 30px;
+                                transition: all 0.3s ease;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                            "></span>
+                            <span class="toggle-circle-cliente" style="
+                                position: absolute;
+                                content: '';
+                                height: 24px;
+                                width: 24px;
+                                left: 3px;
+                                bottom: 3px;
+                                background-color: white;
+                                border-radius: 50%;
+                                transition: all 0.3s ease;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                            "></span>
+                        </label>
+                    </div>
+                    <style>
+                        /* Estilo quando checkbox está desmarcado (inativo) */
+                        .toggle-switch-cliente input:not(:checked) + .toggle-slider-cliente {
+                            background-color: #dc3545 !important;
+                        }
+                        .toggle-switch-cliente input:not(:checked) ~ .toggle-circle-cliente {
+                            transform: translateX(0) !important;
+                        }
+                        /* Estilo quando checkbox está marcado (ativo) */
+                        .toggle-switch-cliente input:checked + .toggle-slider-cliente {
+                            background-color: #28a745 !important;
+                        }
+                        .toggle-switch-cliente input:checked ~ .toggle-circle-cliente {
+                            transform: translateX(30px) !important;
+                        }
+                        /* Hover effect */
+                        .toggle-switch-cliente:hover .toggle-slider-cliente {
+                            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+                        }
+                        /* Active effect */
+                        .toggle-switch-cliente:active .toggle-circle-cliente {
+                            width: 28px;
+                        }
+                    </style>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success" style="flex: 1;">✓ Salvar Alterações</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'editarClienteModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,140 @@
+<!-- Modal de Edição de Fornecedor -->
+<div id="editarFornecedorModal" class="modal modal-nested">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h2>✏️ Editar Fornecedor</h2>
+        </div>
+        <form id="formEditarFornecedor" onsubmit="salvarEdicaoFornecedor(event)">
+            <input type="hidden" id="editarIdFornecedor">
+            
+            <div style="display: grid; gap: 15px; padding: 20px;">
+                <div class="form-group">
+                    <label>Nome Fantasia: *</label>
+                    <input type="text" id="editarNomeFornecedor" required placeholder="Nome fantasia do fornecedor">
+                </div>
+                
+                <div class="form-group">
+                    <label>Razão Social:</label>
+                    <input type="text" id="editarRazaoSocialFornecedor" placeholder="Razão social completa">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>CNPJ:</label>
+                        <input type="text" id="editarCnpjFornecedor" placeholder="00.000.000/0000-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone:</label>
+                        <input type="text" id="editarTelefoneFornecedor" placeholder="(00) 0000-0000">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>E-mail:</label>
+                    <input type="email" id="editarEmailFornecedor" placeholder="contato@fornecedor.com.br">
+                </div>
+                
+                <div class="form-group">
+                    <label>Endereço:</label>
+                    <textarea id="editarEnderecoFornecedor" rows="2" placeholder="Rua, número, bairro"></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>CEP:</label>
+                        <input type="text" id="editarCepFornecedor" placeholder="00000-000">
+                    </div>
+                    <div class="form-group">
+                        <label>Cidade:</label>
+                        <input type="text" id="editarCidadeFornecedor" placeholder="Cidade">
+                    </div>
+                    <div class="form-group">
+                        <label>UF:</label>
+                        <input type="text" id="editarEstadoFornecedor" placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Contato Principal:</label>
+                    <input type="text" id="editarContatoFornecedor" placeholder="Nome do contato">
+                </div>
+                
+                <div class="form-group">
+                    <label>Observações:</label>
+                    <textarea id="editarObservacoesFornecedor" rows="2" placeholder="Observações adicionais"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 10px;">
+                        <span style="font-weight: 600; font-size: 14px; color: #333;">Status do Fornecedor</span>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 2px solid #e0e0e0;">
+                        <div style="flex: 1;">
+                            <div id="statusTextoEditarFornecedor" style="font-weight: bold; font-size: 16px; color: #28a745; margin-bottom: 5px;">
+                                ✓ Ativo
+                            </div>
+                            <small style="color: #666; font-size: 12px;">
+                                Fornecedores inativos não aparecem nas listagens
+                            </small>
+                        </div>
+                        <label class="toggle-switch-fornecedor" style="position: relative; display: inline-block; width: 60px; height: 30px; cursor: pointer;">
+                            <input type="checkbox" id="editarAtivoFornecedor" style="opacity: 0; width: 0; height: 0;">
+                            <span class="toggle-slider-fornecedor" style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                background-color: #28a745;
+                                border-radius: 30px;
+                                transition: all 0.3s ease;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                            "></span>
+                            <span class="toggle-circle-fornecedor" style="
+                                position: absolute;
+                                content: '';
+                                height: 24px;
+                                width: 24px;
+                                left: 3px;
+                                bottom: 3px;
+                                background-color: white;
+                                border-radius: 50%;
+                                transition: all 0.3s ease;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                            "></span>
+                        </label>
+                    </div>
+                    <style>
+                        /* Estilo quando checkbox está desmarcado (inativo) */
+                        .toggle-switch-fornecedor input:not(:checked) + .toggle-slider-fornecedor {
+                            background-color: #dc3545 !important;
+                        }
+                        .toggle-switch-fornecedor input:not(:checked) ~ .toggle-circle-fornecedor {
+                            transform: translateX(0) !important;
+                        }
+                        /* Estilo quando checkbox está marcado (ativo) */
+                        .toggle-switch-fornecedor input:checked + .toggle-slider-fornecedor {
+                            background-color: #28a745 !important;
+                        }
+                        .toggle-switch-fornecedor input:checked ~ .toggle-circle-fornecedor {
+                            transform: translateX(30px) !important;
+                        }
+                        /* Hover effect */
+                        .toggle-switch-fornecedor:hover .toggle-slider-fornecedor {
+                            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+                        }
+                        /* Active effect */
+                        .toggle-switch-fornecedor:active .toggle-circle-fornecedor {
+                            width: 28px;
+                        }
+                    </style>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success" style="flex: 1;">✓ Salvar Alterações</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'editarFornecedorModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

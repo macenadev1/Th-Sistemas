@@ -5,14 +5,69 @@ let produtosCompletos = [];
 let paginaAtualProdutos = 1;
 const itensPorPagina = 10;
 
+// ==================== FUNÇÕES AUXILIARES ====================
+
+// Carregar fornecedores para select
+async function carregarFornecedoresSelect(selectId, valorSelecionado = null) {
+    try {
+        const response = await fetch(`${window.API_URL}/fornecedores?ativo=true`);
+        const fornecedores = await response.json();
+        
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Nenhum --</option>';
+        fornecedores.forEach(f => {
+            const option = document.createElement('option');
+            option.value = f.id;
+            option.textContent = f.nome_fantasia;
+            if (valorSelecionado && f.id == valorSelecionado) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar fornecedores:', error);
+    }
+}
+
+// Carregar categorias para select
+async function carregarCategoriasSelect(selectId, valorSelecionado = null) {
+    try {
+        const response = await fetch(`${window.API_URL}/categorias/produtos?ativo=true`);
+        const categorias = await response.json();
+        
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Nenhuma --</option>';
+        categorias.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c.id;
+            option.textContent = c.nome;
+            if (valorSelecionado && c.id == valorSelecionado) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar categorias:', error);
+    }
+}
+
 // ==================== CADASTRO DE PRODUTOS ====================
 
 function abrirCadastro() {
-    abrirModal('cadastroModal', () => {
+    abrirModal('cadastroModal', async () => {
         const inputPreco = document.getElementById('precoProduto');
         if (inputPreco) {
             aplicarFormatacaoMoeda(inputPreco);
         }
+        
+        // Carregar fornecedores e categorias
+        await carregarFornecedoresSelect('fornecedorProduto');
+        await carregarCategoriasSelect('categoriaProduto');
+        
         const inputCodigo = document.getElementById('codigoBarras');
         if (inputCodigo) {
             inputCodigo.focus();
@@ -34,6 +89,8 @@ async function salvarProduto(event) {
     const preco = inputPreco.getValorDecimal ? inputPreco.getValorDecimal() : parseFloat(inputPreco.value);
     const estoque = parseInt(document.getElementById('estoqueProduto').value);
     const desconto = parseFloat(document.getElementById('descontoProduto').value) || 0;
+    const fornecedor_id = document.getElementById('fornecedorProduto').value || null;
+    const categoria_id = document.getElementById('categoriaProduto').value || null;
 
     try {
         const response = await fetch(`${API_URL}/produtos`, {
@@ -44,7 +101,9 @@ async function salvarProduto(event) {
                 nome: nome,
                 preco: preco,
                 desconto_percentual: desconto,
-                estoque: estoque
+                estoque: estoque,
+                fornecedor_id: fornecedor_id,
+                categoria_id: categoria_id
             })
         });
 
@@ -350,12 +409,16 @@ async function abrirEdicaoProduto(id) {
 
         // NÃO fechar modal principal - mantém em cascata
         
-        abrirModal('editarProdutoModal', () => {
+        abrirModal('editarProdutoModal', async () => {
             const inputPrecoEdicao = document.getElementById('editarPreco');
             if (inputPrecoEdicao) {
                 aplicarFormatacaoMoeda(inputPrecoEdicao);
                 inputPrecoEdicao.setValorDecimal(parseFloat(produto.preco));
             }
+            
+            // Carregar fornecedores e categorias
+            await carregarFornecedoresSelect('editarFornecedorProduto', produto.fornecedor_id);
+            await carregarCategoriasSelect('editarCategoriaProduto', produto.categoria_id);
             
             // Configurar toggle de ativo/inativo
             const checkboxAtivo = document.getElementById('editarAtivo');
@@ -405,12 +468,22 @@ async function salvarEdicaoProduto(event) {
     const estoque = parseInt(document.getElementById('editarEstoque').value);
     const desconto = parseFloat(document.getElementById('editarDesconto').value) || 0;
     const ativo = document.getElementById('editarAtivo').checked;
+    const fornecedor_id = document.getElementById('editarFornecedorProduto').value || null;
+    const categoria_id = document.getElementById('editarCategoriaProduto').value || null;
 
     try {
         const response = await fetch(`${API_URL}/produtos/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, preco, desconto_percentual: desconto, estoque, ativo })
+            body: JSON.stringify({ 
+                nome, 
+                preco, 
+                desconto_percentual: desconto, 
+                estoque, 
+                ativo,
+                fornecedor_id: fornecedor_id,
+                categoria_id: categoria_id
+            })
         });
 
         if (!response.ok) {
