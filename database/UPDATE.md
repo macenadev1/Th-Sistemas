@@ -2,6 +2,36 @@
 
 ## 📋 Histórico de Atualizações
 
+### ✅ Atualização 002: Campo Estoque Mínimo (25/01/2026)
+**Descrição:** Adiciona campo `estoque_minimo` na tabela produtos para controle de reposição e alertas de estoque baixo.
+
+**Alterações:**
+- `produtos` - Campo `estoque_minimo INT NOT NULL DEFAULT 0` (após campo `estoque`)
+- Índice `idx_estoque_alerta` para otimizar consultas de estoque baixo
+- Atualização automática dos produtos existentes com sugestão de 10% do estoque atual
+
+**Como aplicar:**
+```bash
+mysql -u root -p < database/add_estoque_minimo.sql
+```
+
+**Benefícios:**
+- ✅ Controle de estoque mínimo por produto
+- ✅ Relatório de produtos com estoque baixo/crítico
+- ✅ Alertas automáticos de reposição
+- ✅ Filtros por situação: crítico (=0), baixo (<mínimo), alerta (=mínimo)
+- ✅ Exportação para CSV
+- ✅ Integração com fornecedores e categorias
+
+**Funcionalidades Frontend:**
+- Campo "Estoque Mínimo" nos formulários de cadastro/edição de produtos
+- Relatório "⚠️ Estoque Baixo" no menu ERP
+- Cards com estatísticas de criticidade
+- Tabela ordenada por urgência (estoque zerado primeiro)
+- Cálculo automático de quantidade necessária para reposição
+
+---
+
 ### ✅ Atualização 001: Sistema de Autenticação ERP (21/01/2026)
 **Descrição:** Adiciona sistema completo de autenticação com usuários, sessões e controle de acesso.
 

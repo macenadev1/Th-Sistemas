@@ -1,0 +1,59 @@
+<!-- Modal de Relatório de Estoque Baixo -->
+<div id="relatorioEstoqueBaixoModal" class="modal">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h2>⚠️ Relatório de Estoque Baixo</h2>
+            <p style="color: #666; margin: 10px 0 0 0;">Produtos que precisam de reposição</p>
+        </div>
+
+        <!-- Filtros e Controles -->
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: end;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 600; color: #333; margin-bottom: 8px; display: block;">
+                        🔍 Buscar Produto:
+                    </label>
+                    <input type="text" id="buscaEstoqueBaixo" placeholder="Nome ou código..." 
+                        style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px;"
+                        oninput="aplicarFiltrosEstoqueBaixo()">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 600; color: #333; margin-bottom: 8px; display: block;">
+                        📊 Situação:
+                    </label>
+                    <select id="filtroSituacaoEstoque" 
+                        style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer;"
+                        onchange="aplicarFiltrosEstoqueBaixo()">
+                        <option value="todos">Todos os Produtos</option>
+                        <option value="critico" selected>⛔ Crítico (Estoque = 0)</option>
+                        <option value="baixo">⚠️ Baixo (Abaixo do Mínimo)</option>
+                        <option value="alerta">🔔 Alerta (Igual ao Mínimo)</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" onclick="gerarRelatorioEstoqueBaixo()" 
+                    style="padding: 12px 24px; white-space: nowrap;">
+                    🔄 Atualizar
+                </button>
+            </div>
+        </div>
+
+        <!-- Container do Resultado -->
+        <div id="resultadoEstoqueBaixo" style="min-height: 300px;">
+            <p style="text-align: center; padding: 40px; color: #999;">
+                Clique em "Atualizar" para gerar o relatório
+            </p>
+        </div>
+
+        <!-- Rodapé com Ações -->
+        <div class="modal-actions" style="position: sticky; bottom: 0; background: white; padding: 20px 0; border-top: 2px solid #e0e0e0; margin-top: 20px;">
+            <button id="btnExportarEstoqueBaixoCSV" class="btn btn-success" onclick="exportarEstoqueBaixoCSV()" disabled>
+                📥 Exportar CSV
+            </button>
+            <button class="btn btn-secondary" onclick="fecharModal('relatorioEstoqueBaixoModal')">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>

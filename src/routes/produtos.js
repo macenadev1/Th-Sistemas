@@ -75,15 +75,15 @@ router.get('/:codigo', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const pool = getPool();
-        const { codigo_barras, nome, preco, preco_custo, desconto_percentual, estoque, fornecedor_id, categoria_id } = req.body;
+        const { codigo_barras, nome, preco, preco_custo, desconto_percentual, estoque, estoque_minimo, fornecedor_id, categoria_id } = req.body;
         
         if (!codigo_barras || !nome || preco === undefined) {
             return res.status(400).json({ error: 'Dados incompletos' });
         }
         
         const [result] = await pool.query(
-            'INSERT INTO produtos (codigo_barras, nome, preco, preco_custo, desconto_percentual, estoque, fornecedor_id, categoria_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [codigo_barras, nome, preco, preco_custo || 0, desconto_percentual || 0, estoque || 0, fornecedor_id || null, categoria_id || null]
+            'INSERT INTO produtos (codigo_barras, nome, preco, preco_custo, desconto_percentual, estoque, estoque_minimo, fornecedor_id, categoria_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [codigo_barras, nome, preco, preco_custo || 0, desconto_percentual || 0, estoque || 0, estoque_minimo || 0, fornecedor_id || null, categoria_id || null]
         );
         
         res.json({ 
@@ -104,13 +104,13 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const pool = getPool();
-        const { nome, preco, preco_custo, desconto_percentual, estoque, ativo, fornecedor_id, categoria_id } = req.body;
+        const { nome, preco, preco_custo, desconto_percentual, estoque, estoque_minimo, ativo, fornecedor_id, categoria_id } = req.body;
         
         const ativoValue = ativo !== undefined ? (ativo ? 1 : 0) : 1;
         
         const [result] = await pool.query(
-            'UPDATE produtos SET nome = ?, preco = ?, preco_custo = ?, desconto_percentual = ?, estoque = ?, ativo = ?, fornecedor_id = ?, categoria_id = ? WHERE id = ?',
-            [nome, preco, preco_custo || 0, desconto_percentual || 0, estoque, ativoValue, fornecedor_id || null, categoria_id || null, req.params.id]
+            'UPDATE produtos SET nome = ?, preco = ?, preco_custo = ?, desconto_percentual = ?, estoque = ?, estoque_minimo = ?, ativo = ?, fornecedor_id = ?, categoria_id = ? WHERE id = ?',
+            [nome, preco, preco_custo || 0, desconto_percentual || 0, estoque, estoque_minimo || 0, ativoValue, fornecedor_id || null, categoria_id || null, req.params.id]
         );
         
         res.json({ success: true, message: 'Produto atualizado!' });

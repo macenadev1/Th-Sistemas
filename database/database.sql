@@ -66,6 +66,7 @@ CREATE TABLE produtos (
     preco_custo DECIMAL(10, 2) NOT NULL DEFAULT 0,
     desconto_percentual DECIMAL(5, 2) NOT NULL DEFAULT 0,
     estoque INT NOT NULL DEFAULT 0,
+    estoque_minimo INT NOT NULL DEFAULT 0,
     fornecedor_id INT NULL,
     categoria_id INT NULL,
     ativo BOOLEAN DEFAULT TRUE,
@@ -74,7 +75,8 @@ CREATE TABLE produtos (
     INDEX idx_codigo_barras (codigo_barras),
     INDEX idx_nome (nome),
     INDEX idx_fornecedor_id (fornecedor_id),
-    INDEX idx_categoria_id (categoria_id)
+    INDEX idx_categoria_id (categoria_id),
+    INDEX idx_estoque_alerta (estoque, estoque_minimo, ativo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================

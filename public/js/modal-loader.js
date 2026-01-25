@@ -36,7 +36,8 @@
         'editar-fornecedor',
         'relatorio-vendas-periodo',
         'relatorio-caixa-periodo',
-        'relatorio-produtos-vendidos'
+        'relatorio-produtos-vendidos',
+        'relatorio-estoque-baixo'
     ];
 
     /**

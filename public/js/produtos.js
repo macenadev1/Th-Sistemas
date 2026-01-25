@@ -95,6 +95,7 @@ async function salvarProduto(event) {
     const inputCusto = document.getElementById('custoProduto');
     const preco_custo = inputCusto.getValorDecimal ? inputCusto.getValorDecimal() : parseFloat(inputCusto.value) || 0;
     const estoque = parseInt(document.getElementById('estoqueProduto').value);
+    const estoque_minimo = parseInt(document.getElementById('estoqueMinimoProduto').value) || 0;
     const desconto = parseFloat(document.getElementById('descontoProduto').value) || 0;
     const fornecedor_id = document.getElementById('fornecedorProduto').value || null;
     const categoria_id = document.getElementById('categoriaProduto').value || null;
@@ -110,6 +111,7 @@ async function salvarProduto(event) {
                 preco_custo: preco_custo,
                 desconto_percentual: desconto,
                 estoque: estoque,
+                estoque_minimo: estoque_minimo,
                 fornecedor_id: fornecedor_id,
                 categoria_id: categoria_id
             })
@@ -412,6 +414,7 @@ async function abrirEdicaoProduto(id) {
         document.getElementById('editarCodigoBarras').value = produto.codigo_barras;
         document.getElementById('editarNome').value = produto.nome;
         document.getElementById('editarEstoque').value = produto.estoque;
+        document.getElementById('editarEstoqueMinimo').value = produto.estoque_minimo || 0;
         document.getElementById('editarDesconto').value = produto.desconto_percentual || 0;
         document.getElementById('editarAtivo').checked = produto.ativo === 1 || produto.ativo === true;
 
@@ -482,6 +485,7 @@ async function salvarEdicaoProduto(event) {
     const inputCustoEdicao = document.getElementById('editarCusto');
     const preco_custo = inputCustoEdicao.getValorDecimal ? inputCustoEdicao.getValorDecimal() : parseFloat(inputCustoEdicao.value) || 0;
     const estoque = parseInt(document.getElementById('editarEstoque').value);
+    const estoque_minimo = parseInt(document.getElementById('editarEstoqueMinimo').value) || 0;
     const desconto = parseFloat(document.getElementById('editarDesconto').value) || 0;
     const ativo = document.getElementById('editarAtivo').checked;
     const fornecedor_id = document.getElementById('editarFornecedorProduto').value || null;
@@ -496,7 +500,8 @@ async function salvarEdicaoProduto(event) {
                 preco,
                 preco_custo, 
                 desconto_percentual: desconto, 
-                estoque, 
+                estoque,
+                estoque_minimo: estoque_minimo, 
                 ativo,
                 fornecedor_id: fornecedor_id,
                 categoria_id: categoria_id

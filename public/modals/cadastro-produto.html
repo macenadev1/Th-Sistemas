@@ -30,11 +30,16 @@
                 </div>
             </div>
             
-            <!-- Linha 3: Estoque + Desconto -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <!-- Linha 3: Estoque + Estoque Mínimo + Desconto -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                 <div class="form-group" style="margin-bottom: 0;">
                     <label>Estoque Inicial:</label>
                     <input type="number" id="estoqueProduto" min="0" value="0" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Estoque Mínimo:</label>
+                    <input type="number" id="estoqueMinimoProduto" min="0" value="0" required>
+                    <small style="color: #666; display: block; margin-top: 5px;">⚠️ Alerta de reposição</small>
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
                     <label>Desconto (%):</label>
