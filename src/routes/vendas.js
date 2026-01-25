@@ -38,9 +38,9 @@ router.post('/', async (req, res) => {
         
         // Inserir itens e atualizar estoque
         for (const item of itens) {
-            // Buscar ID do produto
+            // Buscar ID e CUSTO do produto (para análise de lucratividade)
             const [produtoRows] = await connection.query(
-                'SELECT id FROM produtos WHERE codigo_barras = ?',
+                'SELECT id, preco_custo FROM produtos WHERE codigo_barras = ?',
                 [item.codigo]
             );
             
@@ -49,11 +49,12 @@ router.post('/', async (req, res) => {
             }
             
             const produtoId = produtoRows[0].id;
+            const precoCusto = produtoRows[0].preco_custo || 0;
             
-            // Inserir item da venda
+            // Inserir item da venda (COM CUSTO para análise histórica)
             await connection.query(
-                'INSERT INTO itens_venda (venda_id, produto_id, codigo_barras, nome_produto, quantidade, preco_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [vendaId, produtoId, item.codigo, item.nome, item.quantidade, item.preco, item.preco * item.quantidade]
+                'INSERT INTO itens_venda (venda_id, produto_id, codigo_barras, nome_produto, quantidade, preco_unitario, preco_custo_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [vendaId, produtoId, item.codigo, item.nome, item.quantidade, item.preco, precoCusto, item.preco * item.quantidade]
             );
             
             // Atualizar estoque

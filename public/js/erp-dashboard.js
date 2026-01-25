@@ -88,20 +88,38 @@ async function carregarEstatisticasGerais() {
         }
         
         // Caixa
-        const caixaResponse = await fetch(`${API_URL}/caixa/status`);
-        if (caixaResponse.ok) {
-            const caixa = await caixaResponse.json();
-            if (caixa.aberto && caixa.caixa) {
-                const saldo = parseFloat(caixa.caixa.valorAbertura) + 
-                             parseFloat(caixa.caixa.totalVendas) + 
-                             parseFloat(caixa.caixa.totalReforcos) - 
-                             parseFloat(caixa.caixa.totalSangrias);
-                document.getElementById('saldoCaixa').textContent = `R$ ${saldo.toFixed(2)}`;
-                document.getElementById('statusCaixa').textContent = '✅ Caixa aberto';
+        try {
+            const caixaResponse = await fetch(`${API_URL}/caixa/status`);
+            if (caixaResponse.ok) {
+                const caixa = await caixaResponse.json();
+                console.log('Status do caixa:', caixa); // Debug
+                
+                const saldoElement = document.getElementById('saldoCaixa');
+                const statusElement = document.getElementById('statusCaixa');
+                
+                if (saldoElement && statusElement) {
+                    if (caixa.aberto && caixa.caixa) {
+                        const saldo = parseFloat(caixa.caixa.valorAbertura || 0) + 
+                                     parseFloat(caixa.caixa.totalVendas || 0) + 
+                                     parseFloat(caixa.caixa.totalReforcos || 0) - 
+                                     parseFloat(caixa.caixa.totalSangrias || 0);
+                        saldoElement.textContent = `R$ ${saldo.toFixed(2)}`;
+                        statusElement.textContent = '✅ Caixa aberto';
+                        console.log('Saldo atualizado para:', saldo.toFixed(2)); // Debug
+                    } else {
+                        saldoElement.textContent = 'R$ 0,00';
+                        statusElement.textContent = '🔒 Caixa fechado';
+                    }
+                }
             } else {
-                document.getElementById('saldoCaixa').textContent = 'R$ 0,00';
-                document.getElementById('statusCaixa').textContent = '🔒 Caixa fechado';
+                console.error('Erro ao buscar status do caixa:', caixaResponse.status);
+                const statusElement = document.getElementById('statusCaixa');
+                if (statusElement) statusElement.textContent = '⚠️ Erro ao carregar';
             }
+        } catch (error) {
+            console.error('Erro ao carregar status do caixa:', error);
+            const statusElement = document.getElementById('statusCaixa');
+            if (statusElement) statusElement.textContent = '⚠️ Erro de conexão';
         }
         
         // Produtos
@@ -989,12 +1007,81 @@ function limparFiltrosVendasERP() {
  * Carregar seção de caixa
  */
 async function carregarCaixaSection() {
+    // Carregar estado do caixa
+    await carregarEstadoCaixa();
+    
     const content = document.getElementById('caixa-content');
+    
+    const saldoAtual = caixaAberto 
+        ? (caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias)
+        : 0;
+    
+    const statusCor = caixaAberto ? '#28a745' : '#dc3545';
+    const statusTexto = caixaAberto ? '🔓 Caixa Aberto' : '🔒 Caixa Fechado';
+    const statusBg = caixaAberto ? '#d4edda' : '#f8d7da';
+    
     content.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <button onclick="abrirMenuCaixa()" class="btn btn-primary" style="font-size: 18px; padding: 15px 30px;">
-                💰 Abrir Gerenciador de Caixa
-            </button>
+        <div style="max-width: 600px; margin: 0 auto;">
+            <!-- Status do Caixa -->
+            <div style="background: ${statusBg}; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; border-left: 4px solid ${statusCor};">
+                <h3 style="margin: 0 0 10px 0; color: ${statusCor};">${statusTexto}</h3>
+                <p style="margin: 0; font-size: 24px; font-weight: bold; color: ${statusCor};">
+                    Saldo Atual: R$ ${saldoAtual.toFixed(2)}
+                </p>
+            </div>
+            
+            <!-- Botões de Ação -->
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button 
+                    type="button" 
+                    onclick="abrirModalAberturaCaixa()" 
+                    id="btnAbrirCaixaSection" 
+                    class="btn btn-success" 
+                    style="font-size: 18px; padding: 18px;"
+                    ${caixaAberto ? 'disabled' : ''}>
+                    🔓 Abrir Caixa
+                </button>
+                
+                <button 
+                    type="button" 
+                    onclick="abrirModalReforcoCaixa()" 
+                    id="btnReforcoCaixaSection" 
+                    class="btn btn-primary" 
+                    style="font-size: 18px; padding: 18px;"
+                    ${!caixaAberto ? 'disabled' : ''}>
+                    💵 Reforço de Caixa
+                </button>
+                
+                <button 
+                    type="button" 
+                    onclick="abrirModalSangria()" 
+                    id="btnSangriaSection" 
+                    class="btn btn-warning" 
+                    style="font-size: 18px; padding: 18px; background: #ff9800; border-color: #ff9800;"
+                    ${!caixaAberto ? 'disabled' : ''}>
+                    📉 Sangria
+                </button>
+                
+                <button 
+                    type="button" 
+                    onclick="abrirModalFechamentoCaixa()" 
+                    id="btnFecharCaixaSection" 
+                    class="btn btn-danger" 
+                    style="font-size: 18px; padding: 18px;"
+                    ${!caixaAberto ? 'disabled' : ''}>
+                    🔒 Fechar Caixa
+                </button>
+                
+                <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+                
+                <button 
+                    type="button" 
+                    onclick="abrirHistoricoFechamentos()" 
+                    class="btn btn-info" 
+                    style="font-size: 18px; padding: 18px; background: #6c757d; border-color: #6c757d;">
+                    📊 Histórico de Fechamentos
+                </button>
+            </div>
         </div>
     `;
 }
@@ -1038,7 +1125,35 @@ function abrirRelatorioVendasPeriodo() {
 /**
  * Setar período pré-definido
  */
-function setarPeriodoRelatorio(tipo) {
+function setarPeriodoRelatorio(tipo, botaoClicado) {
+    // Remover animação de todos os botões de período
+    const botoesPeriodo = document.querySelectorAll('[id^="btnPeriodo"]');
+    botoesPeriodo.forEach(btn => {
+        btn.style.opacity = '1';
+        btn.style.transform = 'scale(1)';
+        btn.innerHTML = btn.innerHTML.replace(' ⏳', '').replace(' ✓', '');
+    });
+    
+    // Adicionar feedback visual no botão clicado
+    if (botaoClicado) {
+        const textoOriginal = botaoClicado.innerHTML;
+        botaoClicado.innerHTML = textoOriginal + ' ⏳';
+        botaoClicado.style.opacity = '0.7';
+        botaoClicado.style.transform = 'scale(0.95)';
+        
+        // Após definir o período, restaurar botão
+        setTimeout(() => {
+            botaoClicado.innerHTML = textoOriginal + ' ✓';
+            botaoClicado.style.opacity = '1';
+            botaoClicado.style.transform = 'scale(1)';
+            
+            // Remover checkmark após 2 segundos
+            setTimeout(() => {
+                botaoClicado.innerHTML = textoOriginal;
+            }, 2000);
+        }, 300);
+    }
+    
     const hoje = new Date();
     const dataFinal = new Date(hoje);
     let dataInicial = new Date(hoje);
@@ -1069,6 +1184,16 @@ function setarPeriodoRelatorio(tipo) {
     // Formatar datas para input type="date"
     document.getElementById('dataInicialRelatorio').value = dataInicial.toISOString().split('T')[0];
     document.getElementById('dataFinalRelatorio').value = dataFinal.toISOString().split('T')[0];
+    
+    // Mostrar notificação
+    const nomesPeriodo = {
+        'hoje': 'Hoje',
+        'ontem': 'Ontem',
+        'semana': 'Esta Semana',
+        'mes': 'Este Mês',
+        'ano': 'Este Ano'
+    };
+    mostrarNotificacao(`✓ Período selecionado: ${nomesPeriodo[tipo]}`, 'success');
 }
 
 /**
@@ -1115,7 +1240,8 @@ async function gerarRelatorioVendas() {
                     <p style="margin-top: 10px;">Tente selecionar um período diferente</p>
                 </div>
             `;
-            document.getElementById('btnImprimirRelatorio').disabled = true;
+            document.getElementById('btnExportarPDF').disabled = true;
+            document.getElementById('btnExportarCSV').disabled = true;
             return;
         }
         
@@ -1139,14 +1265,6 @@ async function gerarRelatorioVendas() {
         // Renderizar relatório
         container.innerHTML = `
             <div class="relatorio-resultado" id="areaImpressao">
-                <style>
-                    @media print {
-                        body * { visibility: hidden; }
-                        #areaImpressao, #areaImpressao * { visibility: visible; }
-                        #areaImpressao { position: absolute; left: 0; top: 0; width: 100%; }
-                        .btn, button { display: none !important; }
-                    }
-                </style>
                 
                 <!-- Cabeçalho -->
                 <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #007bff;">
@@ -1230,11 +1348,11 @@ async function gerarRelatorioVendas() {
             </div>
         `;
         
-        // Habilitar botão de impressão
-        document.getElementById('btnImprimirRelatorio').disabled = false;
+        // Habilitar botão de exportação
+        document.getElementById('btnExportarCSV').disabled = false;
         
         // Carregar itens das vendas de forma assíncrona
-        carregarItensVendasRelatorio(vendas);
+        carregarItensVendasRelatorio(vendas, dataInicial, dataFinal);
         
         mostrarNotificacao('✅ Relatório gerado com sucesso!', 'success');
         
@@ -1247,15 +1365,105 @@ async function gerarRelatorioVendas() {
                 <p style="font-size: 14px; margin-top: 10px;">${error.message}</p>
             </div>
         `;
-        document.getElementById('btnImprimirRelatorio').disabled = true;
+        document.getElementById('btnExportarCSV').disabled = true;
     }
 }
 
 /**
- * Imprimir relatório
+ * Exportar relatório para CSV
  */
-function imprimirRelatorioVendas() {
-    window.print();
+function exportarRelatorioCSV() {
+    if (!window.dadosRelatorioAtual || !window.dadosRelatorioAtual.vendas) {
+        mostrarNotificacao('Gere o relatório primeiro!', 'error');
+        return;
+    }
+
+    const { vendas, periodo } = window.dadosRelatorioAtual;
+    
+    // Cabeçalho do CSV
+    let csv = 'Venda ID,Data/Hora,Produto,Código,Quantidade,Preço Unit.,Custo Unit.,Subtotal,Custo Total,Lucro,Margem %,Total Venda,Forma Pagamento\n';
+    
+    // Dados das vendas
+    vendas.forEach(({ venda, itens, formas_pagamento }) => {
+        const data = new Date(venda.data_venda.replace(' ', 'T'));
+        const dataFormatada = data.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        // Formas de pagamento concatenadas
+        const nomes = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'PIX' };
+        const pagamentosTexto = formas_pagamento && formas_pagamento.length > 0
+            ? formas_pagamento.map(fp => `${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}`).join('; ')
+            : '';
+        
+        itens.forEach((item, index) => {
+            const precoUnit = parseFloat(item.preco_unitario);
+            const custoUnit = parseFloat(item.preco_custo_unitario) || 0;
+            const quantidade = parseInt(item.quantidade);
+            const subtotal = parseFloat(item.subtotal);
+            const custoTotal = custoUnit * quantidade;
+            const lucro = subtotal - custoTotal;
+            const margem = subtotal > 0 ? ((lucro / subtotal) * 100).toFixed(1) : '0.0';
+            
+            // Escapar aspas duplas no CSV
+            const nomeProduto = item.nome_produto.replace(/"/g, '""');
+            
+            csv += `${venda.id},`;
+            csv += `"${dataFormatada}",`;
+            csv += `"${nomeProduto}",`;
+            csv += `${item.codigo_barras},`;
+            csv += `${quantidade},`;
+            csv += `${precoUnit.toFixed(2)},`;
+            csv += `${custoUnit.toFixed(2)},`;
+            csv += `${subtotal.toFixed(2)},`;
+            csv += `${custoTotal.toFixed(2)},`;
+            csv += `${lucro.toFixed(2)},`;
+            csv += `${margem},`;
+            csv += index === 0 ? `${parseFloat(venda.total).toFixed(2)},` : ','; // Total venda apenas na primeira linha
+            csv += index === 0 ? `"${pagamentosTexto}"` : ''; // Pagamento apenas na primeira linha
+            csv += '\n';
+        });
+    });
+    
+    // Calcular totais
+    const totalGeralVendas = vendas.reduce((sum, { venda }) => sum + parseFloat(venda.total), 0);
+    const totalItensVendidos = vendas.reduce((sum, { venda }) => sum + parseInt(venda.quantidade_itens), 0);
+    const quantidadeVendas = vendas.length;
+    
+    let totalCustos = 0;
+    vendas.forEach(({ itens }) => {
+        itens.forEach(item => {
+            const custoPorItem = (parseFloat(item.preco_custo_unitario) || 0) * parseInt(item.quantidade);
+            totalCustos += custoPorItem;
+        });
+    });
+    
+    const totalLucro = totalGeralVendas - totalCustos;
+    const margemPercentual = totalGeralVendas > 0 ? ((totalLucro / totalGeralVendas) * 100).toFixed(1) : '0.0';
+    
+    // Linha de totais
+    csv += '\n';
+    csv += `TOTAIS,${quantidadeVendas} venda(s),,${totalItensVendidos},,,,${totalGeralVendas.toFixed(2)},${totalCustos.toFixed(2)},${totalLucro.toFixed(2)},${margemPercentual}%,,\n`;
+    
+    // Criar arquivo e download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const nomeArquivo = `relatorio_vendas_${periodo.dataInicial}_${periodo.dataFinal}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', nomeArquivo);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    mostrarNotificacao('✅ Arquivo CSV exportado com sucesso!', 'success');
 }
 
 // Inicialização
@@ -1292,7 +1500,7 @@ function abrirHistorico() {
 /**
  * Carregar itens das vendas para o relatório
  */
-async function carregarItensVendasRelatorio(vendas) {
+async function carregarItensVendasRelatorio(vendas, dataInicial, dataFinal) {
     const container = document.getElementById('listaVendasDetalhada');
     
     try {
@@ -1307,6 +1515,32 @@ async function carregarItensVendasRelatorio(vendas) {
         );
         
         const vendasComItens = await Promise.all(promises);
+        
+        // Salvar dados do relatório para exportação
+        window.dadosRelatorioAtual = {
+            vendas: vendasComItens,
+            periodo: {
+                dataInicial: dataInicial,
+                dataFinal: dataFinal
+            }
+        };
+        
+        // Calcular totais gerais - VENDAS + CUSTOS + LUCROS
+        const totalGeralVendas = vendasComItens.reduce((sum, { venda }) => sum + parseFloat(venda.total), 0);
+        const totalItensVendidos = vendasComItens.reduce((sum, { venda }) => sum + parseInt(venda.quantidade_itens), 0);
+        const quantidadeVendas = vendasComItens.length;
+        
+        // Calcular custo total e lucro total
+        let totalCustos = 0;
+        vendasComItens.forEach(({ itens }) => {
+            itens.forEach(item => {
+                const custoPorItem = (parseFloat(item.preco_custo_unitario) || 0) * parseInt(item.quantidade);
+                totalCustos += custoPorItem;
+            });
+        });
+        
+        const totalLucro = totalGeralVendas - totalCustos;
+        const margemPercentual = totalGeralVendas > 0 ? ((totalLucro / totalGeralVendas) * 100).toFixed(1) : '0.0';
         
         // Mapear nomes das formas de pagamento
         const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
@@ -1323,7 +1557,11 @@ async function carregarItensVendasRelatorio(vendas) {
                             <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Produto</th>
                             <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Qtd</th>
                             <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Preço Unit.</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Unit.</th>
                             <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Subtotal</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Total</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Lucro</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Margem %</th>
                             <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Total Venda</th>
                             <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Pagamento</th>
                         </tr>
@@ -1348,7 +1586,22 @@ async function carregarItensVendasRelatorio(vendas) {
                             }
                             
                             // Renderizar cada item da venda como uma linha
-                            return itens.map((item, index) => `
+                            return itens.map((item, index) => {
+                                // Calcular lucratividade do item
+                                const precoUnit = parseFloat(item.preco_unitario);
+                                const custoUnit = parseFloat(item.preco_custo_unitario) || 0;
+                                const quantidade = parseInt(item.quantidade);
+                                const subtotal = parseFloat(item.subtotal);
+                                const custoTotal = custoUnit * quantidade;
+                                const lucro = subtotal - custoTotal;
+                                const margem = subtotal > 0 ? ((lucro / subtotal) * 100).toFixed(1) : '0.0';
+                                
+                                // Cores para margem
+                                let margemCor = '#28a745'; // Verde (boa margem)
+                                if (parseFloat(margem) < 10) margemCor = '#dc3545'; // Vermelho (margem baixa)
+                                else if (parseFloat(margem) < 30) margemCor = '#ffc107'; // Amarelo (margem média)
+                                
+                                return `
                                 <tr style="border-bottom: 1px solid #eee; ${index === 0 ? 'border-top: 2px solid #007bff;' : ''}">
                                     ${index === 0 ? `
                                         <td rowspan="${itens.length}" style="padding: 12px; font-weight: bold; background: #f8f9fa; color: #007bff; border-right: 1px solid #ddd; vertical-align: top;">
@@ -1364,13 +1617,25 @@ async function carregarItensVendasRelatorio(vendas) {
                                         <span style="font-size: 11px; color: #999;">Cód: ${item.codigo_barras}</span>
                                     </td>
                                     <td style="padding: 12px; text-align: center; font-weight: bold; color: #007bff;">
-                                        ${item.quantidade}
+                                        ${quantidade}
                                     </td>
                                     <td style="padding: 12px; text-align: right; color: #666;">
-                                        R$ ${parseFloat(item.preco_unitario).toFixed(2)}
+                                        R$ ${precoUnit.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; color: #999; font-size: 13px;">
+                                        R$ ${custoUnit.toFixed(2)}
                                     </td>
                                     <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">
-                                        R$ ${parseFloat(item.subtotal).toFixed(2)}
+                                        R$ ${subtotal.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; color: #dc3545; font-size: 13px;">
+                                        R$ ${custoTotal.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; font-weight: bold; color: ${lucro >= 0 ? '#28a745' : '#dc3545'};">
+                                        R$ ${lucro.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${margemCor}; font-size: 13px;">
+                                        ${margem}%
                                     </td>
                                     ${index === 0 ? `
                                         <td rowspan="${itens.length}" style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745; background: #f8f9fa; border-left: 1px solid #ddd; vertical-align: top;">
@@ -1382,9 +1647,1002 @@ async function carregarItensVendasRelatorio(vendas) {
                                         </td>
                                     ` : ''}
                                 </tr>
-                            `).join('');
+                            `;
+                            }).join('');
                         }).join('')}
                     </tbody>
+                    <tfoot>
+                        <tr style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; font-weight: bold; font-size: 16px;">
+                            <td colspan="2" style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">
+                                📊 TOTAL GERAL
+                            </td>
+                            <td style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">
+                                ${quantidadeVendas} venda(s)
+                            </td>
+                            <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd;">
+                                ${totalItensVendidos}
+                            </td>
+                            <td colspan="2" style="padding: 15px; text-align: right; border-top: 3px solid #ddd;">
+                                <!-- Espaço -->
+                            </td>
+                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 20px;">
+                                R$ ${totalGeralVendas.toFixed(2)}
+                            </td>
+                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 16px; color: #ffe6e6;">
+                                R$ ${totalCustos.toFixed(2)}
+                            </td>
+                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 18px;">
+                                R$ ${totalLucro.toFixed(2)}
+                            </td>
+                            <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd; font-size: 18px;">
+                                ${margemPercentual}%
+                            </td>
+                            <td colspan="2" style="padding: 15px; border-top: 3px solid #ddd;">
+                                <!-- Espaço -->
+                            </td>
+                        </tr>
+                        <tr style="background: #f8f9fa; font-size: 14px; color: #333;">
+                            <td colspan="6" style="padding: 12px; text-align: right; font-weight: bold;">
+                                💰 Resumo Financeiro:
+                            </td>
+                            <td style="padding: 12px; text-align: right;">
+                                <strong style="color: #28a745;">Receita</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: right;">
+                                <strong style="color: #dc3545;">Custos</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: right;">
+                                <strong style="color: #007bff;">Lucro Líquido</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: center;">
+                                <strong style="color: #6f42c1;">Margem</strong>
+                            </td>
+                            <td colspan="2" style="padding: 12px;">
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Erro ao carregar itens:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #dc3545;">
+                <p>Erro ao carregar itens das vendas</p>
+            </div>
+        `;
+    }
+}
+
+// ==================== RELATÓRIOS DE CAIXA ====================
+
+/**
+ * Abrir modal de relatório de caixa por período
+ */
+function abrirRelatorioCaixaPeriodo() {
+    abrirModal('relatorioCaixaPeriodoModal', () => {
+        // Setar período padrão: últimos 30 dias
+        setarPeriodoRelatorioCaixa('mes');
+    });
+}
+
+/**
+ * Setar período pré-definido para relatório de caixa
+ */
+function setarPeriodoRelatorioCaixa(tipo, botaoClicado) {
+    // Remover animação de todos os botões de período
+    const botoesPeriodo = document.querySelectorAll('[id^="btnPeriodo"][id$="Caixa"]');
+    botoesPeriodo.forEach(btn => {
+        btn.style.opacity = '1';
+        btn.style.transform = 'scale(1)';
+        btn.innerHTML = btn.innerHTML.replace(' ⏳', '').replace(' ✓', '');
+    });
+    
+    // Adicionar feedback visual no botão clicado
+    if (botaoClicado) {
+        const textoOriginal = botaoClicado.innerHTML;
+        botaoClicado.innerHTML = textoOriginal + ' ⏳';
+        botaoClicado.style.opacity = '0.7';
+        botaoClicado.style.transform = 'scale(0.95)';
+        
+        // Após definir o período, restaurar botão
+        setTimeout(() => {
+            botaoClicado.innerHTML = textoOriginal + ' ✓';
+            botaoClicado.style.opacity = '1';
+            botaoClicado.style.transform = 'scale(1)';
+            
+            // Remover checkmark após 2 segundos
+            setTimeout(() => {
+                botaoClicado.innerHTML = textoOriginal;
+            }, 2000);
+        }, 300);
+    }
+    
+    const hoje = new Date();
+    const dataFinal = new Date(hoje);
+    let dataInicial = new Date(hoje);
+    
+    switch(tipo) {
+        case 'hoje':
+            // Mesmo dia
+            break;
+        case 'ontem':
+            dataInicial.setDate(hoje.getDate() - 1);
+            dataFinal.setDate(hoje.getDate() - 1);
+            break;
+        case 'semana':
+            // Domingo a hoje
+            const diaSemana = hoje.getDay();
+            dataInicial.setDate(hoje.getDate() - diaSemana);
+            break;
+        case 'mes':
+            // Primeiro dia do mês
+            dataInicial.setDate(1);
+            break;
+        case 'ano':
+            // Primeiro dia do ano
+            dataInicial.setMonth(0, 1);
+            break;
+    }
+    
+    // Formatar datas para input type="date"
+    document.getElementById('dataInicialRelatorioCaixa').value = dataInicial.toISOString().split('T')[0];
+    document.getElementById('dataFinalRelatorioCaixa').value = dataFinal.toISOString().split('T')[0];
+    
+    // Mostrar notificação
+    const nomesPeriodo = {
+        'hoje': 'Hoje',
+        'ontem': 'Ontem',
+        'semana': 'Esta Semana',
+        'mes': 'Este Mês',
+        'ano': 'Este Ano'
+    };
+    mostrarNotificacao(`✓ Período selecionado: ${nomesPeriodo[tipo]}`, 'success');
+}
+
+/**
+ * Gerar relatório de movimento de caixa
+ */
+async function gerarRelatorioCaixa() {
+    const dataInicial = document.getElementById('dataInicialRelatorioCaixa').value;
+    const dataFinal = document.getElementById('dataFinalRelatorioCaixa').value;
+    
+    if (!dataInicial || !dataFinal) {
+        mostrarNotificacao('⚠️ Selecione as datas inicial e final', 'error');
+        return;
+    }
+    
+    if (new Date(dataInicial) > new Date(dataFinal)) {
+        mostrarNotificacao('⚠️ Data inicial não pode ser maior que data final', 'error');
+        return;
+    }
+    
+    const container = document.getElementById('resultadoRelatorioCaixa');
+    container.innerHTML = '<p style="text-align: center; padding: 40px;"><strong>Carregando relatório...</strong></p>';
+    
+    try {
+        const response = await fetch(`${API_URL}/caixa/fechamentos`);
+        if (!response.ok) throw new Error('Erro ao carregar fechamentos');
+        
+        const data = await response.json();
+        console.log('📊 Dados retornados da API:', data);
+        const todosFechamentos = data.fechamentos || [];
+        console.log('📊 Total de fechamentos:', todosFechamentos.length);
+        
+        // Filtrar fechamentos no período
+        const fechamentos = todosFechamentos.filter(fechamento => {
+            // Validar se data existe e é válida
+            if (!fechamento.dataHoraFechamento) {
+                console.warn('⚠️ Fechamento sem data:', fechamento);
+                return false;
+            }
+            
+            const dataFechamento = new Date(fechamento.dataHoraFechamento);
+            
+            // Verificar se data é válida
+            if (isNaN(dataFechamento.getTime())) {
+                console.warn('⚠️ Data inválida:', fechamento.dataHoraFechamento);
+                return false;
+            }
+            
+            const dataFechamentoSemHora = new Date(dataFechamento.toISOString().split('T')[0]);
+            const inicial = new Date(dataInicial);
+            const final = new Date(dataFinal);
+            
+            console.log('📅 Comparando:', {
+                fechamento: dataFechamentoSemHora.toISOString().split('T')[0],
+                inicial: inicial.toISOString().split('T')[0],
+                final: final.toISOString().split('T')[0],
+                match: dataFechamentoSemHora >= inicial && dataFechamentoSemHora <= final
+            });
+            
+            return dataFechamentoSemHora >= inicial && dataFechamentoSemHora <= final;
+        });
+        
+        console.log('📊 Fechamentos após filtro:', fechamentos.length);
+        
+        if (fechamentos.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #999;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">💰</div>
+                    <h3>Nenhum fechamento de caixa encontrado no período</h3>
+                    <p style="margin-top: 10px;">Tente selecionar um período diferente</p>
+                </div>
+            `;
+            document.getElementById('btnExportarCaixaCSV').disabled = true;
+            return;
+        }
+        
+        // Salvar dados para exportação CSV
+        window.dadosRelatorioCaixaAtual = {
+            fechamentos: fechamentos,
+            periodo: {
+                dataInicial: dataInicial,
+                dataFinal: dataFinal
+            }
+        };
+        
+        // Calcular estatísticas
+        const totalFechamentos = fechamentos.length;
+        const totalAberturas = fechamentos.reduce((sum, f) => sum + parseFloat(f.valorAbertura), 0);
+        const totalVendas = fechamentos.reduce((sum, f) => sum + parseFloat(f.totalVendas), 0);
+        const totalReforcos = fechamentos.reduce((sum, f) => sum + parseFloat(f.totalReforcos), 0);
+        const totalSangrias = fechamentos.reduce((sum, f) => sum + parseFloat(f.totalSangrias), 0);
+        const totalDiferencas = fechamentos.reduce((sum, f) => sum + parseFloat(f.diferenca), 0);
+        
+        // Renderizar relatório
+        container.innerHTML = `
+            <div class="relatorio-resultado">
+                
+                <!-- Cabeçalho -->
+                <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #ff9800;">
+                    <h2 style="margin: 0; color: #ff9800;">💰 Relatório de Movimento de Caixa</h2>
+                    <p style="margin: 10px 0 0 0; color: #666;">
+                        Período: ${new Date(dataInicial).toLocaleDateString('pt-BR')} até ${new Date(dataFinal).toLocaleDateString('pt-BR')}
+                    </p>
+                    <p style="margin: 5px 0 0 0; color: #999; font-size: 14px;">
+                        Gerado em: ${new Date().toLocaleString('pt-BR')}
+                    </p>
+                </div>
+                
+                <!-- Cards de Estatísticas -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Total de Fechamentos</div>
+                        <div style="font-size: 36px; font-weight: bold;">${totalFechamentos}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Total em Vendas</div>
+                        <div style="font-size: 36px; font-weight: bold;">R$ ${totalVendas.toFixed(2)}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Total em Reforços</div>
+                        <div style="font-size: 36px; font-weight: bold;">R$ ${totalReforcos.toFixed(2)}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Total em Sangrias</div>
+                        <div style="font-size: 36px; font-weight: bold;">R$ ${totalSangrias.toFixed(2)}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, ${totalDiferencas >= 0 ? '#43e97b 0%, #38f9d7' : '#fa709a 0%, #ff6b6b'} 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Diferenças Total</div>
+                        <div style="font-size: 36px; font-weight: bold;">${totalDiferencas >= 0 ? '+' : ''}R$ ${totalDiferencas.toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <!-- Tabela de Fechamentos -->
+                <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto;">
+                    <h3 style="margin-top: 0; color: #333; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">📋 Detalhamento de Fechamentos</h3>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); color: white;">
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">ID</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Operador</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Data/Hora Abertura</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Data/Hora Fechamento</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Vlr. Abertura</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Vendas</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Reforços</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Sangrias</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Saldo Esperado</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Saldo Real</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Diferença</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${fechamentos.map(f => {
+                                const dataAbertura = new Date(f.dataHoraAbertura).toLocaleString('pt-BR', {
+                                    day: '2-digit', month: '2-digit', year: 'numeric',
+                                    hour: '2-digit', minute: '2-digit'
+                                });
+                                const dataFechamento = new Date(f.dataHoraFechamento).toLocaleString('pt-BR', {
+                                    day: '2-digit', month: '2-digit', year: 'numeric',
+                                    hour: '2-digit', minute: '2-digit'
+                                });
+                                const diferenca = parseFloat(f.diferenca);
+                                const diferencaCor = diferenca === 0 ? '#666' : diferenca > 0 ? '#28a745' : '#dc3545';
+                                const diferencaIcone = diferenca === 0 ? '=' : diferenca > 0 ? '↑' : '↓';
+                                
+                                return `
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 12px; font-weight: bold; color: #007bff;">#${f.id}</td>
+                                        <td style="padding: 12px;">${f.operador}</td>
+                                        <td style="padding: 12px; text-align: center; white-space: nowrap;">${dataAbertura}</td>
+                                        <td style="padding: 12px; text-align: center; white-space: nowrap;">${dataFechamento}</td>
+                                        <td style="padding: 12px; text-align: right;">R$ ${parseFloat(f.valorAbertura).toFixed(2)}</td>
+                                        <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">R$ ${parseFloat(f.totalVendas).toFixed(2)}</td>
+                                        <td style="padding: 12px; text-align: right; color: #17a2b8;">R$ ${parseFloat(f.totalReforcos).toFixed(2)}</td>
+                                        <td style="padding: 12px; text-align: right; color: #ff9800;">R$ ${parseFloat(f.totalSangrias).toFixed(2)}</td>
+                                        <td style="padding: 12px; text-align: right; font-weight: bold;">R$ ${parseFloat(f.saldoEsperado).toFixed(2)}</td>
+                                        <td style="padding: 12px; text-align: right; font-weight: bold;">R$ ${parseFloat(f.saldoReal).toFixed(2)}</td>
+                                        <td style="padding: 12px; text-align: right; font-weight: bold; color: ${diferencaCor};">
+                                            ${diferencaIcone} R$ ${Math.abs(diferenca).toFixed(2)}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f8f9fa; font-weight: bold;">
+                                <td colspan="4" style="padding: 12px; text-align: right; border-top: 2px solid #ddd;">TOTAIS:</td>
+                                <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd;">R$ ${totalAberturas.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: #28a745;">R$ ${totalVendas.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: #17a2b8;">R$ ${totalReforcos.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: #ff9800;">R$ ${totalSangrias.toFixed(2)}</td>
+                                <td colspan="2" style="padding: 12px; border-top: 2px solid #ddd;"></td>
+                                <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: ${totalDiferencas >= 0 ? '#28a745' : '#dc3545'};">
+                                    ${totalDiferencas >= 0 ? '+' : ''}R$ ${totalDiferencas.toFixed(2)}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        // Habilitar botão de exportação
+        document.getElementById('btnExportarCaixaCSV').disabled = false;
+        
+        mostrarNotificacao('✅ Relatório gerado com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao gerar relatório:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc3545;">
+                <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+                <p>Erro ao gerar relatório</p>
+                <p style="font-size: 14px; margin-top: 10px;">${error.message}</p>
+            </div>
+        `;
+        document.getElementById('btnExportarCaixaCSV').disabled = true;
+    }
+}
+
+/**
+ * Exportar relatório de caixa para CSV
+ */
+function exportarRelatorioCaixaCSV() {
+    if (!window.dadosRelatorioCaixaAtual || !window.dadosRelatorioCaixaAtual.fechamentos) {
+        mostrarNotificacao('Gere o relatório primeiro!', 'error');
+        return;
+    }
+
+    const { fechamentos, periodo } = window.dadosRelatorioCaixaAtual;
+    
+    // Cabeçalho do CSV
+    let csv = 'ID,Operador,Data/Hora Abertura,Data/Hora Fechamento,Valor Abertura,Total Vendas,Total Reforços,Total Sangrias,Saldo Esperado,Saldo Real,Diferença\n';
+    
+    // Dados dos fechamentos
+    fechamentos.forEach(f => {
+        const dataAbertura = new Date(f.dataHoraAbertura).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        const dataFechamento = new Date(f.dataHoraFechamento).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        
+        csv += `${f.id},"${f.operador}","${dataAbertura}","${dataFechamento}",`;
+        csv += `${parseFloat(f.valorAbertura).toFixed(2)},`;
+        csv += `${parseFloat(f.totalVendas).toFixed(2)},`;
+        csv += `${parseFloat(f.totalReforcos).toFixed(2)},`;
+        csv += `${parseFloat(f.totalSangrias).toFixed(2)},`;
+        csv += `${parseFloat(f.saldoEsperado).toFixed(2)},`;
+        csv += `${parseFloat(f.saldoReal).toFixed(2)},`;
+        csv += `${parseFloat(f.diferenca).toFixed(2)}\n`;
+    });
+    
+    // Calcular totais
+    const totalAberturas = fechamentos.reduce((sum, f) => sum + parseFloat(f.valorAbertura), 0);
+    const totalVendas = fechamentos.reduce((sum, f) => sum + parseFloat(f.totalVendas), 0);
+    const totalReforcos = fechamentos.reduce((sum, f) => sum + parseFloat(f.totalReforcos), 0);
+    const totalSangrias = fechamentos.reduce((sum, f) => sum + parseFloat(f.totalSangrias), 0);
+    const totalDiferencas = fechamentos.reduce((sum, f) => sum + parseFloat(f.diferenca), 0);
+    
+    // Linha de totais
+    csv += '\n';
+    csv += `TOTAIS,${fechamentos.length} fechamento(s),,,`;
+    csv += `${totalAberturas.toFixed(2)},`;
+    csv += `${totalVendas.toFixed(2)},`;
+    csv += `${totalReforcos.toFixed(2)},`;
+    csv += `${totalSangrias.toFixed(2)},,,`;
+    csv += `${totalDiferencas.toFixed(2)}\n`;
+    
+    // Criar arquivo e download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const nomeArquivo = `relatorio_caixa_${periodo.dataInicial}_${periodo.dataFinal}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', nomeArquivo);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    mostrarNotificacao('✅ Arquivo CSV exportado com sucesso!', 'success');
+}
+
+// ==================== RELATÓRIOS DE PRODUTOS MAIS VENDIDOS ====================
+
+/**
+ * Abrir modal de relatório de produtos mais vendidos
+ */
+function abrirRelatorioProdutosVendidos() {
+    abrirModal('relatorioProdutosVendidosModal', () => {
+        // Setar período padrão: últimos 30 dias
+        setarPeriodoRelatorioProdutos('mes');
+    });
+}
+
+/**
+ * Setar período pré-definido para relatório de produtos
+ */
+function setarPeriodoRelatorioProdutos(tipo, botaoClicado) {
+    // Remover animação de todos os botões de período
+    const botoesPeriodo = document.querySelectorAll('[id^="btnPeriodo"][id$="Produtos"]');
+    botoesPeriodo.forEach(btn => {
+        btn.style.opacity = '1';
+        btn.style.transform = 'scale(1)';
+        btn.innerHTML = btn.innerHTML.replace(' ⏳', '').replace(' ✓', '');
+    });
+    
+    // Adicionar feedback visual no botão clicado
+    if (botaoClicado) {
+        const textoOriginal = botaoClicado.innerHTML;
+        botaoClicado.innerHTML = textoOriginal + ' ⏳';
+        botaoClicado.style.opacity = '0.7';
+        botaoClicado.style.transform = 'scale(0.95)';
+        
+        // Após definir o período, restaurar botão
+        setTimeout(() => {
+            botaoClicado.innerHTML = textoOriginal + ' ✓';
+            botaoClicado.style.opacity = '1';
+            botaoClicado.style.transform = 'scale(1)';
+            
+            // Remover checkmark após 2 segundos
+            setTimeout(() => {
+                botaoClicado.innerHTML = textoOriginal;
+            }, 2000);
+        }, 300);
+    }
+    
+    const hoje = new Date();
+    const dataFinal = new Date(hoje);
+    let dataInicial = new Date(hoje);
+    
+    switch(tipo) {
+        case 'hoje':
+            // Mesmo dia
+            break;
+        case 'ontem':
+            dataInicial.setDate(hoje.getDate() - 1);
+            dataFinal.setDate(hoje.getDate() - 1);
+            break;
+        case 'semana':
+            // Domingo a hoje
+            const diaSemana = hoje.getDay();
+            dataInicial.setDate(hoje.getDate() - diaSemana);
+            break;
+        case 'mes':
+            // Primeiro dia do mês
+            dataInicial.setDate(1);
+            break;
+        case 'ano':
+            // Primeiro dia do ano
+            dataInicial.setMonth(0, 1);
+            break;
+    }
+    
+    // Formatar datas para input type="date"
+    document.getElementById('dataInicialRelatorioProdutos').value = dataInicial.toISOString().split('T')[0];
+    document.getElementById('dataFinalRelatorioProdutos').value = dataFinal.toISOString().split('T')[0];
+    
+    // Mostrar notificação
+    const nomesPeriodo = {
+        'hoje': 'Hoje',
+        'ontem': 'Ontem',
+        'semana': 'Esta Semana',
+        'mes': 'Este Mês',
+        'ano': 'Este Ano'
+    };
+    mostrarNotificacao(`✓ Período selecionado: ${nomesPeriodo[tipo]}`, 'success');
+}
+
+/**
+ * Gerar relatório de produtos mais vendidos
+ */
+async function gerarRelatorioProdutosVendidos() {
+    const dataInicial = document.getElementById('dataInicialRelatorioProdutos').value;
+    const dataFinal = document.getElementById('dataFinalRelatorioProdutos').value;
+    
+    if (!dataInicial || !dataFinal) {
+        mostrarNotificacao('⚠️ Selecione as datas inicial e final', 'error');
+        return;
+    }
+    
+    if (new Date(dataInicial) > new Date(dataFinal)) {
+        mostrarNotificacao('⚠️ Data inicial não pode ser maior que data final', 'error');
+        return;
+    }
+    
+    const container = document.getElementById('resultadoRelatorioProdutos');
+    container.innerHTML = '<p style="text-align: center; padding: 40px;"><strong>Carregando relatório...</strong></p>';
+    
+    try {
+        // Buscar todas as vendas no período
+        const response = await fetch(`${API_URL}/vendas`);
+        if (!response.ok) throw new Error('Erro ao carregar vendas');
+        
+        const todasVendas = await response.json();
+        
+        // Filtrar vendas no período
+        const vendas = todasVendas.filter(venda => {
+            const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
+            const dataVendaSemHora = new Date(dataVenda.toISOString().split('T')[0]);
+            const inicial = new Date(dataInicial);
+            const final = new Date(dataFinal);
+            
+            return dataVendaSemHora >= inicial && dataVendaSemHora <= final;
+        });
+        
+        if (vendas.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #999;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">📦</div>
+                    <h3>Nenhuma venda encontrada no período</h3>
+                    <p style="margin-top: 10px;">Tente selecionar um período diferente</p>
+                </div>
+            `;
+            document.getElementById('btnExportarProdutosCSV').disabled = true;
+            return;
+        }
+        
+        // Buscar itens de todas as vendas em paralelo
+        const promessasItens = vendas.map(venda => 
+            fetch(`${API_URL}/vendas/${venda.id}`)
+                .then(res => res.json())
+                .then(data => data.itens || [])
+        );
+        
+        const todasItens = await Promise.all(promessasItens);
+        const itensVendidos = todasItens.flat();
+        
+        if (itensVendidos.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #999;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">📦</div>
+                    <h3>Nenhum produto vendido no período</h3>
+                </div>
+            `;
+            document.getElementById('btnExportarProdutosCSV').disabled = true;
+            return;
+        }
+        
+        // Agrupar produtos e calcular estatísticas
+        const produtosMap = {};
+        
+        itensVendidos.forEach(item => {
+            const nomeProduto = item.nome_produto;
+            if (!produtosMap[nomeProduto]) {
+                produtosMap[nomeProduto] = {
+                    nome: nomeProduto,
+                    quantidadeTotal: 0,
+                    totalVendas: 0,
+                    numeroVendas: 0,
+                    precos: []
+                };
+            }
+            
+            produtosMap[nomeProduto].quantidadeTotal += parseInt(item.quantidade);
+            produtosMap[nomeProduto].totalVendas += parseFloat(item.subtotal);
+            produtosMap[nomeProduto].numeroVendas++;
+            produtosMap[nomeProduto].precos.push(parseFloat(item.preco_unitario));
+        });
+        
+        // Converter para array e ordenar por quantidade
+        const produtos = Object.values(produtosMap)
+            .map(p => ({
+                ...p,
+                precoMedio: p.precos.reduce((sum, preco) => sum + preco, 0) / p.precos.length
+            }))
+            .sort((a, b) => b.quantidadeTotal - a.quantidadeTotal)
+            .slice(0, 50); // Top 50
+        
+        // Salvar dados para exportação
+        window.dadosRelatorioProdutosAtual = {
+            produtos: produtos,
+            periodo: {
+                dataInicial: dataInicial,
+                dataFinal: dataFinal
+            }
+        };
+        
+        // Calcular totais gerais
+        const totalQuantidade = produtos.reduce((sum, p) => sum + p.quantidadeTotal, 0);
+        const totalVendas = produtos.reduce((sum, p) => sum + p.totalVendas, 0);
+        
+        // Renderizar relatório
+        container.innerHTML = `
+            <div class="relatorio-resultado">
+                
+                <!-- Cabeçalho -->
+                <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #667eea;">
+                    <h2 style="margin: 0; color: #667eea;">📦 Relatório de Produtos Mais Vendidos</h2>
+                    <p style="margin: 10px 0 0 0; color: #666;">
+                        Período: ${new Date(dataInicial).toLocaleDateString('pt-BR')} até ${new Date(dataFinal).toLocaleDateString('pt-BR')}
+                    </p>
+                    <p style="margin: 5px 0 0 0; color: #999; font-size: 14px;">
+                        Gerado em: ${new Date().toLocaleString('pt-BR')}
+                    </p>
+                </div>
+                
+                <!-- Cards de Estatísticas -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Produtos Diferentes</div>
+                        <div style="font-size: 36px; font-weight: bold;">${produtos.length}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Quantidade Total Vendida</div>
+                        <div style="font-size: 36px; font-weight: bold;">${totalQuantidade}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Receita Total</div>
+                        <div style="font-size: 36px; font-weight: bold;">R$ ${totalVendas.toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <!-- Ranking de Produtos -->
+                <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="margin-top: 0; color: #333; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">🏆 Ranking de Produtos</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Posição</th>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Produto</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Quantidade Vendida</th>
+                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Total Vendas</th>
+                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Preço Médio</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">% do Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${produtos.map((produto, index) => {
+                                    const posicao = index + 1;
+                                    const percentual = (produto.quantidadeTotal / totalQuantidade * 100).toFixed(1);
+                                    const barWidth = Math.min(percentual, 100);
+                                    
+                                    let icone = '';
+                                    if (posicao === 1) icone = '🥇';
+                                    else if (posicao === 2) icone = '🥈';
+                                    else if (posicao === 3) icone = '🥉';
+                                    else icone = `${posicao}º`;
+                                    
+                                    return `
+                                        <tr style="border-bottom: 1px solid #eee;">
+                                            <td style="padding: 12px; text-align: center; font-size: 20px; font-weight: bold;">${icone}</td>
+                                            <td style="padding: 12px;">
+                                                <div style="font-weight: bold; margin-bottom: 5px;">${produto.nome}</div>
+                                                <div style="background: #e3f2fd; height: 8px; border-radius: 4px; overflow: hidden;">
+                                                    <div style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); width: ${barWidth}%; height: 100%; transition: width 0.5s;"></div>
+                                                </div>
+                                            </td>
+                                            <td style="padding: 12px; text-align: center; font-weight: bold; color: #667eea; font-size: 18px;">${produto.quantidadeTotal}</td>
+                                            <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">R$ ${produto.totalVendas.toFixed(2)}</td>
+                                            <td style="padding: 12px; text-align: right; color: #666;">R$ ${produto.precoMedio.toFixed(2)}</td>
+                                            <td style="padding: 12px; text-align: center; color: #666;">${percentual}%</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background: #f8f9fa; font-weight: bold;">
+                                    <td colspan="2" style="padding: 12px; text-align: right; border-top: 2px solid #ddd;">TOTAL:</td>
+                                    <td style="padding: 12px; text-align: center; border-top: 2px solid #ddd; color: #667eea;">${totalQuantidade}</td>
+                                    <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: #28a745;">R$ ${totalVendas.toFixed(2)}</td>
+                                    <td colspan="2" style="padding: 12px; border-top: 2px solid #ddd;"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Habilitar botão de exportação
+        document.getElementById('btnExportarProdutosCSV').disabled = false;
+        
+        mostrarNotificacao('✅ Relatório gerado com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao gerar relatório:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc3545;">
+                <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+                <p>Erro ao gerar relatório</p>
+                <p style="font-size: 14px; margin-top: 10px;">${error.message}</p>
+            </div>
+        `;
+        document.getElementById('btnExportarProdutosCSV').disabled = true;
+    }
+}
+
+/**
+ * Exportar relatório de produtos para CSV
+ */
+function exportarRelatorioProdutosCSV() {
+    if (!window.dadosRelatorioProdutosAtual || !window.dadosRelatorioProdutosAtual.produtos) {
+        mostrarNotificacao('Gere o relatório primeiro!', 'error');
+        return;
+    }
+
+    const { produtos, periodo } = window.dadosRelatorioProdutosAtual;
+    
+    // Cabeçalho do CSV
+    let csv = 'Posição,Produto,Quantidade Vendida,Total Vendas (R$),Preço Médio (R$),% do Total\n';
+    
+    // Calcular total para percentuais
+    const totalQuantidade = produtos.reduce((sum, p) => sum + p.quantidadeTotal, 0);
+    
+    // Dados dos produtos
+    produtos.forEach((produto, index) => {
+        const percentual = (produto.quantidadeTotal / totalQuantidade * 100).toFixed(1);
+        
+        csv += `${index + 1}º,"${produto.nome}",`;
+        csv += `${produto.quantidadeTotal},`;
+        csv += `${produto.totalVendas.toFixed(2)},`;
+        csv += `${produto.precoMedio.toFixed(2)},`;
+        csv += `${percentual}%\n`;
+    });
+    
+    // Linha de totais
+    const totalVendas = produtos.reduce((sum, p) => sum + p.totalVendas, 0);
+    csv += '\n';
+    csv += `TOTAL,${produtos.length} produto(s),${totalQuantidade},${totalVendas.toFixed(2)},,100%\n`;
+    
+    // Criar arquivo e download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const nomeArquivo = `produtos_mais_vendidos_${periodo.dataInicial}_${periodo.dataFinal}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', nomeArquivo);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    mostrarNotificacao('✅ Arquivo CSV exportado com sucesso!', 'success');
+}
+
+async function carregarItensVendasRelatorio(vendas, dataInicial, dataFinal) {
+    const container = document.getElementById('listaVendasDetalhada');
+    
+    try {
+        // Ordenar vendas da mais recente para a mais antiga
+        const vendasOrdenadas = vendas.sort((a, b) => new Date(b.data_venda) - new Date(a.data_venda));
+        
+        // Buscar itens de todas as vendas em paralelo
+        const promises = vendasOrdenadas.map(venda => 
+            fetch(`${API_URL}/vendas/${venda.id}`)
+                .then(res => res.json())
+                .then(data => ({ venda, itens: data.itens, formas_pagamento: data.formas_pagamento }))
+        );
+        
+        const vendasComItens = await Promise.all(promises);
+        
+        // Salvar dados do relatório para exportação
+        window.dadosRelatorioAtual = {
+            vendas: vendasComItens,
+            periodo: {
+                dataInicial: dataInicial,
+                dataFinal: dataFinal
+            }
+        };
+        
+        // Calcular totais gerais - VENDAS + CUSTOS + LUCROS
+        const totalGeralVendas = vendasComItens.reduce((sum, { venda }) => sum + parseFloat(venda.total), 0);
+        const totalItensVendidos = vendasComItens.reduce((sum, { venda }) => sum + parseInt(venda.quantidade_itens), 0);
+        const quantidadeVendas = vendasComItens.length;
+        
+        // Calcular custo total e lucro total
+        let totalCustos = 0;
+        vendasComItens.forEach(({ itens }) => {
+            itens.forEach(item => {
+                const custoPorItem = (parseFloat(item.preco_custo_unitario) || 0) * parseInt(item.quantidade);
+                totalCustos += custoPorItem;
+            });
+        });
+        
+        const totalLucro = totalGeralVendas - totalCustos;
+        const margemPercentual = totalGeralVendas > 0 ? ((totalLucro / totalGeralVendas) * 100).toFixed(1) : '0.0';
+        
+        // Mapear nomes das formas de pagamento
+        const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
+        const nomes = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'PIX' };
+        
+        // Renderizar todas as vendas em uma única tabela
+        container.innerHTML = `
+            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Venda</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Data/Hora</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Produto</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Qtd</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Preço Unit.</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Unit.</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Subtotal</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Total</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Lucro</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Margem %</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Total Venda</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Pagamento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${vendasComItens.map(({ venda, itens, formas_pagamento }) => {
+                            const data = new Date(venda.data_venda.replace(' ', 'T'));
+                            const dataFormatada = data.toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            
+                            // Criar string de formas de pagamento
+                            let pagamentosTexto = '';
+                            if (formas_pagamento && formas_pagamento.length > 0) {
+                                pagamentosTexto = formas_pagamento.map(fp => 
+                                    `${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}`
+                                ).join('<br>');
+                            }
+                            
+                            // Renderizar cada item da venda como uma linha
+                            return itens.map((item, index) => {
+                                // Calcular lucratividade do item
+                                const precoUnit = parseFloat(item.preco_unitario);
+                                const custoUnit = parseFloat(item.preco_custo_unitario) || 0;
+                                const quantidade = parseInt(item.quantidade);
+                                const subtotal = parseFloat(item.subtotal);
+                                const custoTotal = custoUnit * quantidade;
+                                const lucro = subtotal - custoTotal;
+                                const margem = subtotal > 0 ? ((lucro / subtotal) * 100).toFixed(1) : '0.0';
+                                
+                                // Cores para margem
+                                let margemCor = '#28a745'; // Verde (boa margem)
+                                if (parseFloat(margem) < 10) margemCor = '#dc3545'; // Vermelho (margem baixa)
+                                else if (parseFloat(margem) < 30) margemCor = '#ffc107'; // Amarelo (margem média)
+                                
+                                return `
+                                <tr style="border-bottom: 1px solid #eee; ${index === 0 ? 'border-top: 2px solid #007bff;' : ''}">
+                                    ${index === 0 ? `
+                                        <td rowspan="${itens.length}" style="padding: 12px; font-weight: bold; background: #f8f9fa; color: #007bff; border-right: 1px solid #ddd; vertical-align: top;">
+                                            🧾 #${venda.id}<br>
+                                            <span style="font-size: 11px; color: #666; font-weight: normal;">${venda.quantidade_itens} item(ns)</span>
+                                        </td>
+                                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; border-right: 1px solid #ddd; vertical-align: top; white-space: nowrap;">
+                                            ${dataFormatada}
+                                        </td>
+                                    ` : ''}
+                                    <td style="padding: 12px;">
+                                        <strong>${item.nome_produto}</strong><br>
+                                        <span style="font-size: 11px; color: #999;">Cód: ${item.codigo_barras}</span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: #007bff;">
+                                        ${quantidade}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; color: #666;">
+                                        R$ ${precoUnit.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; color: #999; font-size: 13px;">
+                                        R$ ${custoUnit.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">
+                                        R$ ${subtotal.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; color: #dc3545; font-size: 13px;">
+                                        R$ ${custoTotal.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; font-weight: bold; color: ${lucro >= 0 ? '#28a745' : '#dc3545'};">
+                                        R$ ${lucro.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${margemCor}; font-size: 13px;">
+                                        ${margem}%
+                                    </td>
+                                    ${index === 0 ? `
+                                        <td rowspan="${itens.length}" style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745; background: #f8f9fa; border-left: 1px solid #ddd; vertical-align: top;">
+                                            R$ ${parseFloat(venda.total).toFixed(2)}
+                                            ${parseFloat(venda.troco) > 0 ? `<br><span style="font-size: 11px; color: #999; font-weight: normal;">Troco: R$ ${parseFloat(venda.troco).toFixed(2)}</span>` : ''}
+                                        </td>
+                                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; font-size: 12px; border-left: 1px solid #ddd; vertical-align: top;">
+                                            ${pagamentosTexto}
+                                        </td>
+                                    ` : ''}
+                                </tr>
+                            `;
+                            }).join('');
+                        }).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; font-weight: bold; font-size: 16px;">
+                            <td colspan="2" style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">
+                                📊 TOTAL GERAL
+                            </td>
+                            <td style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">
+                                ${quantidadeVendas} venda(s)
+                            </td>
+                            <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd;">
+                                ${totalItensVendidos}
+                            </td>
+                            <td colspan="2" style="padding: 15px; text-align: right; border-top: 3px solid #ddd;">
+                                <!-- Espaço -->
+                            </td>
+                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 20px;">
+                                R$ ${totalGeralVendas.toFixed(2)}
+                            </td>
+                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 16px; color: #ffe6e6;">
+                                R$ ${totalCustos.toFixed(2)}
+                            </td>
+                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 18px;">
+                                R$ ${totalLucro.toFixed(2)}
+                            </td>
+                            <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd; font-size: 18px;">
+                                ${margemPercentual}%
+                            </td>
+                            <td colspan="2" style="padding: 15px; border-top: 3px solid #ddd;">
+                                <!-- Espaço -->
+                            </td>
+                        </tr>
+                        <tr style="background: #f8f9fa; font-size: 14px; color: #333;">
+                            <td colspan="6" style="padding: 12px; text-align: right; font-weight: bold;">
+                                💰 Resumo Financeiro:
+                            </td>
+                            <td style="padding: 12px; text-align: right;">
+                                <strong style="color: #28a745;">Receita</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: right;">
+                                <strong style="color: #dc3545;">Custos</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: right;">
+                                <strong style="color: #007bff;">Lucro Líquido</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: center;">
+                                <strong style="color: #6f42c1;">Margem</strong>
+                            </td>
+                            <td colspan="2" style="padding: 12px;">
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         `;

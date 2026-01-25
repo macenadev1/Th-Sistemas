@@ -34,7 +34,9 @@
         'lista-fornecedores',
         'cadastro-fornecedor',
         'editar-fornecedor',
-        'relatorio-vendas-periodo'
+        'relatorio-vendas-periodo',
+        'relatorio-caixa-periodo',
+        'relatorio-produtos-vendidos'
     ];
 
     /**

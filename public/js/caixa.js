@@ -15,12 +15,15 @@ let caixaData = {
 // Carregar estado do caixa do servidor
 async function carregarEstadoCaixa() {
     try {
+        console.log('🔍 Carregando estado do caixa da API...');
         const response = await fetch(`${API_URL}/caixa/status`);
         if (!response.ok) {
+            console.error('❌ Resposta da API não OK:', response.status);
             return;
         }
         
         const data = await response.json();
+        console.log('✅ Dados recebidos da API:', data);
         
         if (data.aberto && data.caixa) {
             caixaAberto = true;
@@ -33,6 +36,10 @@ async function carregarEstadoCaixa() {
                 totalSangrias: parseFloat(data.caixa.totalSangrias),
                 movimentacoes: data.caixa.movimentacoes || []
             };
+            console.log('✅ Variáveis globais atualizadas:', { caixaAberto, caixaData });
+        } else {
+            console.log('⚠️ Caixa está fechado ou dados incompletos');
+            caixaAberto = false;
         }
     } catch (error) {
         console.error('❌ Erro ao carregar estado do caixa:', error);
@@ -60,8 +67,10 @@ async function salvarEstadoCaixa() {
 }
 
 function atualizarStatusCaixa() {
+    console.log('🔍 Atualizando status do caixa... caixaAberto:', caixaAberto);
     const statusBadge = document.getElementById('caixaStatus');
     const saldoTexto = document.getElementById('saldoCaixaTexto');
+    console.log('🔍 Elemento saldoCaixaTexto encontrado?', saldoTexto);
     const btnAbrirCaixa = document.getElementById('btnAbrirCaixa');
     const btnReforcoCaixa = document.getElementById('btnReforcoCaixa');
     const btnSangria = document.getElementById('btnSangria');
@@ -69,6 +78,13 @@ function atualizarStatusCaixa() {
     
     if (caixaAberto) {
         const saldoAtual = caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias;
+        console.log('💰 Saldo calculado:', saldoAtual, '= Abertura:', caixaData.valorAbertura, '+ Vendas:', caixaData.totalVendas, '+ Reforços:', caixaData.totalReforcos, '- Sangrias:', caixaData.totalSangrias);
+        
+        // Atualizar saldoTexto SEMPRE que existir (modal ou PDV)
+        if (saldoTexto) {
+            console.log('✅ Atualizando saldoCaixaTexto para:', saldoAtual.toFixed(2));
+            saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>`;
+        }
         
         // Verificar se statusBadge existe (no PDV)
         if (statusBadge) {
@@ -141,7 +157,10 @@ function atualizarStatusCaixa() {
                 statusBadge.innerHTML = '🔓 Caixa Aberto';
                 statusBadge.style.animation = 'none';
                 if (saldoTexto) {
+                    console.log('✅ Atualizando saldoCaixaTexto para:', saldoAtual.toFixed(2));
                     saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>`;
+                } else {
+                    console.warn('⚠️ Elemento saldoCaixaTexto NÃO encontrado!');
                 }
             }
         }
@@ -166,9 +185,14 @@ function atualizarStatusCaixa() {
     }
 }
 
-function abrirMenuCaixa() {
-    atualizarStatusCaixa();
-    abrirModal('menuCaixaModal');
+async function abrirMenuCaixa() {
+    await carregarEstadoCaixa();
+    console.log('🔍 DEBUG Menu Caixa - caixaAberto:', caixaAberto);
+    console.log('🔍 DEBUG Menu Caixa - caixaData:', caixaData);
+    abrirModal('menuCaixaModal', () => {
+        // Atualizar status DEPOIS que o modal estiver no DOM
+        atualizarStatusCaixa();
+    });
 }
 
 function abrirModalAberturaCaixa() {

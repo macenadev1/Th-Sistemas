@@ -3,6 +3,18 @@
 // Variável global para armazenar histórico completo
 let historicoCompleto = [];
 
+// Carregar histórico de fechamentos da API
+async function carregarHistoricoFechamentos() {
+    try {
+        const response = await fetch('http://localhost:3000/api/caixa/fechamentos');
+        const data = await response.json();
+        return data.success ? data.fechamentos : [];
+    } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+        return [];
+    }
+}
+
 async function abrirHistoricoFechamentos() {
     historicoCompleto = await carregarHistoricoFechamentos();
     

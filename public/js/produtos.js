@@ -64,6 +64,11 @@ function abrirCadastro() {
             aplicarFormatacaoMoeda(inputPreco);
         }
         
+        const inputCusto = document.getElementById('custoProduto');
+        if (inputCusto) {
+            aplicarFormatacaoMoeda(inputCusto);
+        }
+        
         // Carregar fornecedores e categorias
         await carregarFornecedoresSelect('fornecedorProduto');
         await carregarCategoriasSelect('categoriaProduto');
@@ -87,6 +92,8 @@ async function salvarProduto(event) {
     const nome = document.getElementById('nomeProduto').value.trim();
     const inputPreco = document.getElementById('precoProduto');
     const preco = inputPreco.getValorDecimal ? inputPreco.getValorDecimal() : parseFloat(inputPreco.value);
+    const inputCusto = document.getElementById('custoProduto');
+    const preco_custo = inputCusto.getValorDecimal ? inputCusto.getValorDecimal() : parseFloat(inputCusto.value) || 0;
     const estoque = parseInt(document.getElementById('estoqueProduto').value);
     const desconto = parseFloat(document.getElementById('descontoProduto').value) || 0;
     const fornecedor_id = document.getElementById('fornecedorProduto').value || null;
@@ -100,6 +107,7 @@ async function salvarProduto(event) {
                 codigo_barras: codigo,
                 nome: nome,
                 preco: preco,
+                preco_custo: preco_custo,
                 desconto_percentual: desconto,
                 estoque: estoque,
                 fornecedor_id: fornecedor_id,
@@ -416,6 +424,12 @@ async function abrirEdicaoProduto(id) {
                 inputPrecoEdicao.setValorDecimal(parseFloat(produto.preco));
             }
             
+            const inputCustoEdicao = document.getElementById('editarCusto');
+            if (inputCustoEdicao) {
+                aplicarFormatacaoMoeda(inputCustoEdicao);
+                inputCustoEdicao.setValorDecimal(parseFloat(produto.preco_custo) || 0);
+            }
+            
             // Carregar fornecedores e categorias
             await carregarFornecedoresSelect('editarFornecedorProduto', produto.fornecedor_id);
             await carregarCategoriasSelect('editarCategoriaProduto', produto.categoria_id);
@@ -465,6 +479,8 @@ async function salvarEdicaoProduto(event) {
     const nome = document.getElementById('editarNome').value.trim();
     const inputPrecoEdicao = document.getElementById('editarPreco');
     const preco = inputPrecoEdicao.getValorDecimal ? inputPrecoEdicao.getValorDecimal() : parseFloat(inputPrecoEdicao.value);
+    const inputCustoEdicao = document.getElementById('editarCusto');
+    const preco_custo = inputCustoEdicao.getValorDecimal ? inputCustoEdicao.getValorDecimal() : parseFloat(inputCustoEdicao.value) || 0;
     const estoque = parseInt(document.getElementById('editarEstoque').value);
     const desconto = parseFloat(document.getElementById('editarDesconto').value) || 0;
     const ativo = document.getElementById('editarAtivo').checked;
@@ -477,7 +493,8 @@ async function salvarEdicaoProduto(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 nome, 
-                preco, 
+                preco,
+                preco_custo, 
                 desconto_percentual: desconto, 
                 estoque, 
                 ativo,

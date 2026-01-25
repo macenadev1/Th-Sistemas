@@ -25,11 +25,11 @@
             
             <!-- Atalhos de Período -->
             <div style="display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
-                <button onclick="setarPeriodoRelatorio('hoje')" class="btn" style="background: #17a2b8; color: white; padding: 8px 16px; font-size: 14px;">📅 Hoje</button>
-                <button onclick="setarPeriodoRelatorio('ontem')" class="btn" style="background: #6c757d; color: white; padding: 8px 16px; font-size: 14px;">📅 Ontem</button>
-                <button onclick="setarPeriodoRelatorio('semana')" class="btn" style="background: #28a745; color: white; padding: 8px 16px; font-size: 14px;">📅 Esta Semana</button>
-                <button onclick="setarPeriodoRelatorio('mes')" class="btn" style="background: #007bff; color: white; padding: 8px 16px; font-size: 14px;">📅 Este Mês</button>
-                <button onclick="setarPeriodoRelatorio('ano')" class="btn" style="background: #6f42c1; color: white; padding: 8px 16px; font-size: 14px;">📅 Este Ano</button>
+                <button id="btnPeriodoHoje" onclick="setarPeriodoRelatorio('hoje', this)" class="btn" style="background: #17a2b8; color: white; padding: 8px 16px; font-size: 14px; transition: all 0.3s;">📅 Hoje</button>
+                <button id="btnPeriodoOntem" onclick="setarPeriodoRelatorio('ontem', this)" class="btn" style="background: #6c757d; color: white; padding: 8px 16px; font-size: 14px; transition: all 0.3s;">📅 Ontem</button>
+                <button id="btnPeriodoSemana" onclick="setarPeriodoRelatorio('semana', this)" class="btn" style="background: #28a745; color: white; padding: 8px 16px; font-size: 14px; transition: all 0.3s;">📅 Esta Semana</button>
+                <button id="btnPeriodoMes" onclick="setarPeriodoRelatorio('mes', this)" class="btn" style="background: #007bff; color: white; padding: 8px 16px; font-size: 14px; transition: all 0.3s;">📅 Este Mês</button>
+                <button id="btnPeriodoAno" onclick="setarPeriodoRelatorio('ano', this)" class="btn" style="background: #6f42c1; color: white; padding: 8px 16px; font-size: 14px; transition: all 0.3s;">📅 Este Ano</button>
             </div>
             
             <!-- Resultado do Relatório -->
@@ -41,8 +41,8 @@
         </div>
         
         <div class="modal-actions" style="position: sticky; bottom: 0; background: white; border-top: 1px solid #ddd; margin: 0 -20px -20px; padding: 15px 20px;">
-            <button type="button" class="btn btn-success" onclick="imprimirRelatorioVendas()" id="btnImprimirRelatorio" disabled style="background: #28a745;">
-                🖨️ Imprimir Relatório
+            <button type="button" class="btn btn-success" onclick="exportarRelatorioCSV()" id="btnExportarCSV" disabled style="background: #28a745;">
+                📊 Exportar CSV
             </button>
             <button type="button" class="btn btn-secondary" onclick="fecharModal('relatorioVendasPeriodoModal')">
                 Fechar
