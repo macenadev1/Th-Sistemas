@@ -1,0 +1,87 @@
+<!-- Modal de Lista de Contas a Pagar -->
+<div id="listaContasPagarModal" class="modal">
+    <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>💰 Contas a Pagar</h2>
+            <p style="margin-top: 10px;">Gerencimento de dívidas e pagamentos</p>
+        </div>
+        
+        <!-- Estatísticas -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; padding: 20px; background: #f8f9fa; margin: 0 20px 20px 20px; border-radius: 8px;">
+            <div style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">⏳ A Pagar</div>
+                <div id="totalPendente" style="font-size: 32px; font-weight: bold;">R$ 0,00</div>
+                <div id="qtdPendente" style="font-size: 12px; opacity: 0.9; margin-top: 5px;">0 conta(s)</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">⚠️ Vencidas</div>
+                <div id="totalVencido" style="font-size: 32px; font-weight: bold;">R$ 0,00</div>
+                <div id="qtdVencido" style="font-size: 12px; opacity: 0.9; margin-top: 5px;">0 conta(s)</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">✓ Pagas Este Mês</div>
+                <div id="totalPagoMes" style="font-size: 32px; font-weight: bold;">R$ 0,00</div>
+                <div id="qtdPagoMes" style="font-size: 12px; opacity: 0.9; margin-top: 5px;">0 conta(s)</div>
+            </div>
+        </div>
+        
+        <div style="padding: 0 20px 20px 20px;">
+            <!-- Filtros -->
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                <input 
+                    type="text" 
+                    id="filtroBuscaConta" 
+                    placeholder="🔍 Buscar por descrição ou fornecedor..."
+                    style="flex: 1; min-width: 250px; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+                
+                <select id="filtroStatusConta" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <option value="todos">Todos os Status</option>
+                    <option value="pendente">Pendentes</option>
+                    <option value="vencido">Vencidas</option>
+                    <option value="pago">Pagas</option>
+                    <option value="cancelado">Canceladas</option>
+                </select>
+                
+                <input 
+                    type="date" 
+                    id="filtroDataInicio" 
+                    placeholder="Data Inicial"
+                    style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+                
+                <input 
+                    type="date" 
+                    id="filtroDataFim" 
+                    placeholder="Data Final"
+                    style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+                
+                <button onclick="limparFiltrosContas()" class="btn" style="background: #6c757d; color: white; padding: 12px 20px;">
+                    🔄 Limpar
+                </button>
+                
+                <button onclick="abrirCadastroContaPagar()" class="btn btn-success" style="padding: 12px 25px; font-size: 15px;">
+                    ➕ Nova Conta
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <strong id="contadorContas">0 conta(s) encontrada(s)</strong>
+            </div>
+            
+            <!-- Lista de contas -->
+            <div id="contasPagarContent" style="min-height: 200px;">
+                <!-- Contas serão renderizadas aqui -->
+            </div>
+            
+            <!-- Paginação -->
+            <div id="paginacaoContas" style="display: flex; justify-content: center; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                <!-- Paginação será renderizada aqui -->
+            </div>
+        </div>
+        
+        <div class="modal-actions" style="position: sticky; bottom: 0; background: white; border-top: 1px solid #ddd; margin: 0 -20px -20px; padding: 15px 20px;">
+            <button type="button" class="btn btn-primary" onclick="fecharModal('listaContasPagarModal')" style="width: 100%;">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>

@@ -359,7 +359,72 @@
 }
 
 /* ========================================
-   Responsive
+   Custom Select Styles (Comboboxes)
+   ======================================== */
+
+.select-custom {
+    width: 100%;
+    padding: 12px 40px 12px 15px;
+    font-size: 15px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #2c3e50;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    border: 2px solid #dfe6e9;
+    border-radius: 8px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.select-custom:hover {
+    border-color: #74b9ff;
+    background-color: #f8f9fa;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.select-custom:focus {
+    outline: none;
+    border-color: #0984e3;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(9, 132, 227, 0.1);
+}
+
+.select-custom option {
+    padding: 10px;
+    font-size: 15px;
+    background-color: #fff;
+    color: #2c3e50;
+}
+
+.select-custom option:hover {
+    background-color: #f1f3f5;
+}
+
+/* Select com ícone de status */
+.select-custom option[value="pendente"] {
+    color: #f39c12;
+}
+
+.select-custom option[value="pago"] {
+    color: #27ae60;
+}
+
+.select-custom option[value="vencido"] {
+    color: #e74c3c;
+}
+
+.select-custom option[value="cancelado"] {
+    color: #95a5a6;
+}
+
+/* ========================================
    ======================================== */
 
 @media (max-width: 768px) {

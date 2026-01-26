@@ -38,7 +38,10 @@
         'relatorio-caixa-periodo',
         'relatorio-produtos-vendidos',
         'relatorio-estoque-baixo',
-        'relatorio-vendas-horario'
+        'relatorio-vendas-horario',
+        'lista-contas-pagar',
+        'cadastro-conta-pagar',
+        'editar-conta-pagar'
     ];
 
     /**

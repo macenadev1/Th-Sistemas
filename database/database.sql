@@ -12,6 +12,7 @@ DROP TABLE IF EXISTS fechamentos_caixa;
 DROP TABLE IF EXISTS formas_pagamento_venda;
 DROP TABLE IF EXISTS itens_venda;
 DROP TABLE IF EXISTS vendas;
+DROP TABLE IF EXISTS contas_pagar;
 DROP TABLE IF EXISTS produtos;
 DROP TABLE IF EXISTS clientes;
 DROP TABLE IF EXISTS fornecedores;
@@ -150,6 +151,36 @@ CREATE TABLE categorias_financeiras (
     INDEX idx_nome (nome),
     INDEX idx_tipo (tipo),
     INDEX idx_ativo (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABELAS DO MÓDULO FINANCEIRO
+-- ==========================================
+
+-- Tabela de contas a pagar
+CREATE TABLE contas_pagar (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    descricao VARCHAR(255) NOT NULL,
+    valor DECIMAL(10, 2) NOT NULL,
+    data_vencimento DATE NOT NULL,
+    data_pagamento DATE NULL,
+    status ENUM('pendente', 'pago', 'vencido', 'cancelado') NOT NULL DEFAULT 'pendente',
+    categoria_id INT NULL,
+    fornecedor_id INT NULL,
+    forma_pagamento ENUM('dinheiro', 'debito', 'credito', 'pix', 'boleto', 'transferencia') NULL,
+    observacoes TEXT,
+    usuario_id INT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (categoria_id) REFERENCES categorias_financeiras(id) ON DELETE SET NULL,
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_data_vencimento (data_vencimento),
+    INDEX idx_data_pagamento (data_pagamento),
+    INDEX idx_categoria_id (categoria_id),
+    INDEX idx_fornecedor_id (fornecedor_id),
+    INDEX idx_status_vencimento (status, data_vencimento)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Adicionar foreign keys em produtos

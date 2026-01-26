@@ -21,6 +21,7 @@ const configuracoesRoutes = require('./routes/configuracoes');
 const clientesRoutes = require('./routes/clientes');
 const fornecedoresRoutes = require('./routes/fornecedores');
 const categoriasRoutes = require('./routes/categorias');
+const financeiroRoutes = require('./routes/financeiro');
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
@@ -31,6 +32,7 @@ app.use('/api/configuracoes', configuracoesRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/fornecedores', fornecedoresRoutes);
 app.use('/api/categorias', categoriasRoutes);
+app.use('/api/contas-pagar', financeiroRoutes);
 
 // Rota principal
 app.get('/', (req, res) => {

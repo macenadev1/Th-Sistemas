@@ -34,6 +34,7 @@ function navegarPara(event, secao) {
         'fornecedores': '🏢 Fornecedores',
         'caixa': '💰 Caixa',
         'vendas': '🛒 Vendas',
+        'financeiro': '💸 Financeiro',
         'relatorios': '📈 Relatórios',
         'configuracoes': '⚙️ Configurações'
     };
@@ -51,6 +52,8 @@ function navegarPara(event, secao) {
         carregarFornecedoresSection();
     } else if (secao === 'vendas') {
         carregarVendasSection();
+    } else if (secao === 'financeiro') {
+        // Seção financeiro já tem cards estáticos - nada a carregar
     } else if (secao === 'caixa') {
         carregarCaixaSection();
     }
@@ -2974,7 +2977,7 @@ async function carregarItensVendasRelatorio(vendas, dataInicial, dataFinal) {
 }
 
 
-// ==================== RELAT�RIO DE VENDAS POR HOR�RIO ====================
+// ==================== RELAT�RIO DE VENDAS POR HOR�RIO ====================
 
 function abrirRelatorioVendasHorario() {
     abrirModal('relatorioVendasHorarioModal', () => {

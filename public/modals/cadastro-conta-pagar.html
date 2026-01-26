@@ -1,0 +1,77 @@
+<!-- Modal de Cadastro de Conta a Pagar -->
+<div id="cadastroContaPagarModal" class="modal modal-nested">
+    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>➕ Nova Conta a Pagar</h2>
+        </div>
+        
+        <form id="formCadastroContaPagar" onsubmit="salvarContaPagar(event)">
+            <div class="form-group">
+                <label>Descrição: *</label>
+                <input 
+                    type="text" 
+                    id="descricaoContaPagar" 
+                    placeholder="Ex: Aluguel, Energia, Fornecedor XYZ..."
+                    required
+                    style="width: 100%;">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Valor: *</label>
+                    <input 
+                        type="text" 
+                        id="valorContaPagar" 
+                        placeholder="0,00"
+                        required
+                        style="font-size: 18px; font-weight: bold; text-align: right;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Data de Vencimento: *</label>
+                    <input 
+                        type="date" 
+                        id="dataVencimentoContaPagar"
+                        required
+                        style="width: 100%;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Categoria:</label>
+                    <select id="categoriaContaPagar" class="select-custom">
+                        <option value="">-- Selecione --</option>
+                        <!-- Categorias serão carregadas dinamicamente -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Fornecedor:</label>
+                    <select id="fornecedorContaPagar" class="select-custom">
+                        <option value="">-- Selecione --</option>
+                        <!-- Fornecedores serão carregados dinamicamente -->
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Observações:</label>
+                <textarea 
+                    id="observacoesContaPagar" 
+                    rows="3" 
+                    placeholder="Observações adicionais (opcional)"
+                    style="width: 100%; resize: vertical;"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success" style="flex: 1;">
+                    ✓ Cadastrar
+                </button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'cadastroContaPagarModal')" style="flex: 1;">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

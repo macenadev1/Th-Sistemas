@@ -40,6 +40,10 @@
                 <span class="menu-icon">🛒</span>
                 <span class="menu-text">Vendas</span>
             </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'financeiro')">
+                <span class="menu-icon">💸</span>
+                <span class="menu-text">Financeiro</span>
+            </a>
             <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'relatorios')">
                 <span class="menu-icon">📈</span>
                 <span class="menu-text">Relatórios</span>
@@ -202,6 +206,48 @@
                 </div>
             </section>
 
+            <!-- Financeiro Section -->
+            <section id="financeiro-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Gestão Financeira</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        <div class="dashboard-card" onclick="abrirGerenciarContasPagar()" style="cursor: pointer; transition: all 0.3s;">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">💳</div>
+                            <div class="card-content">
+                                <h3>Contas a Pagar</h3>
+                                <p>Gerenciar dívidas e pagamentos</p>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card" style="opacity: 0.5; cursor: not-allowed;">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">💰</div>
+                            <div class="card-content">
+                                <h3>Contas a Receber</h3>
+                                <p>Em breve...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card" style="opacity: 0.5; cursor: not-allowed;">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);">📊</div>
+                            <div class="card-content">
+                                <h3>Fluxo de Caixa</h3>
+                                <p>Em breve...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card" style="opacity: 0.5; cursor: not-allowed;">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #6f42c1 0%, #563d7c 100%);">📈</div>
+                            <div class="card-content">
+                                <h3>Relatórios Financeiros</h3>
+                                <p>Em breve...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Relatórios Section -->
             <section id="relatorios-section" class="erp-section">
                 <div class="section-header">
@@ -275,6 +321,7 @@
     <script src="js/clientes.js"></script>
     <script src="js/fornecedores.js"></script>
     <script src="js/produtos.js"></script>
+    <script src="js/financeiro.js"></script>
     <script src="js/erp.js"></script>
     <script src="js/erp-dashboard.js"></script>
     <script src="js/relatorio-vendas-horario.js"></script>
