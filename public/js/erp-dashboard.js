@@ -1279,8 +1279,8 @@ async function gerarRelatorioVendas() {
                     <p style="margin-top: 10px;">Tente selecionar um período diferente</p>
                 </div>
             `;
-            document.getElementById('btnExportarPDF').disabled = true;
-            document.getElementById('btnExportarCSV').disabled = true;
+            const btnExportar = document.getElementById('btnExportarCSV');
+            if (btnExportar) btnExportar.disabled = true;
             return;
         }
         
@@ -1388,7 +1388,8 @@ async function gerarRelatorioVendas() {
         `;
         
         // Habilitar botão de exportação
-        document.getElementById('btnExportarCSV').disabled = false;
+        const btnExportar = document.getElementById('btnExportarCSV');
+        if (btnExportar) btnExportar.disabled = false;
         
         // Carregar itens das vendas de forma assíncrona
         carregarItensVendasRelatorio(vendas, dataInicial, dataFinal);
@@ -1404,7 +1405,8 @@ async function gerarRelatorioVendas() {
                 <p style="font-size: 14px; margin-top: 10px;">${error.message}</p>
             </div>
         `;
-        document.getElementById('btnExportarCSV').disabled = true;
+        const btnExportar = document.getElementById('btnExportarCSV');
+        if (btnExportar) btnExportar.disabled = true;
     }
 }
 
@@ -1520,7 +1522,299 @@ document.addEventListener('DOMContentLoaded', () => {
             carregarDashboard();
         }
     }, 30000);
+    
+    // Inicializar controle financeiro após os modais carregarem
+    document.addEventListener('modalsLoaded', inicializarControleFinanceiro);
 });
+
+// ==================== CONTROLE FINANCEIRO - SALDOS ====================
+
+/**
+ * Inicializa o controle financeiro (popular seletor de meses e carregar mês atual)
+ */
+function inicializarControleFinanceiro() {
+    populateSelectorMeses();
+    
+    // Carregar mês atual ao abrir seção de financeiro
+    const financeiroSection = document.getElementById('financeiro-section');
+    if (financeiroSection) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.target.classList.contains('active')) {
+                    carregarSaldosMes();
+                }
+            });
+        });
+        observer.observe(financeiroSection, { attributes: true, attributeFilter: ['class'] });
+    }
+    
+    console.log('✅ Controle Financeiro inicializado');
+}
+
+/**
+ * Popular o seletor de meses com últimos 12 meses
+ */
+function populateSelectorMeses() {
+    const selector = document.getElementById('selectorMesFinanceiro');
+    if (!selector) return;
+    
+    const hoje = new Date();
+    const meses = [];
+    
+    // Gerar últimos 12 meses
+    for (let i = 0; i < 12; i++) {
+        const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const mesAno = `${ano}-${mes}`;
+        
+        // Nome do mês
+        const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                           'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        const nomeMes = nomesMeses[data.getMonth()];
+        
+        meses.push({
+            valor: mesAno,
+            texto: `${nomeMes} ${ano}`
+        });
+    }
+    
+    // Popular dropdown
+    selector.innerHTML = meses.map(m => 
+        `<option value="${m.valor}">${m.texto}</option>`
+    ).join('');
+}
+
+/**
+ * Carregar saldos do mês selecionado
+ */
+async function carregarSaldosMes() {
+    const selector = document.getElementById('selectorMesFinanceiro');
+    if (!selector || !selector.value) return;
+    
+    const [ano, mes] = selector.value.split('-');
+    
+    try {
+        const response = await fetch(`${API_URL}/contas-pagar/saldos-mes/${ano}/${mes}`);
+        
+        if (!response.ok) {
+            throw new Error('Erro ao carregar saldos');
+        }
+        
+        const data = await response.json();
+        
+        // DEBUG: Verificar resposta da API
+        console.log('📊 Resposta da API saldos-mes:', data);
+        
+        // Validar estrutura de dados (proteção contra undefined)
+        // A API retorna os dados dentro de data.saldos
+        const reposicao = data.saldos?.reposicao || { bruta: 0, disponivel: 0, negativo: false };
+        const lucro = data.saldos?.lucro || { bruta: 0, disponivel: 0, negativo: false };
+        
+        console.log('💰 Reposição processada:', reposicao);
+        console.log('💵 Lucro processado:', lucro);
+        
+        // Atualizar cards de saldos
+        document.getElementById('saldoReposicaoBruta').textContent = 
+            `R$ ${formatarMoedaSaldo(reposicao.bruta)}`;
+        
+        document.getElementById('saldoReposicaoDisponivel').textContent = 
+            `R$ ${formatarMoedaSaldo(reposicao.disponivel)}`;
+        
+        document.getElementById('saldoLucroBruto').textContent = 
+            `R$ ${formatarMoedaSaldo(lucro.bruta)}`;
+        
+        document.getElementById('saldoLucroDisponivel').textContent = 
+            `R$ ${formatarMoedaSaldo(lucro.disponivel)}`;
+        
+        // Exibir alertas se houver saldos negativos
+        exibirAlertasSaldosNegativos({ reposicao, lucro });
+        
+    } catch (error) {
+        console.error('Erro ao carregar saldos:', error);
+        mostrarNotificacao('❌ Erro ao carregar saldos do mês', 'error');
+    }
+}
+
+/**
+ * Exibir alertas de saldos negativos
+ */
+function exibirAlertasSaldosNegativos(data) {
+    const alertaDiv = document.getElementById('alertasSaldosNegativos');
+    if (!alertaDiv) return;
+    
+    const alertas = [];
+    
+    if (data.reposicao.negativo) {
+        alertas.push('🚨 <strong>Reposição Negativa:</strong> Você gastou mais do que tinha disponível para reposição!');
+    }
+    
+    if (data.lucro.negativo) {
+        alertas.push('🚨 <strong>Lucro Negativo:</strong> Você gastou mais do que tinha disponível em lucro!');
+    }
+    
+    if (alertas.length > 0) {
+        alertaDiv.style.display = 'block';
+        alertaDiv.innerHTML = `
+            <div style="background: #f8d7da; border: 2px solid #dc3545; border-radius: 8px; padding: 15px; color: #721c24;">
+                <h4 style="margin: 0 0 10px 0;">⚠️ Atenção: Saldos Negativos Detectados!</h4>
+                ${alertas.map(a => `<p style="margin: 5px 0;">${a}</p>`).join('')}
+                <p style="margin-top: 10px; font-size: 13px; opacity: 0.8;">
+                    💡 Recomenda-se ajustar os saldos iniciais ou revisar os pagamentos do mês.
+                </p>
+            </div>
+        `;
+    } else {
+        alertaDiv.style.display = 'none';
+    }
+}
+
+/**
+ * Formatar valor como moeda
+ */
+function formatarMoedaSaldo(valor) {
+    const numero = parseFloat(valor);
+    
+    if (isNaN(numero)) return '0,00';
+    
+    const formatado = Math.abs(numero).toFixed(2).replace('.', ',');
+    
+    // Se negativo, adicionar sinal
+    return numero < 0 ? `(${formatado})` : formatado;
+}
+
+/**
+ * Abrir modal de configuração de saldo inicial
+ */
+async function abrirModalConfigurarSaldoInicial() {
+    const selector = document.getElementById('selectorMesFinanceiro');
+    const mesAtual = selector ? selector.value : '';
+    
+    // Preencher mês atual no formulário
+    const mesInput = document.getElementById('mesReferenciaConfig');
+    if (mesInput && mesAtual) {
+        mesInput.value = mesAtual;
+    }
+    
+    const saldoLucroInput = document.getElementById('saldoLucroConfig');
+    const observacoesInput = document.getElementById('observacoesConfig');
+    
+    // Aplicar formatação de moeda no input de lucro
+    if (saldoLucroInput && !saldoLucroInput.getValorDecimal) {
+        aplicarFormatacaoMoeda(saldoLucroInput);
+    }
+    
+    // Buscar saldo inicial existente para o mês selecionado
+    try {
+        const response = await fetch(`${API_URL}/contas-pagar/saldos-iniciais`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.saldos) {
+                // Procurar saldo do mês atual (formato YYYY-MM-01)
+                const mesFormatado = mesAtual + '-01';
+                const saldoExistente = data.saldos.find(s => s.mes_ano === mesFormatado);
+                
+                if (saldoExistente) {
+                    // Preencher campos com valores existentes
+                    if (saldoLucroInput && saldoLucroInput.setValorDecimal) {
+                        saldoLucroInput.setValorDecimal(parseFloat(saldoExistente.saldo_lucro) || 0);
+                    } else if (saldoLucroInput) {
+                        saldoLucroInput.value = (parseFloat(saldoExistente.saldo_lucro) || 0).toFixed(2).replace('.', ',');
+                    }
+                    
+                    if (observacoesInput) {
+                        observacoesInput.value = saldoExistente.observacoes || '';
+                    }
+                } else {
+                    // Limpar campos se não houver saldo configurado
+                    if (saldoLucroInput) {
+                        if (saldoLucroInput.resetarValor) {
+                            saldoLucroInput.resetarValor();
+                        } else {
+                            saldoLucroInput.value = '0,00';
+                        }
+                    }
+                    if (observacoesInput) observacoesInput.value = '';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao buscar saldo inicial:', error);
+        // Em caso de erro, inicializar com zero
+        if (saldoLucroInput) {
+            if (saldoLucroInput.resetarValor) {
+                saldoLucroInput.resetarValor();
+            } else {
+                saldoLucroInput.value = '0,00';
+            }
+        }
+        if (observacoesInput) observacoesInput.value = '';
+    }
+    
+    abrirModal('configurarSaldoInicialModal', () => {
+        if (saldoLucroInput) {
+            saldoLucroInput.focus();
+        }
+    });
+}
+
+/**
+ * Salvar configuração de saldo inicial
+ */
+async function salvarConfiguracaoSaldoInicial(event) {
+    event.preventDefault();
+    
+    const mesReferencia = document.getElementById('mesReferenciaConfig').value;
+    const saldoLucroInput = document.getElementById('saldoLucroConfig');
+    const observacoes = document.getElementById('observacoesConfig').value.trim();
+    
+    const saldoLucro = saldoLucroInput.getValorDecimal 
+        ? saldoLucroInput.getValorDecimal() 
+        : parseFloat(saldoLucroInput.value.replace(',', '.')) || 0;
+    
+    if (saldoLucro < 0) {
+        mostrarNotificacao('⚠️ O saldo de lucro não pode ser negativo', 'error');
+        return;
+    }
+    
+    // Converter formato YYYY-MM para YYYY-MM-01 (backend espera dia 01)
+    const mesAnoFormatado = mesReferencia + '-01';
+    
+    try {
+        const response = await fetch(`${API_URL}/contas-pagar/saldos-iniciais`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mes_ano: mesAnoFormatado,
+                saldo_reposicao: 0, // Não usado mais, calculado automaticamente
+                saldo_lucro: saldoLucro,
+                observacoes: observacoes || null
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Erro ao salvar configuração');
+        }
+        
+        mostrarNotificacao('✅ Saldo inicial de lucro configurado com sucesso!', 'success');
+        
+        fecharModal('configurarSaldoInicialModal');
+        
+        // Atualizar seletor e carregar saldos
+        const selector = document.getElementById('selectorMesFinanceiro');
+        if (selector) {
+            selector.value = mesReferencia;
+        }
+        
+        carregarSaldosMes();
+        
+    } catch (error) {
+        console.error('Erro ao salvar configuração:', error);
+        mostrarNotificacao(`❌ ${error.message}`, 'error');
+    }
+}
 
 // Função auxiliar para abrir histórico de vendas
 function abrirHistorico() {
@@ -1909,7 +2203,8 @@ async function gerarRelatorioCaixa() {
                     <p style="margin-top: 10px;">Tente selecionar um período diferente</p>
                 </div>
             `;
-            document.getElementById('btnExportarCaixaCSV').disabled = true;
+            const btnExportar = document.getElementById('btnExportarCaixaCSV');
+            if (btnExportar) btnExportar.disabled = true;
             return;
         }
         
@@ -2040,7 +2335,8 @@ async function gerarRelatorioCaixa() {
         `;
         
         // Habilitar botão de exportação
-        document.getElementById('btnExportarCaixaCSV').disabled = false;
+        const btnExportar = document.getElementById('btnExportarCaixaCSV');
+        if (btnExportar) btnExportar.disabled = false;
         
         mostrarNotificacao('✅ Relatório gerado com sucesso!', 'success');
         
@@ -2053,7 +2349,8 @@ async function gerarRelatorioCaixa() {
                 <p style="font-size: 14px; margin-top: 10px;">${error.message}</p>
             </div>
         `;
-        document.getElementById('btnExportarCaixaCSV').disabled = true;
+        const btnExportar = document.getElementById('btnExportarCaixaCSV');
+        if (btnExportar) btnExportar.disabled = true;
     }
 }
 
@@ -2256,7 +2553,8 @@ async function gerarRelatorioProdutosVendidos() {
                     <p style="margin-top: 10px;">Tente selecionar um período diferente</p>
                 </div>
             `;
-            document.getElementById('btnExportarProdutosCSV').disabled = true;
+            const btnExportar = document.getElementById('btnExportarProdutosCSV');
+            if (btnExportar) btnExportar.disabled = true;
             return;
         }
         
@@ -2277,7 +2575,8 @@ async function gerarRelatorioProdutosVendidos() {
                     <h3>Nenhum produto vendido no período</h3>
                 </div>
             `;
-            document.getElementById('btnExportarProdutosCSV').disabled = true;
+            const btnExportar = document.getElementById('btnExportarProdutosCSV');
+            if (btnExportar) btnExportar.disabled = true;
             return;
         }
         
@@ -2414,7 +2713,8 @@ async function gerarRelatorioProdutosVendidos() {
         `;
         
         // Habilitar botão de exportação
-        document.getElementById('btnExportarProdutosCSV').disabled = false;
+        const btnExportar = document.getElementById('btnExportarProdutosCSV');
+        if (btnExportar) btnExportar.disabled = false;
         
         mostrarNotificacao('✅ Relatório gerado com sucesso!', 'success');
         
@@ -2427,7 +2727,8 @@ async function gerarRelatorioProdutosVendidos() {
                 <p style="font-size: 14px; margin-top: 10px;">${error.message}</p>
             </div>
         `;
-        document.getElementById('btnExportarProdutosCSV').disabled = true;
+        const btnExportar = document.getElementById('btnExportarProdutosCSV');
+        if (btnExportar) btnExportar.disabled = true;
     }
 }
 
@@ -2581,7 +2882,8 @@ function aplicarFiltrosEstoqueBaixo() {
                 <p style="margin-top: 10px; color: #666;">Todos os produtos estão com estoque adequado.</p>
             </div>
         `;
-        document.getElementById('btnExportarEstoqueBaixoCSV').disabled = true;
+        const btnExportar = document.getElementById('btnExportarEstoqueBaixoCSV');
+        if (btnExportar) btnExportar.disabled = true;
         return;
     }
     
@@ -2708,7 +3010,8 @@ function aplicarFiltrosEstoqueBaixo() {
     `;
     
     // Habilitar botão de exportação
-    document.getElementById('btnExportarEstoqueBaixoCSV').disabled = false;
+    const btnExportar = document.getElementById('btnExportarEstoqueBaixoCSV');
+    if (btnExportar) btnExportar.disabled = false;
     
     mostrarNotificacao(`✅ ${produtosFiltrados.length} produto(s) encontrado(s)`, 'success');
 }

@@ -211,7 +211,68 @@
                 <div class="section-header">
                     <h2>Gestão Financeira</h2>
                 </div>
+                
+                <!-- Controle Financeiro - Reposição vs Lucro -->
+                <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 30px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #333;">💰 Controle de Saldos</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label style="font-weight: bold; color: #666;">📅 Mês:</label>
+                            <select id="selectorMesFinanceiro" onchange="carregarSaldosMes()" style="padding: 8px 16px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer;">
+                                <!-- Será preenchido dinamicamente -->
+                            </select>
+                            <button onclick="abrirModalConfigurarSaldoInicial()" class="btn btn-primary" style="padding: 8px 20px; font-size: 14px;">
+                                ⚙️ Configurar Saldo Inicial
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Alertas -->
+                    <div id="alertasSaldosNegativos" style="display: none; margin-bottom: 20px;"></div>
+                    
+                    <!-- 4 Cards de Saldos -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+                        <!-- Card Reposição Bruta -->
+                        <div class="dashboard-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <div class="card-content" style="text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">💵 Reposição Bruta</h4>
+                                <p style="margin: 0; font-size: 32px; font-weight: bold;" id="saldoReposicaoBruta">R$ 0,00</p>
+                                <small style="opacity: 0.8; font-size: 12px;">Inicial + Custos de Vendas</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Card Reposição Disponível -->
+                        <div class="dashboard-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                            <div class="card-content" style="text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">📦 Reposição Disponível</h4>
+                                <p style="margin: 0; font-size: 32px; font-weight: bold;" id="saldoReposicaoDisponivel">R$ 0,00</p>
+                                <small style="opacity: 0.8; font-size: 12px;">Para pagar fornecedores</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Card Lucro Bruto -->
+                        <div class="dashboard-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                            <div class="card-content" style="text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">💰 Lucro Bruto</h4>
+                                <p style="margin: 0; font-size: 32px; font-weight: bold;" id="saldoLucroBruto">R$ 0,00</p>
+                                <small style="opacity: 0.8; font-size: 12px;">Inicial + Margem de Vendas</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Card Lucro Disponível -->
+                        <div class="dashboard-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+                            <div class="card-content" style="text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">✨ Lucro Disponível</h4>
+                                <p style="margin: 0; font-size: 32px; font-weight: bold;" id="saldoLucroDisponivel">R$ 0,00</p>
+                                <small style="opacity: 0.8; font-size: 12px;">Para despesas operacionais</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cards de Acesso Rápido -->
                 <div style="padding: 20px;">
+                    <h3 style="margin-bottom: 20px; color: #333;">📋 Módulos Financeiros</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                         <div class="dashboard-card" onclick="abrirGerenciarContasPagar()" style="cursor: pointer; transition: all 0.3s;">
                             <div class="card-icon" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">💳</div>
