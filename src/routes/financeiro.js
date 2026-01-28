@@ -68,6 +68,73 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Calcular dívidas futuras (contas pendentes) por origem
+// IMPORTANTE: Esta rota deve vir ANTES de /:id para não ser capturada pelo parâmetro dinâmico
+router.get('/dividas-futuras', async (req, res) => {
+    try {
+        const pool = getPool();
+        
+        // Extrair parâmetros de filtro de período
+        const { mes, data_inicial, data_final } = req.query;
+        
+        // Construir filtro dinâmico de data
+        let filtroData = '';
+        const params = [];
+        let filtroDescricao = 'Todos os períodos';
+        
+        if (mes) {
+            // Filtro por mês específico (formato: YYYY-MM)
+            filtroData = ' AND DATE_FORMAT(cp.data_vencimento, "%Y-%m") = ?';
+            params.push(mes);
+            filtroDescricao = `Mês ${mes}`;
+        } else if (data_inicial && data_final) {
+            // Filtro por range de datas
+            filtroData = ' AND cp.data_vencimento BETWEEN ? AND ?';
+            params.push(data_inicial, data_final);
+            filtroDescricao = `${data_inicial} até ${data_final}`;
+        }
+        
+        // Buscar contas pendentes + vencidas com filtro de data
+        const [contas] = await pool.query(`
+            SELECT 
+                cp.valor,
+                cp.origem_pagamento
+            FROM contas_pagar cp
+            WHERE cp.status IN ('pendente', 'vencido')${filtroData}
+        `, params);
+        
+        let dividasReposicao = 0;
+        let dividasLucro = 0;
+        
+        // Separar por origem de pagamento
+        contas.forEach(conta => {
+            const valor = parseFloat(conta.valor);
+            
+            // Usar o campo origem_pagamento para separar
+            if (conta.origem_pagamento === 'reposicao') {
+                dividasReposicao += valor;
+            } 
+            // Lucro ou null vai para Lucro
+            else {
+                dividasLucro += valor;
+            }
+        });
+        
+        res.json({
+            success: true,
+            dividas: {
+                reposicao: dividasReposicao,
+                lucro: dividasLucro,
+                total: dividasReposicao + dividasLucro
+            },
+            filtro: filtroDescricao
+        });
+    } catch (error) {
+        console.error('Erro ao calcular dívidas futuras:', error);
+        res.status(500).json({ success: false, error: 'Erro ao calcular dívidas futuras' });
+    }
+});
+
 // Buscar conta específica
 router.get('/:id', async (req, res) => {
     try {

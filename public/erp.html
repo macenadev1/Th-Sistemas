@@ -271,6 +271,61 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Dívidas Futuras (Contas Pendentes) -->
+                    <h3 style="margin: 30px 0 15px 0; color: #333;">📋 Dívidas Futuras (Contas Pendentes)</h3>
+                    
+                    <!-- Filtro de Período -->
+                    <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <label style="font-weight: 600; color: #495057; font-size: 14px;">📅 Filtrar por:</label>
+                            <select id="filtroPeriodoDividas" onchange="toggleCamposDataPersonalizada(); carregarDividasFuturas()" style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; cursor: pointer; flex: 0 0 200px;">
+                                <option value="todos">Todos os Períodos</option>
+                                <option value="mes_atual" selected>Este Mês</option>
+                                <option value="proximo_mes">Próximo Mês</option>
+                                <option value="3_meses">Próximos 3 Meses</option>
+                                <option value="personalizado">📆 Período Personalizado</option>
+                            </select>
+                            <span id="labelPeriodoDividas" style="color: #6c757d; font-size: 13px; font-style: italic;"></span>
+                        </div>
+                        
+                        <!-- Campos de data personalizada (ocultos por padrão) -->
+                        <div id="camposDataPersonalizada" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6;">
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: 600; color: #495057; font-size: 13px;">De:</label>
+                                    <input type="date" id="dataInicialDividas" onchange="carregarDividasFuturas()" style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: 600; color: #495057; font-size: 13px;">Até:</label>
+                                    <input type="date" id="dataFinalDividas" onchange="carregarDividasFuturas()" style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                                </div>
+                                <button onclick="aplicarPeriodoPersonalizado()" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                                    🔍 Aplicar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+                        <!-- Card Dívidas Reposição -->
+                        <div class="dashboard-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: 2px solid #ff6b6b;">
+                            <div class="card-content" style="text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">🛒 Dívidas de Reposição</h4>
+                                <p style="margin: 0; font-size: 32px; font-weight: bold;" id="dividasReposicao">R$ 0,00</p>
+                                <small style="opacity: 0.8; font-size: 12px;">Compras a pagar</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Card Dívidas Lucro -->
+                        <div class="dashboard-card" style="background: linear-gradient(135deg, #fc6076 0%, #ff9a44 100%); color: white; border: 2px solid #dc3545;">
+                            <div class="card-content" style="text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">💸 Dívidas Operacionais</h4>
+                                <p style="margin: 0; font-size: 32px; font-weight: bold;" id="dividasLucro">R$ 0,00</p>
+                                <small style="opacity: 0.8; font-size: 12px;">Despesas a pagar</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Cards de Acesso Rápido -->

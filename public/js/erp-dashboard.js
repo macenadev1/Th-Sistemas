@@ -1542,6 +1542,7 @@ function inicializarControleFinanceiro() {
             mutations.forEach((mutation) => {
                 if (mutation.target.classList.contains('active')) {
                     carregarSaldosMes();
+                    carregarDividasFuturas();
                 }
             });
         });
@@ -1583,6 +1584,130 @@ function populateSelectorMeses() {
     selector.innerHTML = meses.map(m => 
         `<option value="${m.valor}">${m.texto}</option>`
     ).join('');
+}
+
+/**
+ * Mostrar/ocultar campos de data personalizada
+ */
+function toggleCamposDataPersonalizada() {
+    const filtroPeriodo = document.getElementById('filtroPeriodoDividas')?.value;
+    const campos = document.getElementById('camposDataPersonalizada');
+    
+    if (campos) {
+        if (filtroPeriodo === 'personalizado') {
+            campos.style.display = 'block';
+            
+            // Preencher com período padrão (hoje até +30 dias)
+            const hoje = new Date();
+            const daqui30Dias = new Date();
+            daqui30Dias.setDate(hoje.getDate() + 30);
+            
+            const dataInicialInput = document.getElementById('dataInicialDividas');
+            const dataFinalInput = document.getElementById('dataFinalDividas');
+            
+            if (dataInicialInput && !dataInicialInput.value) {
+                dataInicialInput.value = hoje.toISOString().split('T')[0];
+            }
+            if (dataFinalInput && !dataFinalInput.value) {
+                dataFinalInput.value = daqui30Dias.toISOString().split('T')[0];
+            }
+        } else {
+            campos.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Aplicar filtro de período personalizado
+ */
+function aplicarPeriodoPersonalizado() {
+    const dataInicial = document.getElementById('dataInicialDividas')?.value;
+    const dataFinal = document.getElementById('dataFinalDividas')?.value;
+    
+    if (!dataInicial || !dataFinal) {
+        mostrarNotificacao('⚠️ Selecione as duas datas!', 'error');
+        return;
+    }
+    
+    if (new Date(dataInicial) > new Date(dataFinal)) {
+        mostrarNotificacao('⚠️ Data inicial não pode ser maior que data final!', 'error');
+        return;
+    }
+    
+    carregarDividasFuturas();
+}
+
+/**
+ * Carregar dívidas futuras (contas pendentes) com filtro de período
+ */
+async function carregarDividasFuturas() {
+    try {
+        // Obter período selecionado
+        const filtroPeriodo = document.getElementById('filtroPeriodoDividas')?.value || 'todos';
+        
+        // Construir URL com query params
+        let url = `${API_URL}/contas-pagar/dividas-futuras`;
+        
+        const hoje = new Date();
+        const mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
+        const anoAtual = hoje.getFullYear();
+        
+        if (filtroPeriodo === 'mes_atual') {
+            // Filtrar por mês atual (ex: 2026-01)
+            url += `?mes=${anoAtual}-${mesAtual}`;
+        } else if (filtroPeriodo === 'proximo_mes') {
+            // Filtrar por próximo mês
+            const proximoMes = hoje.getMonth() === 11 ? 1 : hoje.getMonth() + 2;
+            const proximoAno = hoje.getMonth() === 11 ? anoAtual + 1 : anoAtual;
+            url += `?mes=${proximoAno}-${String(proximoMes).padStart(2, '0')}`;
+        } else if (filtroPeriodo === '3_meses') {
+            // Filtrar próximos 3 meses (range de datas)
+            const dataInicial = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            const dataFinal = new Date(hoje.getFullYear(), hoje.getMonth() + 3, 0);
+            const dataInicialStr = dataInicial.toISOString().split('T')[0];
+            const dataFinalStr = dataFinal.toISOString().split('T')[0];
+            url += `?data_inicial=${dataInicialStr}&data_final=${dataFinalStr}`;
+        } else if (filtroPeriodo === 'personalizado') {
+            // Usar datas personalizadas dos inputs
+            const dataInicial = document.getElementById('dataInicialDividas')?.value;
+            const dataFinal = document.getElementById('dataFinalDividas')?.value;
+            
+            if (dataInicial && dataFinal) {
+                url += `?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+            }
+        }
+        // Se filtroPeriodo === 'todos', não adiciona query params (busca tudo)
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error('Erro ao carregar dívidas futuras');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const dividasReposicaoEl = document.getElementById('dividasReposicao');
+            const dividasLucroEl = document.getElementById('dividasLucro');
+            const labelPeriodoEl = document.getElementById('labelPeriodoDividas');
+            
+            if (dividasReposicaoEl) {
+                dividasReposicaoEl.textContent = `R$ ${formatarMoedaSaldo(data.dividas.reposicao)}`;
+            }
+            
+            if (dividasLucroEl) {
+                dividasLucroEl.textContent = `R$ ${formatarMoedaSaldo(data.dividas.lucro)}`;
+            }
+            
+            // Atualizar label com período filtrado
+            if (labelPeriodoEl && data.filtro) {
+                labelPeriodoEl.textContent = `(${data.filtro})`;
+            }
+        }
+        
+    } catch (error) {
+        console.error('Erro ao carregar dívidas futuras:', error);
+    }
 }
 
 /**
