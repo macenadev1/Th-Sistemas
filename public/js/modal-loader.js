@@ -41,7 +41,8 @@
         'relatorio-vendas-horario',
         'lista-contas-pagar',
         'cadastro-conta-pagar',
-        'editar-conta-pagar'
+        'editar-conta-pagar',
+        'configurar-saldo-inicial'
     ];
 
     /**

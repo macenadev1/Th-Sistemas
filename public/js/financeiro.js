@@ -306,6 +306,106 @@ function abrirCadastroContaPagar() {
     });
 }
 
+// ==================== VERIFICAÇÃO DE SALDO DISPONÍVEL ====================
+
+async function atualizarSaldoOrigemCadastro() {
+    const origem = document.getElementById('origemPagamentoContaPagar').value;
+    const mesReferencia = document.getElementById('mesReferenciaContaPagar').value;
+    const saldoDiv = document.getElementById('saldoDisponivelCadastro');
+    const valorSaldo = document.getElementById('valorSaldoDisponivelCadastro');
+    const alertaSaldo = document.getElementById('alertaSaldoNegativoCadastro');
+    
+    // Limpar visualização se não houver origem ou mês selecionado
+    if (!origem || !mesReferencia) {
+        saldoDiv.style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Extrair ano e mês
+        const [ano, mes] = mesReferencia.split('-');
+        
+        // Buscar saldos do mês
+        const response = await fetch(`${window.API_URL}/contas-pagar/saldos-mes/${ano}/${mes}`);
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Erro ao carregar saldos');
+        }
+        
+        const saldos = data.saldos;
+        const saldoOrigem = origem === 'reposicao' ? saldos.reposicao : saldos.lucro;
+        
+        // Exibir saldo disponível
+        saldoDiv.style.display = 'block';
+        valorSaldo.textContent = `R$ ${saldoOrigem.disponivel.toFixed(2)}`;
+        
+        // Verificar se saldo é negativo
+        if (saldoOrigem.negativo) {
+            valorSaldo.style.color = '#dc3545';
+            alertaSaldo.style.display = 'block';
+        } else {
+            valorSaldo.style.color = '#28a745';
+            alertaSaldo.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Erro ao carregar saldo:', error);
+        saldoDiv.style.display = 'none';
+        mostrarNotificacao('Erro ao verificar saldo disponível', 'error');
+    }
+}
+
+async function atualizarSaldoOrigemEdicao() {
+    const origem = document.getElementById('editarOrigemPagamentoConta').value;
+    const mesReferencia = document.getElementById('editarMesReferenciaConta').value;
+    const saldoDiv = document.getElementById('saldoDisponivelEdicao');
+    const valorSaldo = document.getElementById('valorSaldoDisponivelEdicao');
+    const alertaSaldo = document.getElementById('alertaSaldoNegativoEdicao');
+    
+    // Limpar visualização se não houver origem ou mês selecionado
+    if (!origem || !mesReferencia) {
+        saldoDiv.style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Extrair ano e mês
+        const [ano, mes] = mesReferencia.split('-');
+        
+        // Buscar saldos do mês
+        const response = await fetch(`${window.API_URL}/contas-pagar/saldos-mes/${ano}/${mes}`);
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Erro ao carregar saldos');
+        }
+        
+        const saldos = data.saldos;
+        const saldoOrigem = origem === 'reposicao' ? saldos.reposicao : saldos.lucro;
+        
+        // Exibir saldo disponível
+        saldoDiv.style.display = 'block';
+        valorSaldo.textContent = `R$ ${saldoOrigem.disponivel.toFixed(2)}`;
+        
+        // Verificar se saldo é negativo
+        if (saldoOrigem.negativo) {
+            valorSaldo.style.color = '#dc3545';
+            alertaSaldo.style.display = 'block';
+        } else {
+            valorSaldo.style.color = '#28a745';
+            alertaSaldo.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Erro ao carregar saldo:', error);
+        saldoDiv.style.display = 'none';
+        mostrarNotificacao('Erro ao verificar saldo disponível', 'error');
+    }
+}
+
+// ==================== CADASTRO DE CONTA ====================
+
 async function salvarContaPagar(event) {
     event.preventDefault();
     
@@ -323,11 +423,18 @@ async function salvarContaPagar(event) {
         fornecedor_id: document.getElementById('fornecedorContaPagar').value || null,
         valor: valor,
         data_vencimento: document.getElementById('dataVencimentoContaPagar').value,
+        origem_pagamento: document.getElementById('origemPagamentoContaPagar').value,
+        mes_referencia: document.getElementById('mesReferenciaContaPagar').value + '-01', // Adiciona dia 01
         observacoes: document.getElementById('observacoesContaPagar').value.trim() || null
     };
 
     if (!dados.descricao || dados.valor <= 0 || !dados.data_vencimento) {
         mostrarNotificacao('⚠️ Preencha os campos obrigatórios (descrição, valor e data de vencimento)', 'error');
+        return;
+    }
+
+    if (!dados.origem_pagamento || !dados.mes_referencia) {
+        mostrarNotificacao('⚠️ Selecione a origem do pagamento e o mês de referência', 'error');
         return;
     }
 
@@ -374,8 +481,27 @@ async function editarConta(id) {
 
         document.getElementById('editarIdConta').value = conta.id;
         document.getElementById('editarDescricaoConta').value = conta.descricao || '';
-        document.getElementById('editarDataVencimentoConta').value = conta.data_vencimento || '';
+        
+        // Converter data para formato YYYY-MM-DD (input type="date" aceita apenas este formato)
+        if (conta.data_vencimento) {
+            const dataVenc = new Date(conta.data_vencimento);
+            const dataFormatada = `${dataVenc.getFullYear()}-${String(dataVenc.getMonth() + 1).padStart(2, '0')}-${String(dataVenc.getDate()).padStart(2, '0')}`;
+            document.getElementById('editarDataVencimentoConta').value = dataFormatada;
+        } else {
+            document.getElementById('editarDataVencimentoConta').value = '';
+        }
+        
+        document.getElementById('editarStatusConta').value = conta.status || 'pendente';
         document.getElementById('editarObservacoesConta').value = conta.observacoes || '';
+        
+        // Carregar origem e mês de referência
+        document.getElementById('editarOrigemPagamentoConta').value = conta.origem_pagamento || '';
+        if (conta.mes_referencia) {
+            // Converter data para formato YYYY-MM
+            const mesRef = new Date(conta.mes_referencia);
+            const mesFormatado = `${mesRef.getFullYear()}-${String(mesRef.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('editarMesReferenciaConta').value = mesFormatado;
+        }
 
         abrirModal('editarContaPagarModal', async () => {
             const inputValorEdicao = document.getElementById('editarValorConta');
@@ -387,6 +513,11 @@ async function editarConta(id) {
             // Carregar fornecedores e categorias
             await carregarFornecedoresSelectConta('editarFornecedorConta', conta.fornecedor_id);
             await carregarCategoriasFinanceirasSelect('editarCategoriaConta', conta.categoria_financeira_id);
+            
+            // Atualizar saldo se origem e mês já estiverem preenchidos
+            if (conta.origem_pagamento && conta.mes_referencia) {
+                await atualizarSaldoOrigemEdicao();
+            }
             
             document.getElementById('editarDescricaoConta').focus();
         });
@@ -415,11 +546,20 @@ async function salvarEdicaoConta(event) {
         fornecedor_id: document.getElementById('editarFornecedorConta').value || null,
         valor: valor,
         data_vencimento: document.getElementById('editarDataVencimentoConta').value,
-        observacoes: document.getElementById('editarObservacoesConta').value.trim() || null
+        observacoes: document.getElementById('editarObservacoesConta').value.trim() || null,
+        origem_pagamento: document.getElementById('editarOrigemPagamentoConta').value,
+        mes_referencia: document.getElementById('editarMesReferenciaConta').value ? 
+            document.getElementById('editarMesReferenciaConta').value + '-01' : null
     };
 
     if (!dados.descricao || dados.valor <= 0 || !dados.data_vencimento) {
         mostrarNotificacao('⚠️ Preencha os campos obrigatórios', 'error');
+        return;
+    }
+
+    // Validar origem e mês
+    if (!dados.origem_pagamento || !dados.mes_referencia) {
+        mostrarNotificacao('⚠️ Selecione a origem do pagamento e o mês de referência', 'error');
         return;
     }
 
@@ -479,6 +619,10 @@ async function pagarConta(id) {
             opcoesHtml += `<option value="${key}">${label}</option>`;
         }
         
+        // Verificar se conta já tem origem cadastrada
+        const origemAtual = conta.origem_pagamento;
+        const origemLabel = origemAtual === 'reposicao' ? '💼 Reposição' : origemAtual === 'lucro' ? '💵 Lucro' : null;
+        
         const formaPagamento = await new Promise((resolve) => {
             const modal = document.createElement('div');
             modal.className = 'modal active';
@@ -492,6 +636,29 @@ async function pagarConta(id) {
                         </p>
                     </div>
                     <div style="padding: 20px;">
+                        ${origemAtual ? `
+                            <div class="form-group">
+                                <label>💰 Origem do Pagamento:</label>
+                                <div style="padding: 12px; background: #e3f2fd; border-radius: 6px; border: 2px solid #2196f3;">
+                                    <strong style="color: #1976d2;">${origemLabel}</strong>
+                                    <small style="color: #666; display: block; margin-top: 5px;">
+                                        ✓ Origem já definida no cadastro
+                                    </small>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="form-group">
+                                <label>💰 Origem do Pagamento:</label>
+                                <select id="origemPagamentoConta" required style="padding: 12px; font-size: 16px;">
+                                    <option value="">-- Selecione --</option>
+                                    <option value="reposicao">💼 Reposição (Estoque)</option>
+                                    <option value="lucro">💵 Lucro (Livre)</option>
+                                </select>
+                                <small style="color: #666; display: block; margin-top: 5px;">
+                                    De onde será deduzido o pagamento?
+                                </small>
+                            </div>
+                        `}
                         <div class="form-group">
                             <label>Forma de Pagamento:</label>
                             <select id="formaPagamentoConta" required style="padding: 12px; font-size: 16px;">
@@ -522,17 +689,34 @@ async function pagarConta(id) {
             document.body.appendChild(modal);
             
             modal.addEventListener('confirmar', () => {
+                // Se conta já tem origem, usar ela; senão, pegar do select
+                const origemInput = document.getElementById('origemPagamentoConta');
+                const origem = origemAtual || (origemInput ? origemInput.value : null);
                 const forma = document.getElementById('formaPagamentoConta').value;
                 const data = document.getElementById('dataPagamentoConta').value;
                 const obs = document.getElementById('obsPagamentoConta').value;
                 
-                if (!forma) {
-                    mostrarNotificacao('Selecione a forma de pagamento!', 'error');
-                    return;
+                // Validar origem do pagamento (só se não houver origem_atual)
+                if (!origem) {
+                    mostrarNotificacao('⚠️ Selecione a origem do pagamento (Reposição ou Lucro)!', 'error');
+                    return; // Mantém o modal aberto para correção
                 }
                 
+                // Validar forma de pagamento
+                if (!forma) {
+                    mostrarNotificacao('⚠️ Selecione a forma de pagamento!', 'error');
+                    return; // Mantém o modal aberto para correção
+                }
+                
+                // Validar data de pagamento
+                if (!data) {
+                    mostrarNotificacao('⚠️ Selecione a data do pagamento!', 'error');
+                    return; // Mantém o modal aberto para correção
+                }
+                
+                // Validações OK - fechar modal e resolver Promise
                 modal.remove();
-                resolve({ forma, data, obs });
+                resolve({ origem, forma, data, obs });
             });
             
             modal.addEventListener('cancelar', () => {
@@ -547,8 +731,7 @@ async function pagarConta(id) {
         const responsePagar = await fetch(`${window.API_URL}/contas-pagar/${id}/pagar`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                data_pagamento: formaPagamento.data,
+            body: JSON.stringify({                origem_pagamento: formaPagamento.origem,                data_pagamento: formaPagamento.data,
                 forma_pagamento: formaPagamento.forma,
                 observacoes: formaPagamento.obs
             })
