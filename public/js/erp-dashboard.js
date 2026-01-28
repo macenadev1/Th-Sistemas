@@ -1759,6 +1759,150 @@ async function abrirModalConfigurarSaldoInicial() {
 }
 
 /**
+ * Fechar mês atual e transferir saldos para próximo mês
+ */
+async function fecharMesAtual() {
+    const selector = document.getElementById('selectorMesFinanceiro');
+    const mesAtual = selector ? selector.value : '';
+    
+    if (!mesAtual) {
+        mostrarNotificacao('⚠️ Selecione o mês a ser fechado', 'error');
+        return;
+    }
+    
+    const [ano, mes] = mesAtual.split('-');
+    
+    // Calcular próximo mês para exibição
+    const mesNum = parseInt(mes);
+    const anoNum = parseInt(ano);
+    const proximoMes = mesNum === 12 ? 1 : mesNum + 1;
+    const proximoAno = mesNum === 12 ? anoNum + 1 : anoNum;
+    
+    const nomesMeses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    const confirmacao = confirm(
+        `🔒 FECHAR MÊS\n\n` +
+        `Deseja fechar ${nomesMeses[mesNum]}/${anoNum}?\n\n` +
+        `Os saldos disponíveis serão transferidos automaticamente para ${nomesMeses[proximoMes]}/${proximoAno}.\n\n` +
+        `Esta ação criará/atualizará o saldo inicial do próximo mês.`
+    );
+    
+    if (!confirmacao) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/contas-pagar/fechar-mes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ano: anoNum,
+                mes: mesNum,
+                forcar: false
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Erro ao fechar mês');
+        }
+        
+        // Exibir resumo do fechamento
+        const saldos = result.dados.saldos_transferidos;
+        alert(
+            `✅ MÊS FECHADO COM SUCESSO!\n\n` +
+            `📅 Mês fechado: ${nomesMeses[mesNum]}/${anoNum}\n\n` +
+            `💰 Saldos transferidos para ${nomesMeses[proximoMes]}/${proximoAno}:\n` +
+            `   💵 Reposição: R$ ${saldos.reposicao.toFixed(2)}\n` +
+            `   💰 Lucro: R$ ${saldos.lucro.toFixed(2)}`
+        );
+        
+        mostrarNotificacao('✅ Mês fechado e saldos transferidos com sucesso!', 'success');
+        
+        // Atualizar para próximo mês automaticamente
+        const proximoMesFormatado = `${proximoAno}-${String(proximoMes).padStart(2, '0')}`;
+        selector.value = proximoMesFormatado;
+        carregarSaldosMes();
+        
+    } catch (error) {
+        console.error('Erro ao fechar mês:', error);
+        mostrarNotificacao(`❌ ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Fechar mês atual e transferir saldos para próximo mês
+ */
+async function fecharMesAtual() {
+    const selector = document.getElementById('selectorMesFinanceiro');
+    const mesAtual = selector ? selector.value : '';
+    
+    if (!mesAtual) {
+        mostrarNotificacao('⚠️ Selecione o mês a ser fechado', 'error');
+        return;
+    }
+    
+    const [ano, mes] = mesAtual.split('-');
+    
+    // Calcular próximo mês para exibição
+    const mesNum = parseInt(mes);
+    const anoNum = parseInt(ano);
+    const proximoMes = mesNum === 12 ? 1 : mesNum + 1;
+    const proximoAno = mesNum === 12 ? anoNum + 1 : anoNum;
+    
+    const nomesMeses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    const confirmacao = confirm(
+        `🔒 FECHAR MÊS\n\n` +
+        `Deseja fechar ${nomesMeses[mesNum]}/${anoNum}?\n\n` +
+        `Os saldos disponíveis serão transferidos automaticamente para ${nomesMeses[proximoMes]}/${proximoAno}.\n\n` +
+        `Esta ação criará/atualizará o saldo inicial do próximo mês.`
+    );
+    
+    if (!confirmacao) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/contas-pagar/fechar-mes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ano: anoNum,
+                mes: mesNum,
+                forcar: false
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Erro ao fechar mês');
+        }
+        
+        // Exibir resumo do fechamento
+        const saldos = result.dados.saldos_transferidos;
+        alert(
+            `✅ MÊS FECHADO COM SUCESSO!\n\n` +
+            `📅 Mês fechado: ${nomesMeses[mesNum]}/${anoNum}\n\n` +
+            `💰 Saldos transferidos para ${nomesMeses[proximoMes]}/${proximoAno}:\n` +
+            `   💵 Reposição: R$ ${saldos.reposicao.toFixed(2)}\n` +
+            `   💰 Lucro: R$ ${saldos.lucro.toFixed(2)}`
+        );
+        
+        mostrarNotificacao('✅ Mês fechado e saldos transferidos com sucesso!', 'success');
+        
+        // Atualizar para próximo mês automaticamente
+        const proximoMesFormatado = `${proximoAno}-${String(proximoMes).padStart(2, '0')}`;
+        selector.value = proximoMesFormatado;
+        carregarSaldosMes();
+        
+    } catch (error) {
+        console.error('Erro ao fechar mês:', error);
+        mostrarNotificacao(`❌ ${error.message}`, 'error');
+    }
+}
+
+/**
  * Salvar configuração de saldo inicial
  */
 async function salvarConfiguracaoSaldoInicial(event) {

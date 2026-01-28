@@ -281,11 +281,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
         console.log(`   Custos reposição: R$ ${custosReposicao.toFixed(2)}`);
         console.log(`   Lucro bruto: R$ ${lucroBruto.toFixed(2)}`);
         
-        // 3. CALCULAR PAGAMENTOS REALIZADOS NO MÊS ATUAL (por origem)
-        const dataAtual = new Date();
-        const anoAtual = dataAtual.getFullYear();
-        const mesAtual = dataAtual.getMonth() + 1;
-        
+        // 3. CALCULAR PAGAMENTOS REALIZADOS NO MÊS CONSULTADO (por origem)
         const [pagamentos] = await pool.query(`
             SELECT 
                 origem_pagamento,
@@ -296,7 +292,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
             AND MONTH(data_pagamento) = ?
             AND origem_pagamento IS NOT NULL
             GROUP BY origem_pagamento
-        `, [anoAtual, mesAtual]);
+        `, [ano, mes]);
         
         const pagamentosReposicao = pagamentos.find(p => p.origem_pagamento === 'reposicao')?.total_pago || 0;
         const pagamentosLucro = pagamentos.find(p => p.origem_pagamento === 'lucro')?.total_pago || 0;
@@ -331,7 +327,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
                     negativo: lucroDisponivel < 0
                 },
                 receita_bruta: receitaBruta,
-                mes_atual: `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`
+                mes_consultado: mesAno // Mês que está sendo consultado
             }
         });
     } catch (error) {
@@ -610,6 +606,143 @@ router.get('/stats/resumo', async (req, res) => {
     } catch (error) {
         console.error('Erro ao buscar estatísticas:', error);
         res.status(500).json({ success: false, error: 'Erro ao buscar estatísticas' });
+    }
+});
+
+// Fechar mês e transferir saldos para próximo mês (carry over automático)
+router.post('/fechar-mes', async (req, res) => {
+    const pool = getPool();
+    const connection = await pool.getConnection();
+    
+    try {
+        await connection.beginTransaction();
+        
+        const { ano, mes, forcar } = req.body;
+        
+        // 1. Validação
+        if (!ano || !mes) {
+            throw new Error('Ano e mês são obrigatórios');
+        }
+        
+        // 2. Calcular próximo mês com rollover
+        const mesAtual = parseInt(mes);
+        const anoAtual = parseInt(ano);
+        const proximoMes = mesAtual === 12 ? 1 : mesAtual + 1;
+        const proximoAno = mesAtual === 12 ? anoAtual + 1 : anoAtual;
+        
+        const mesAtualFormatado = String(mesAtual).padStart(2, '0');
+        const proximoMesFormatado = String(proximoMes).padStart(2, '0');
+        const mesAnoAtual = `${anoAtual}-${mesAtualFormatado}-01`;
+        const mesAnoProximo = `${proximoAno}-${proximoMesFormatado}-01`;
+        
+        // 3. Verificar se próximo mês já tem saldo inicial
+        const [saldoExistente] = await connection.query(
+            'SELECT * FROM saldos_iniciais WHERE mes_ano = ?',
+            [mesAnoProximo]
+        );
+        
+        if (saldoExistente.length > 0 && !forcar) {
+            throw new Error(`Mês ${proximoMesFormatado}/${proximoAno} já possui saldo inicial configurado`);
+        }
+        
+        // 4. Buscar saldo inicial do mês atual
+        const [saldosIniciais] = await connection.query(
+            'SELECT saldo_reposicao, saldo_lucro FROM saldos_iniciais WHERE mes_ano = ?',
+            [mesAnoAtual]
+        );
+        
+        const saldoInicialReposicao = saldosIniciais.length > 0 
+            ? parseFloat(saldosIniciais[0].saldo_reposicao) : 0;
+        const saldoInicialLucro = saldosIniciais.length > 0 
+            ? parseFloat(saldosIniciais[0].saldo_lucro) : 0;
+        
+        // 5. Calcular receita total das vendas
+        const [vendas] = await connection.query(`
+            SELECT COALESCE(SUM(v.total), 0) AS receita_total
+            FROM vendas v
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+        `, [anoAtual, mesAtual]);
+        
+        // 6. Calcular custo total dos itens vendidos
+        const [custos] = await connection.query(`
+            SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
+            FROM itens_venda iv
+            JOIN vendas v ON iv.venda_id = v.id
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+        `, [anoAtual, mesAtual]);
+        
+        const receitaMes = parseFloat(vendas[0].receita_total);
+        const custosMes = parseFloat(custos[0].custo_total);
+        const lucroMes = receitaMes - custosMes;
+        
+        // 7. Calcular pagamentos por origem
+        const [pagamentos] = await connection.query(`
+            SELECT 
+                origem_pagamento,
+                COALESCE(SUM(valor), 0) AS total_pago
+            FROM contas_pagar
+            WHERE status = 'pago'
+            AND YEAR(data_pagamento) = ?
+            AND MONTH(data_pagamento) = ?
+            AND origem_pagamento IS NOT NULL
+            GROUP BY origem_pagamento
+        `, [anoAtual, mesAtual]);
+        
+        const pagamentosReposicao = parseFloat(
+            pagamentos.find(p => p.origem_pagamento === 'reposicao')?.total_pago || 0
+        );
+        const pagamentosLucro = parseFloat(
+            pagamentos.find(p => p.origem_pagamento === 'lucro')?.total_pago || 0
+        );
+        
+        // 8. Calcular disponível para próximo mês
+        const reposicaoDisponivel = saldoInicialReposicao + custosMes - pagamentosReposicao;
+        const lucroDisponivel = saldoInicialLucro + lucroMes - pagamentosLucro;
+        
+        // 9. Criar/atualizar saldo inicial do próximo mês
+        if (saldoExistente.length > 0) {
+            await connection.query(
+                'UPDATE saldos_iniciais SET saldo_reposicao = ?, saldo_lucro = ?, observacoes = ? WHERE mes_ano = ?',
+                [
+                    reposicaoDisponivel,
+                    lucroDisponivel,
+                    `Carry over automático de ${mesAtualFormatado}/${anoAtual}`,
+                    mesAnoProximo
+                ]
+            );
+        } else {
+            await connection.query(
+                'INSERT INTO saldos_iniciais (mes_ano, saldo_reposicao, saldo_lucro, observacoes) VALUES (?, ?, ?, ?)',
+                [
+                    mesAnoProximo,
+                    reposicaoDisponivel,
+                    lucroDisponivel,
+                    `Carry over automático de ${mesAtualFormatado}/${anoAtual}`
+                ]
+            );
+        }
+        
+        await connection.commit();
+        
+        res.json({
+            success: true,
+            message: `Mês ${mesAtualFormatado}/${anoAtual} fechado com sucesso!`,
+            dados: {
+                mes_fechado: mesAnoAtual,
+                proximo_mes: mesAnoProximo,
+                saldos_transferidos: {
+                    reposicao: reposicaoDisponivel,
+                    lucro: lucroDisponivel
+                }
+            }
+        });
+        
+    } catch (error) {
+        await connection.rollback();
+        console.error('Erro ao fechar mês:', error);
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        connection.release();
     }
 });
 

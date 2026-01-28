@@ -620,7 +620,7 @@ async function pagarConta(id) {
         }
         
         // Verificar se conta já tem origem cadastrada
-        const origemAtual = conta.origem_atual;
+        const origemAtual = conta.origem_pagamento;
         const origemLabel = origemAtual === 'reposicao' ? '💼 Reposição' : origemAtual === 'lucro' ? '💵 Lucro' : null;
         
         const formaPagamento = await new Promise((resolve) => {

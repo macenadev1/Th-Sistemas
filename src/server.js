@@ -2,7 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const { initDatabase } = require('./config/database');
+const cron = require('node-cron');
+const { initDatabase, getPool } = require('./config/database');
 
 const app = express();
 const PORT = 3000;
@@ -39,12 +40,52 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// Job automático: Fechar mês todo dia 1º às 00:01
+cron.schedule('1 0 1 * *', async () => {
+    console.log('\n🔄 [CRON] Executando fechamento automático de mês...');
+    
+    try {
+        const pool = getPool();
+        const dataAtual = new Date();
+        const mesAtual = dataAtual.getMonth(); // 0-11
+        const anoAtual = dataAtual.getFullYear();
+        
+        // Mês anterior (o que está sendo fechado)
+        const mesAnterior = mesAtual === 0 ? 12 : mesAtual;
+        const anoAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+        
+        // Fazer requisição interna para a rota de fechamento
+        const axios = require('axios');
+        const response = await axios.post(`http://localhost:${PORT}/api/contas-pagar/fechar-mes`, {
+            ano: anoAnterior,
+            mes: mesAnterior,
+            forcar: false
+        });
+        
+        if (response.data.success) {
+            console.log(`✅ [CRON] Mês ${mesAnterior}/${anoAnterior} fechado automaticamente!`);
+            console.log(`   Saldos transferidos para ${mesAtual + 1}/${anoAtual}:`);
+            console.log(`   💵 Reposição: R$ ${response.data.dados.saldos_transferidos.reposicao.toFixed(2)}`);
+            console.log(`   💰 Lucro: R$ ${response.data.dados.saldos_transferidos.lucro.toFixed(2)}`);
+        }
+    } catch (error) {
+        if (error.response?.data?.error?.includes('já possui saldo')) {
+            console.log('ℹ️  [CRON] Mês já foi fechado anteriormente (pulando)');
+        } else {
+            console.error('❌ [CRON] Erro ao fechar mês automaticamente:', error.message);
+        }
+    }
+}, {
+    timezone: "America/Sao_Paulo"
+});
+
 // Iniciar servidor
 initDatabase().then(() => {
     app.listen(PORT, () => {
         console.log(`\n🚀 Servidor rodando em http://localhost:${PORT}`);
         console.log(`📱 Abra no navegador: http://localhost:${PORT}`);
-        console.log(`\n📊 Sistema PDV com MySQL pronto para uso!\n`);
+        console.log(`\n📊 Sistema PDV com MySQL pronto para uso!`);
+        console.log(`⏰ Job automático agendado: Fechamento de mês todo dia 1º às 00:01\n`);
     });
 }).catch(error => {
     console.error('Erro ao inicializar:', error);
