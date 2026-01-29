@@ -1,3 +1,10 @@
+-- ==========================================
+-- DATABASE PRODUÇÃO - BomboniereERP
+-- ==========================================
+-- Versão limpa sem dados de teste
+-- Última atualização: 28/01/2026
+-- ==========================================
+
 -- Criar banco de dados
 CREATE DATABASE IF NOT EXISTS BomboniereERP CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -18,6 +25,7 @@ DROP TABLE IF EXISTS clientes;
 DROP TABLE IF EXISTS fornecedores;
 DROP TABLE IF EXISTS categorias_produtos;
 DROP TABLE IF EXISTS categorias_financeiras;
+DROP TABLE IF EXISTS saldos_iniciais;
 
 -- ==========================================
 -- TABELAS DE AUTENTICAÇÃO E USUÁRIOS
@@ -52,32 +60,6 @@ CREATE TABLE sessoes (
     INDEX idx_usuario_id (usuario_id),
     INDEX idx_token (token),
     INDEX idx_expira_em (expira_em)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ==========================================
--- TABELAS DE PRODUTOS E VENDAS
--- ==========================================
-
--- Tabela de produtos
-CREATE TABLE produtos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    codigo_barras VARCHAR(100) UNIQUE NOT NULL,
-    nome VARCHAR(255) NOT NULL,
-    preco DECIMAL(10, 2) NOT NULL,
-    preco_custo DECIMAL(10, 2) NOT NULL DEFAULT 0,
-    desconto_percentual DECIMAL(5, 2) NOT NULL DEFAULT 0,
-    estoque INT NOT NULL DEFAULT 0,
-    estoque_minimo INT NOT NULL DEFAULT 0,
-    fornecedor_id INT NULL,
-    categoria_id INT NULL,
-    ativo BOOLEAN DEFAULT TRUE,
-    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_codigo_barras (codigo_barras),
-    INDEX idx_nome (nome),
-    INDEX idx_fornecedor_id (fornecedor_id),
-    INDEX idx_categoria_id (categoria_id),
-    INDEX idx_estoque_alerta (estoque, estoque_minimo, ativo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
@@ -154,55 +136,32 @@ CREATE TABLE categorias_financeiras (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
--- TABELAS DO MÓDULO FINANCEIRO
+-- TABELAS DE PRODUTOS E VENDAS
 -- ==========================================
 
--- Tabela de contas a pagar
-CREATE TABLE contas_pagar (
+-- Tabela de produtos
+CREATE TABLE produtos (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    descricao VARCHAR(255) NOT NULL,
-    valor DECIMAL(10, 2) NOT NULL,
-    data_vencimento DATE NOT NULL,
-    data_pagamento DATE NULL,
-    status ENUM('pendente', 'pago', 'vencido', 'cancelado') NOT NULL DEFAULT 'pendente',
-    categoria_id INT NULL,
+    codigo_barras VARCHAR(100) UNIQUE NOT NULL,
+    nome VARCHAR(255) NOT NULL,
+    preco DECIMAL(10, 2) NOT NULL,
+    preco_custo DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    desconto_percentual DECIMAL(5, 2) NOT NULL DEFAULT 0,
+    estoque INT NOT NULL DEFAULT 0,
+    estoque_minimo INT NOT NULL DEFAULT 0,
     fornecedor_id INT NULL,
-    forma_pagamento ENUM('dinheiro', 'debito', 'credito', 'pix', 'boleto', 'transferencia') NULL,
-    origem_pagamento ENUM('reposicao', 'lucro') NULL COMMENT 'Origem do dinheiro: reposicao (custos) ou lucro (operacional)',
-    mes_referencia DATE NULL COMMENT 'Mês de referência da despesa (permite futuro, mas dedução sempre do mês atual)',
-    observacoes TEXT,
-    usuario_id INT NULL,
-    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    categoria_id INT NULL,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (categoria_id) REFERENCES categorias_financeiras(id) ON DELETE SET NULL,
     FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
-    INDEX idx_status (status),
-    INDEX idx_data_vencimento (data_vencimento),
-    INDEX idx_data_pagamento (data_pagamento),
-    INDEX idx_categoria_id (categoria_id),
+    FOREIGN KEY (categoria_id) REFERENCES categorias_produtos(id) ON DELETE SET NULL,
+    INDEX idx_codigo_barras (codigo_barras),
+    INDEX idx_nome (nome),
     INDEX idx_fornecedor_id (fornecedor_id),
-    INDEX idx_status_vencimento (status, data_vencimento),
-    INDEX idx_origem_pagamento (origem_pagamento),
-    INDEX idx_mes_referencia (mes_referencia)
+    INDEX idx_categoria_id (categoria_id),
+    INDEX idx_estoque_alerta (estoque, estoque_minimo, ativo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabela de saldos iniciais mensais
-CREATE TABLE saldos_iniciais (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    mes_ano DATE NOT NULL UNIQUE COMMENT 'Formato YYYY-MM-01 (sempre dia 01)',
-    saldo_reposicao DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT 'Saldo inicial da carteira de reposição',
-    saldo_lucro DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT 'Saldo inicial da carteira de lucro',
-    observacoes TEXT,
-    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_mes_ano (mes_ano)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Adicionar foreign keys em produtos
-ALTER TABLE produtos
-    ADD CONSTRAINT fk_produtos_fornecedor FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
-    ADD CONSTRAINT fk_produtos_categoria FOREIGN KEY (categoria_id) REFERENCES categorias_produtos(id) ON DELETE SET NULL;
 
 -- Tabela de vendas
 CREATE TABLE vendas (
@@ -245,6 +204,10 @@ CREATE TABLE formas_pagamento_venda (
     FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE CASCADE,
     INDEX idx_venda_id (venda_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABELAS DE CAIXA
+-- ==========================================
 
 -- Tabela de caixa aberto (estado atual)
 CREATE TABLE caixa_aberto (
@@ -295,6 +258,54 @@ CREATE TABLE movimentacoes_caixa (
     INDEX idx_tipo (tipo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ==========================================
+-- TABELAS DO MÓDULO FINANCEIRO
+-- ==========================================
+
+-- Tabela de contas a pagar
+CREATE TABLE contas_pagar (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    descricao VARCHAR(255) NOT NULL,
+    valor DECIMAL(10, 2) NOT NULL,
+    data_vencimento DATE NOT NULL,
+    data_pagamento DATE NULL,
+    status ENUM('pendente', 'pago', 'vencido', 'cancelado') NOT NULL DEFAULT 'pendente',
+    categoria_id INT NULL,
+    fornecedor_id INT NULL,
+    forma_pagamento ENUM('dinheiro', 'debito', 'credito', 'pix', 'boleto', 'transferencia') NULL,
+    observacoes TEXT,
+    usuario_id INT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (categoria_id) REFERENCES categorias_financeiras(id) ON DELETE SET NULL,
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_data_vencimento (data_vencimento),
+    INDEX idx_data_pagamento (data_pagamento),
+    INDEX idx_categoria_id (categoria_id),
+    INDEX idx_fornecedor_id (fornecedor_id),
+    INDEX idx_status_vencimento (status, data_vencimento),
+    INDEX idx_origem_pagamento (origem_pagamento),
+    INDEX idx_mes_referencia (mes_referencia)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de saldos iniciais (módulo financeiro)
+CREATE TABLE saldos_iniciais (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    mes_ano DATE NOT NULL UNIQUE,
+    saldo_reposicao DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    saldo_lucro DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    observacoes TEXT,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_mes_ano (mes_ano)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABELAS DE CONFIGURAÇÕES
+-- ==========================================
+
 -- Tabela de configurações do sistema
 CREATE TABLE configuracoes (
     id INT PRIMARY KEY DEFAULT 1,
@@ -304,6 +315,7 @@ CREATE TABLE configuracoes (
     tempo_renderizacao_cupom INT NOT NULL DEFAULT 500,
     tempo_fechamento_cupom INT NOT NULL DEFAULT 500,
     timeout_fallback_cupom INT NOT NULL DEFAULT 3000,
+    permite_venda_estoque_zero BOOLEAN NOT NULL DEFAULT FALSE,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_tipo_alerta CHECK (tipo_alerta IN ('dia_diferente', 'horas', 'desabilitado')),
@@ -313,37 +325,50 @@ CREATE TABLE configuracoes (
     CONSTRAINT chk_timeout_fallback CHECK (timeout_fallback_cupom BETWEEN 1000 AND 10000)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Inserir configuração padrão
-INSERT INTO configuracoes (id, tipo_alerta, horas_alerta, imprimir_cupom, tempo_renderizacao_cupom, tempo_fechamento_cupom, timeout_fallback_cupom) 
-VALUES (1, 'dia_diferente', 24, TRUE, 500, 500, 3000)
-ON DUPLICATE KEY UPDATE id = id;
+-- ==========================================
+-- DADOS ESSENCIAIS PARA PRODUÇÃO
+-- ==========================================
+
+-- Inserir configuração padrão do sistema
+INSERT INTO configuracoes (
+    id, 
+    tipo_alerta, 
+    horas_alerta, 
+    imprimir_cupom, 
+    tempo_renderizacao_cupom, 
+    tempo_fechamento_cupom, 
+    timeout_fallback_cupom,
+    permite_venda_estoque_zero
+) VALUES (
+    1, 
+    'dia_diferente', 
+    24, 
+    TRUE, 
+    500, 
+    500, 
+    3000,
+    FALSE
+) ON DUPLICATE KEY UPDATE id = id;
 
 -- Inserir usuário administrador padrão
 -- Email: admin@bomboniere.com
 -- Senha: @Bomboniere2025
--- IMPORTANTE: Troque a senha após primeiro login!
-INSERT INTO usuarios (nome, email, senha_hash, role, ativo) VALUES
-('Administrador', 'admin@bomboniere.com', '$2b$10$5Anx8VAnYODLYXJyxM79eOY./.VAuH8QWJVVqgtLFUAbAJwZOlVma', 'admin', TRUE)
-ON DUPLICATE KEY UPDATE id = id;
+-- ⚠️ IMPORTANTE: TROQUE A SENHA APÓS PRIMEIRO LOGIN!
+INSERT INTO usuarios (
+    nome, 
+    email, 
+    senha_hash, 
+    role, 
+    ativo
+) VALUES (
+    'Administrador', 
+    'admin@bomboniere.com', 
+    '$2b$10$5Anx8VAnYODLYXJyxM79eOY./.VAuH8QWJVVqgtLFUAbAJwZOlVma', 
+    'admin', 
+    TRUE
+) ON DUPLICATE KEY UPDATE id = id;
 
--- Inserir fornecedores de exemplo
-INSERT INTO fornecedores (nome_fantasia, razao_social, cnpj, telefone, email, cidade, estado, contato_principal) VALUES
-('Distribuidora Alimentos Ltda', 'Distribuidora Alimentos Ltda ME', '12.345.678/0001-90', '(11) 3456-7890', 'contato@distribuidoraalimentos.com.br', 'São Paulo', 'SP', 'João Silva'),
-('Bebidas & Cia', 'Bebidas e Cia Comércio Ltda', '98.765.432/0001-10', '(19) 2345-6789', 'vendas@bebidasecia.com.br', 'Campinas', 'SP', 'Maria Santos'),
-('Atacado Brasil', 'Atacado Brasil Distribuição SA', '11.222.333/0001-44', '(21) 3344-5566', 'comercial@atacadobrasil.com.br', 'Rio de Janeiro', 'RJ', 'Carlos Oliveira')
-ON DUPLICATE KEY UPDATE nome_fantasia=VALUES(nome_fantasia);
-
--- Inserir categorias de produtos
-INSERT INTO categorias_produtos (nome, descricao) VALUES
-('Bebidas', 'Refrigerantes, sucos, águas e bebidas em geral'),
-('Alimentos Básicos', 'Arroz, feijão, açúcar, sal e produtos essenciais'),
-('Higiene e Limpeza', 'Produtos de limpeza e higiene pessoal'),
-('Mercearia', 'Produtos diversos de mercearia'),
-('Laticínios', 'Leite, queijos, iogurtes e derivados'),
-('Padaria', 'Pães, bolos e produtos de padaria')
-ON DUPLICATE KEY UPDATE nome=VALUES(nome);
-
--- Inserir categorias financeiras
+-- Inserir categorias financeiras essenciais
 INSERT INTO categorias_financeiras (nome, tipo, descricao) VALUES
 ('Vendas', 'receita', 'Receitas de vendas de produtos'),
 ('Serviços', 'receita', 'Receitas de prestação de serviços'),
@@ -357,34 +382,14 @@ INSERT INTO categorias_financeiras (nome, tipo, descricao) VALUES
 ('Impostos', 'despesa', 'Pagamento de impostos e taxas')
 ON DUPLICATE KEY UPDATE nome=VALUES(nome);
 
--- Inserir clientes de exemplo
-INSERT INTO clientes (nome, cpf_cnpj, telefone, email, cidade, estado, limite_credito) VALUES
-('João Silva', '123.456.789-00', '(11) 98765-4321', 'joao.silva@email.com', 'São Paulo', 'SP', 500.00),
-('Maria Santos', '987.654.321-00', '(11) 97654-3210', 'maria.santos@email.com', 'São Paulo', 'SP', 1000.00),
-('Mercadinho do Zé', '12.345.678/0001-99', '(11) 3333-4444', 'contato@mercadinhodoze.com.br', 'Guarulhos', 'SP', 5000.00)
-ON DUPLICATE KEY UPDATE nome=VALUES(nome);
+-- ==========================================
+-- MENSAGENS FINAIS
+-- ==========================================
 
--- Inserir produtos de exemplo (com fornecedores e categorias)
-INSERT INTO produtos (codigo_barras, nome, preco, estoque, fornecedor_id, categoria_id) VALUES
-('7891234567890', 'Coca-Cola 2L', 9.99, 50, 2, 1),
-('7891234567891', 'Arroz 5kg', 25.90, 30, 1, 2),
-('7891234567892', 'Feijão 1kg', 8.50, 40, 1, 2),
-('7891234567893', 'Açúcar 1kg', 4.99, 60, 1, 2),
-('7891234567894', 'Café 500g', 15.90, 25, 1, 2),
-('7891234567895', 'Leite 1L', 5.50, 80, 1, 5),
-('7891234567896', 'Óleo de Soja 900ml', 7.90, 45, 1, 2),
-('7891234567897', 'Macarrão 500g', 4.50, 70, 1, 4),
-('7891234567898', 'Sal 1kg', 2.99, 90, 1, 2),
-('7891234567899', 'Achocolatado 400g', 8.90, 35, 1, 1),
-('123', 'Produto Teste', 10.00, 100, NULL, NULL)
-ON DUPLICATE KEY UPDATE nome=VALUES(nome);
-
-SELECT 'Banco de dados criado com sucesso!' AS mensagem;
-SELECT COUNT(*) AS total_produtos FROM produtos;
-SELECT COUNT(*) AS total_clientes FROM clientes;
-SELECT COUNT(*) AS total_fornecedores FROM fornecedores;
-SELECT COUNT(*) AS total_categorias_produtos FROM categorias_produtos;
-SELECT COUNT(*) AS total_categorias_financeiras FROM categorias_financeiras;
-SELECT COUNT(*) AS total_usuarios FROM usuarios;
-SELECT CONCAT('Login: ', email, ' | Senha: @Bomboniere2025') AS credenciais_admin FROM usuarios WHERE role = 'admin' LIMIT 1;
-
+SELECT '✅ Banco de dados de PRODUÇÃO criado com sucesso!' AS mensagem;
+SELECT 'ℹ️  Estrutura limpa sem dados de teste' AS info;
+SELECT 'ℹ️  Pronto para migração de produtos do CSV' AS info2;
+SELECT '⚠️  LEMBRE-SE: Trocar senha do admin após primeiro login!' AS alerta;
+SELECT '' AS espaco;
+SELECT 'Login: admin@bomboniere.com' AS credenciais;
+SELECT 'Senha: @Bomboniere2025' AS senha_padrao;

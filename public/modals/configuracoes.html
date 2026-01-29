@@ -42,6 +42,25 @@
                 <small style="color: #666; margin-left: 30px;">Desmarque para desabilitar completamente a impressão de cupom</small>
             </div>
             
+            <!-- Configurações de Controle de Estoque -->
+            <h3 style="color: #333; margin: 30px 0 15px 0; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📦 Controle de Estoque</h3>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    <input type="checkbox" id="configPermiteVendaEstoqueZero" style="width: 20px; height: 20px; cursor: pointer;">
+                    Permitir venda de produtos com estoque zerado
+                </label>
+                <small style="color: #666; margin-left: 30px;">Marque para permitir que produtos sem estoque sejam vendidos (útil para produtos virtuais ou serviços)</small>
+            </div>
+            
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ffc107;">
+                <strong>⚠️ Atenção:</strong>
+                <p style="margin: 10px 0 0 0; color: #856404;">
+                    Ao habilitar esta opção, o sistema permitirá finalizar vendas mesmo quando produtos estiverem com estoque 0 (zero). 
+                    Use com cuidado para evitar vender produtos que não estão disponíveis fisicamente.
+                </p>
+            </div>
+            
             <div id="configCupomDetalhes">
             
             <div class="form-group">

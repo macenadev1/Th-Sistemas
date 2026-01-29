@@ -19,7 +19,8 @@ router.get('/', async (req, res) => {
                     imprimirCupom: config.imprimir_cupom !== 0,
                     tempoRenderizacaoCupom: config.tempo_renderizacao_cupom || 500,
                     tempoFechamentoCupom: config.tempo_fechamento_cupom || 500,
-                    timeoutFallbackCupom: config.timeout_fallback_cupom || 3000
+                    timeoutFallbackCupom: config.timeout_fallback_cupom || 3000,
+                    permiteVendaEstoqueZero: config.permite_venda_estoque_zero !== 0
                 }
             });
         } else {
@@ -31,7 +32,8 @@ router.get('/', async (req, res) => {
                     imprimirCupom: true,
                     tempoRenderizacaoCupom: 500,
                     tempoFechamentoCupom: 500,
-                    timeoutFallbackCupom: 3000
+                    timeoutFallbackCupom: 3000,
+                    permiteVendaEstoqueZero: false
                 }
             });
         }
@@ -45,7 +47,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const pool = getPool();
-        const { tipoAlerta, horasAlerta, imprimirCupom, tempoRenderizacaoCupom, tempoFechamentoCupom, timeoutFallbackCupom } = req.body;
+        const { tipoAlerta, horasAlerta, imprimirCupom, tempoRenderizacaoCupom, tempoFechamentoCupom, timeoutFallbackCupom, permiteVendaEstoqueZero } = req.body;
         
         // Validação
         if (!tipoAlerta || !['dia_diferente', 'horas', 'desabilitado'].includes(tipoAlerta)) {
@@ -69,17 +71,18 @@ router.post('/', async (req, res) => {
                     tempo_renderizacao_cupom = ?,
                     tempo_fechamento_cupom = ?,
                     timeout_fallback_cupom = ?,
+                    permite_venda_estoque_zero = ?,
                     data_atualizacao = NOW() 
                 WHERE id = 1`,
-                [tipoAlerta, horasAlerta || 24, imprimirCupom !== false, tempoRenderizacaoCupom || 500, tempoFechamentoCupom || 500, timeoutFallbackCupom || 3000]
+                [tipoAlerta, horasAlerta || 24, imprimirCupom !== false, tempoRenderizacaoCupom || 500, tempoFechamentoCupom || 500, timeoutFallbackCupom || 3000, permiteVendaEstoqueZero !== false]
             );
         } else {
             // Inserir
             await pool.query(
                 `INSERT INTO configuracoes 
-                    (id, tipo_alerta, horas_alerta, imprimir_cupom, tempo_renderizacao_cupom, tempo_fechamento_cupom, timeout_fallback_cupom) 
-                VALUES (1, ?, ?, ?, ?, ?, ?)`,
-                [tipoAlerta, horasAlerta || 24, imprimirCupom !== false, tempoRenderizacaoCupom || 500, tempoFechamentoCupom || 500, timeoutFallbackCupom || 3000]
+                    (id, tipo_alerta, horas_alerta, imprimir_cupom, tempo_renderizacao_cupom, tempo_fechamento_cupom, timeout_fallback_cupom, permite_venda_estoque_zero) 
+                VALUES (1, ?, ?, ?, ?, ?, ?, ?)`,
+                [tipoAlerta, horasAlerta || 24, imprimirCupom !== false, tempoRenderizacaoCupom || 500, tempoFechamentoCupom || 500, timeoutFallbackCupom || 3000, permiteVendaEstoqueZero !== false]
             );
         }
         

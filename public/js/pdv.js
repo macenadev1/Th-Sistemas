@@ -116,7 +116,8 @@ async function adicionarProduto(codigo) {
 
         const produto = await response.json();
 
-        if (produto.estoque <= 0) {
+        // Verificar estoque (se configuração não permite estoque zero)
+        if (!configuracoes.permiteVendaEstoqueZero && produto.estoque <= 0) {
             mostrarNotificacao(`Produto "${produto.nome}" sem estoque!`, 'error');
             return;
         }
@@ -125,31 +126,32 @@ async function adicionarProduto(codigo) {
         const itemExistente = carrinho.find(item => item.codigo === codigo);
         if (itemExistente) {
             const novaQuantidade = itemExistente.quantidade + quantidadeDesejada;
-            if (novaQuantidade <= produto.estoque) {
-                itemExistente.quantidade = novaQuantidade;
-            } else {
+            // Se permite venda com estoque zero, não verifica estoque
+            if (!configuracoes.permiteVendaEstoqueZero && novaQuantidade > produto.estoque) {
                 mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}, no carrinho: ${itemExistente.quantidade}`, 'error');
                 return;
             }
+            itemExistente.quantidade = novaQuantidade;
         } else {
-            if (quantidadeDesejada <= produto.estoque) {
-                // Calcular preço com desconto já aplicado
-                const descontoPercentual = parseFloat(produto.desconto_percentual) || 0;
-                const precoOriginal = parseFloat(produto.preco);
-                const precoComDesconto = precoOriginal * (1 - descontoPercentual / 100);
-                
-                carrinho.push({
-                    codigo: codigo,
-                    nome: produto.nome,
-                    preco: precoComDesconto,
-                    preco_original: precoOriginal,
-                    desconto_percentual: descontoPercentual,
-                    quantidade: quantidadeDesejada
-                });
-            } else {
+            // Se permite venda com estoque zero, não verifica estoque
+            if (!configuracoes.permiteVendaEstoqueZero && quantidadeDesejada > produto.estoque) {
                 mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}`, 'error');
                 return;
             }
+            
+            // Calcular preço com desconto já aplicado
+            const descontoPercentual = parseFloat(produto.desconto_percentual) || 0;
+            const precoOriginal = parseFloat(produto.preco);
+            const precoComDesconto = precoOriginal * (1 - descontoPercentual / 100);
+            
+            carrinho.push({
+                codigo: codigo,
+                nome: produto.nome,
+                preco: precoComDesconto,
+                preco_original: precoOriginal,
+                desconto_percentual: descontoPercentual,
+                quantidade: quantidadeDesejada
+            });
         }
 
         atualizarCarrinho();

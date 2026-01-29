@@ -268,6 +268,10 @@ async function carregarProdutosEstoqueBaixo() {
     }
 }
 
+// ==================== VARIÁVEIS DE PAGINAÇÃO PRODUTOS ERP ====================
+let paginaAtualProdutosERP = 1;
+const itensPorPaginaERP = 10;
+
 /**
  * Carregar seção de produtos
  */
@@ -289,10 +293,10 @@ async function carregarProdutosSection() {
                     type="text" 
                     id="filtroBuscaProdutoERP" 
                     placeholder="🔍 Buscar por nome ou código..."
-                    onkeyup="aplicarFiltrosProdutosERP()"
+                    onkeyup="resetarPaginaEFiltrarProdutosERP()"
                     style="flex: 1; min-width: 300px; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
                 
-                <select id="filtroStatusProdutoERP" onchange="aplicarFiltrosProdutosERP()" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <select id="filtroStatusProdutoERP" onchange="resetarPaginaEFiltrarProdutosERP()" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
                     <option value="todos">Todos os Status</option>
                     <option value="ativo" selected>Ativos</option>
                     <option value="inativo">Inativos</option>
@@ -312,12 +316,18 @@ async function carregarProdutosSection() {
             <div id="listaProdutosERP" style="display: grid; gap: 10px;">
                 <!-- Produtos serão renderizados aqui -->
             </div>
+            
+            <!-- Paginação -->
+            <div id="paginacaoProdutosERP" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                <!-- Controles de paginação serão renderizados aqui -->
+            </div>
         `;
         
         // Armazenar produtos globalmente para filtros
         window.produtosERPCompletos = produtos;
         
-        // Aplicar filtros iniciais (mostrar apenas ativos)
+        // Resetar página para 1 e aplicar filtros iniciais (mostrar apenas ativos)
+        paginaAtualProdutosERP = 1;
         aplicarFiltrosProdutosERP();
         
     } catch (error) {
@@ -333,6 +343,14 @@ async function carregarProdutosSection() {
             </div>
         `;
     }
+}
+
+/**
+ * Resetar página e aplicar filtros (chamado quando filtros mudarem)
+ */
+function resetarPaginaEFiltrarProdutosERP() {
+    paginaAtualProdutosERP = 1;
+    aplicarFiltrosProdutosERP();
 }
 
 /**
@@ -368,12 +386,12 @@ function aplicarFiltrosProdutosERP() {
     // Atualizar contador
     document.getElementById('contadorProdutosERP').textContent = `${produtosFiltrados.length} produto(s) encontrado(s)`;
     
-    // Renderizar produtos
+    // Renderizar produtos COM PAGINAÇÃO
     renderizarProdutosERP(produtosFiltrados);
 }
 
 /**
- * Renderizar lista de produtos no ERP
+ * Renderizar lista de produtos no ERP com paginação
  */
 function renderizarProdutosERP(produtos) {
     const container = document.getElementById('listaProdutosERP');
@@ -386,10 +404,17 @@ function renderizarProdutosERP(produtos) {
                 <p style="font-size: 14px; margin-top: 10px;">Tente ajustar os filtros acima</p>
             </div>
         `;
+        document.getElementById('paginacaoProdutosERP').innerHTML = '';
         return;
     }
+
+    // **PAGINAÇÃO: Calcular produtos da página atual**
+    const totalPaginas = Math.ceil(produtos.length / itensPorPaginaERP);
+    const inicio = (paginaAtualProdutosERP - 1) * itensPorPaginaERP;
+    const fim = inicio + itensPorPaginaERP;
+    const produtosPagina = produtos.slice(inicio, fim);
     
-    container.innerHTML = produtos.map(produto => {
+    container.innerHTML = produtosPagina.map(produto => {
         const estoqueColor = produto.estoque > 10 ? '#28a745' : produto.estoque > 0 ? '#ffc107' : '#dc3545';
         const estoqueBadge = produto.estoque > 0 ? `${produto.estoque} un.` : 'SEM ESTOQUE';
         const ativoColor = (produto.ativo === 1 || produto.ativo === true) ? '#28a745' : '#dc3545';
@@ -448,6 +473,105 @@ function renderizarProdutosERP(produtos) {
             </div>
         `;
     }).join('');
+    
+    // **RENDERIZAR CONTROLES DE PAGINAÇÃO**
+    renderizarPaginacaoProdutosERP(totalPaginas, produtos);
+}
+
+/**
+ * Renderizar controles de paginação para produtos ERP
+ */
+function renderizarPaginacaoProdutosERP(totalPaginas, produtos) {
+    const paginacao = document.getElementById('paginacaoProdutosERP');
+    
+    if (totalPaginas <= 1) {
+        paginacao.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    
+    // Botão anterior
+    html += `
+        <button 
+            onclick="event.stopPropagation(); mudarPaginaProdutosERP(${paginaAtualProdutosERP - 1})" 
+            ${paginaAtualProdutosERP === 1 ? 'disabled' : ''}
+            style="
+                padding: 8px 16px; 
+                background: ${paginaAtualProdutosERP === 1 ? '#e9ecef' : '#007bff'}; 
+                color: ${paginaAtualProdutosERP === 1 ? '#6c757d' : 'white'}; 
+                border: none; 
+                border-radius: 6px; 
+                cursor: ${paginaAtualProdutosERP === 1 ? 'not-allowed' : 'pointer'}; 
+                font-weight: 600;
+            ">
+            ← Anterior
+        </button>
+    `;
+    
+    // Números de página (máximo 5 botões visíveis)
+    const maxBotoes = 5;
+    let inicio = Math.max(1, paginaAtualProdutosERP - Math.floor(maxBotoes / 2));
+    let fim = Math.min(totalPaginas, inicio + maxBotoes - 1);
+    
+    if (fim - inicio < maxBotoes - 1) {
+        inicio = Math.max(1, fim - maxBotoes + 1);
+    }
+    
+    if (inicio > 1) {
+        html += `<span style="padding: 8px; color: #666;">...</span>`;
+    }
+    
+    for (let i = inicio; i <= fim; i++) {
+        html += `
+            <button 
+                onclick="event.stopPropagation(); mudarPaginaProdutosERP(${i})" 
+                style="
+                    padding: 8px 16px; 
+                    background: ${i === paginaAtualProdutosERP ? '#007bff' : 'white'}; 
+                    color: ${i === paginaAtualProdutosERP ? 'white' : '#007bff'}; 
+                    border: 2px solid #007bff; 
+                    border-radius: 6px; 
+                    cursor: pointer; 
+                    font-weight: ${i === paginaAtualProdutosERP ? '800' : '600'};
+                    min-width: 45px;
+                ">
+                ${i}
+            </button>
+        `;
+    }
+    
+    if (fim < totalPaginas) {
+        html += `<span style="padding: 8px; color: #666;">...</span>`;
+    }
+    
+    // Botão próximo
+    html += `
+        <button 
+            onclick="event.stopPropagation(); mudarPaginaProdutosERP(${paginaAtualProdutosERP + 1})" 
+            ${paginaAtualProdutosERP === totalPaginas ? 'disabled' : ''}
+            style="
+                padding: 8px 16px; 
+                background: ${paginaAtualProdutosERP === totalPaginas ? '#e9ecef' : '#007bff'}; 
+                color: ${paginaAtualProdutosERP === totalPaginas ? '#6c757d' : 'white'}; 
+                border: none; 
+                border-radius: 6px; 
+                cursor: ${paginaAtualProdutosERP === totalPaginas ? 'not-allowed' : 'pointer'}; 
+                font-weight: 600;
+            ">
+            Próximo →
+        </button>
+    `;
+    
+    paginacao.innerHTML = html;
+}
+
+/**
+ * Mudar página de produtos ERP
+ */
+function mudarPaginaProdutosERP(novaPagina) {
+    paginaAtualProdutosERP = novaPagina;
+    aplicarFiltrosProdutosERP();
 }
 
 /**
@@ -468,6 +592,7 @@ function editarProdutoERP(id) {
 function limparFiltrosProdutosERP() {
     document.getElementById('filtroBuscaProdutoERP').value = '';
     document.getElementById('filtroStatusProdutoERP').value = 'ativo';
+    paginaAtualProdutosERP = 1;
     aplicarFiltrosProdutosERP();
 }
 

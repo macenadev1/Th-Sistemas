@@ -8,7 +8,8 @@ let configuracoes = {
     imprimirCupom: true,
     tempoRenderizacaoCupom: 500,
     tempoFechamentoCupom: 500,
-    timeoutFallbackCupom: 3000
+    timeoutFallbackCupom: 3000,
+    permiteVendaEstoqueZero: false
 };
 
 // Carregar configurações do servidor
@@ -58,6 +59,9 @@ function abrirConfiguracoes() {
     // Preencher valores atuais - Cupom
     document.getElementById('configImprimirCupom').checked = configuracoes.imprimirCupom !== false;
     
+    // Preencher valores atuais - Controle de Estoque
+    document.getElementById('configPermiteVendaEstoqueZero').checked = configuracoes.permiteVendaEstoqueZero === true;
+    
     document.getElementById('configTempoRenderizacao').value = configuracoes.tempoRenderizacaoCupom || 500;
     document.getElementById('configTempoRenderizacaoValor').textContent = (configuracoes.tempoRenderizacaoCupom || 500) + 'ms';
     
@@ -102,6 +106,7 @@ async function salvarConfiguracoes() {
     const tipoAlerta = document.getElementById('configTipoAlerta').value;
     const horasAlerta = parseInt(document.getElementById('configHorasAlerta').value);
     const imprimirCupom = document.getElementById('configImprimirCupom').checked;
+    const permiteVendaEstoqueZero = document.getElementById('configPermiteVendaEstoqueZero').checked;
     const tempoRenderizacaoCupom = parseInt(document.getElementById('configTempoRenderizacao').value);
     const tempoFechamentoCupom = parseInt(document.getElementById('configTempoFechamento').value);
     const timeoutFallbackCupom = parseInt(document.getElementById('configTimeoutFallback').value);
@@ -116,6 +121,7 @@ async function salvarConfiguracoes() {
         tipoAlerta,
         horasAlerta,
         imprimirCupom,
+        permiteVendaEstoqueZero,
         tempoRenderizacaoCupom,
         tempoFechamentoCupom,
         timeoutFallbackCupom

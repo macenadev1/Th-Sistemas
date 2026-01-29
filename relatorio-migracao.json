@@ -1,0 +1,12 @@
+{
+  "data": "2026-01-28T22:38:06.130Z",
+  "estatisticas": {
+    "total": 496,
+    "sucesso": 496,
+    "pulados": 0,
+    "erros": 0,
+    "categoriasCriadas": 12,
+    "produtosPulados": []
+  },
+  "produtosPulados": []
+}
