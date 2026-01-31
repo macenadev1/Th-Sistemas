@@ -116,27 +116,33 @@ async function adicionarProduto(codigo) {
 
         const produto = await response.json();
 
-        // Verificar estoque (se configuração não permite estoque zero)
-        if (!configuracoes.permiteVendaEstoqueZero && produto.estoque <= 0) {
-            mostrarNotificacao(`Produto "${produto.nome}" sem estoque!`, 'error');
-            return;
+        // Verificar estoque apenas se a configuração NÃO permite venda com estoque zero
+        if (!configuracoes.permiteVendaEstoqueZero) {
+            if (produto.estoque <= 0) {
+                mostrarNotificacao(`Produto "${produto.nome}" sem estoque!`, 'error');
+                return;
+            }
         }
 
         // Verifica se já existe no carrinho
         const itemExistente = carrinho.find(item => item.codigo === codigo);
         if (itemExistente) {
             const novaQuantidade = itemExistente.quantidade + quantidadeDesejada;
-            // Se permite venda com estoque zero, não verifica estoque
-            if (!configuracoes.permiteVendaEstoqueZero && novaQuantidade > produto.estoque) {
-                mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}, no carrinho: ${itemExistente.quantidade}`, 'error');
-                return;
+            // Verifica estoque apenas se a configuração NÃO permite venda com estoque zero
+            if (!configuracoes.permiteVendaEstoqueZero) {
+                if (novaQuantidade > produto.estoque) {
+                    mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}, no carrinho: ${itemExistente.quantidade}`, 'error');
+                    return;
+                }
             }
             itemExistente.quantidade = novaQuantidade;
         } else {
-            // Se permite venda com estoque zero, não verifica estoque
-            if (!configuracoes.permiteVendaEstoqueZero && quantidadeDesejada > produto.estoque) {
-                mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}`, 'error');
-                return;
+            // Verifica estoque apenas se a configuração NÃO permite venda com estoque zero
+            if (!configuracoes.permiteVendaEstoqueZero) {
+                if (quantidadeDesejada > produto.estoque) {
+                    mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}`, 'error');
+                    return;
+                }
             }
             
             // Calcular preço com desconto já aplicado
@@ -286,28 +292,31 @@ async function aumentarQuantidadeItem(index) {
     
     const item = carrinho[index];
     
-    // Verificar estoque disponível
-    try {
-        const response = await fetch(`${API_URL}/produtos/${item.codigo}`);
-        if (!response.ok) {
+    // Verifica estoque apenas se a configuração NÃO permite venda com estoque zero
+    if (!configuracoes.permiteVendaEstoqueZero) {
+        try {
+            const response = await fetch(`${API_URL}/produtos/${item.codigo}`);
+            if (!response.ok) {
+                mostrarNotificacao('Erro ao verificar estoque!', 'error');
+                return;
+            }
+            
+            const produto = await response.json();
+            
+            if (item.quantidade >= produto.estoque) {
+                mostrarNotificacao(`Estoque máximo atingido! Disponível: ${produto.estoque}`, 'error');
+                return;
+            }
+        } catch (error) {
+            console.error('Erro ao aumentar quantidade:', error);
             mostrarNotificacao('Erro ao verificar estoque!', 'error');
             return;
         }
-        
-        const produto = await response.json();
-        
-        if (item.quantidade >= produto.estoque) {
-            mostrarNotificacao(`Estoque máximo atingido! Disponível: ${produto.estoque}`, 'error');
-            return;
-        }
-        
-        item.quantidade++;
-        atualizarCarrinho();
-        mostrarNotificacao(`✓ Quantidade aumentada para ${item.quantidade}`, 'success');
-    } catch (error) {
-        console.error('Erro ao aumentar quantidade:', error);
-        mostrarNotificacao('Erro ao verificar estoque!', 'error');
     }
+    
+    item.quantidade++;
+    atualizarCarrinho();
+    mostrarNotificacao(`✓ Quantidade aumentada para ${item.quantidade}`, 'success');
 }
 
 function diminuirQuantidadeItem(index) {
@@ -338,31 +347,34 @@ async function alterarQuantidadeItem(index, novaQuantidade) {
     
     const item = carrinho[index];
     
-    // Verificar estoque disponível
-    try {
-        const response = await fetch(`${API_URL}/produtos/${item.codigo}`);
-        if (!response.ok) {
+    // Verifica estoque apenas se a configuração NÃO permite venda com estoque zero
+    if (!configuracoes.permiteVendaEstoqueZero) {
+        try {
+            const response = await fetch(`${API_URL}/produtos/${item.codigo}`);
+            if (!response.ok) {
+                mostrarNotificacao('Erro ao verificar estoque!', 'error');
+                atualizarCarrinho();
+                return;
+            }
+            
+            const produto = await response.json();
+            
+            if (qtd > produto.estoque) {
+                mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}`, 'error');
+                atualizarCarrinho();
+                return;
+            }
+        } catch (error) {
+            console.error('Erro ao alterar quantidade:', error);
             mostrarNotificacao('Erro ao verificar estoque!', 'error');
             atualizarCarrinho();
             return;
         }
-        
-        const produto = await response.json();
-        
-        if (qtd > produto.estoque) {
-            mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}`, 'error');
-            atualizarCarrinho();
-            return;
-        }
-        
-        item.quantidade = qtd;
-        atualizarCarrinho();
-        mostrarNotificacao(`✓ Quantidade alterada para ${qtd}`, 'success');
-    } catch (error) {
-        console.error('Erro ao alterar quantidade:', error);
-        mostrarNotificacao('Erro ao verificar estoque!', 'error');
-        atualizarCarrinho();
     }
+    
+    item.quantidade = qtd;
+    atualizarCarrinho();
+    mostrarNotificacao(`✓ Quantidade alterada para ${qtd}`, 'success');
 }
 
 function finalizarVenda() {

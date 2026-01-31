@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
                 cf.tipo as categoria_tipo,
                 f.nome_fantasia as fornecedor_nome
             FROM contas_pagar cp
-            LEFT JOIN categorias_financeiras cf ON cp.categoria_financeira_id = cf.id
+            LEFT JOIN categorias_financeiras cf ON cp.categoria_id = cf.id
             LEFT JOIN fornecedores f ON cp.fornecedor_id = f.id
             WHERE 1=1
         `;
@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
         }
         
         if (categoria_id) {
-            query += ' AND cp.categoria_financeira_id = ?';
+            query += ' AND cp.categoria_id = ?';
             params.push(categoria_id);
         }
         

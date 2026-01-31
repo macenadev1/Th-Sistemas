@@ -8,7 +8,7 @@ USE BomboniereERP;
 CREATE TABLE IF NOT EXISTS contas_pagar (
     id INT AUTO_INCREMENT PRIMARY KEY,
     descricao VARCHAR(255) NOT NULL,
-    categoria_financeira_id INT NULL,
+    categoria_id INT NULL,
     fornecedor_id INT NULL,
     valor DECIMAL(10, 2) NOT NULL,
     data_vencimento DATE NOT NULL,
@@ -20,14 +20,14 @@ CREATE TABLE IF NOT EXISTS contas_pagar (
     anexo VARCHAR(500) NULL,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (categoria_financeira_id) REFERENCES categorias_financeiras(id) ON DELETE SET NULL,
+    FOREIGN KEY (categoria_id) REFERENCES categorias_financeiras(id) ON DELETE SET NULL,
     FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
     INDEX idx_status (status),
     INDEX idx_data_vencimento (data_vencimento),
     INDEX idx_data_pagamento (data_pagamento),
     INDEX idx_fornecedor_id (fornecedor_id),
-    INDEX idx_categoria_financeira_id (categoria_financeira_id),
+    INDEX idx_categoria_id (categoria_id),
     INDEX idx_vencidas (status, data_vencimento)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -42,7 +42,7 @@ INSERT INTO categorias_financeiras (nome, tipo, descricao) VALUES
 ON DUPLICATE KEY UPDATE nome=VALUES(nome);
 
 -- Inserir alguns exemplos de contas a pagar (para teste)
-INSERT INTO contas_pagar (descricao, categoria_financeira_id, fornecedor_id, valor, data_vencimento, status) VALUES
+INSERT INTO contas_pagar (descricao, categoria_id, fornecedor_id, valor, data_vencimento, status) VALUES
 ('Fatura Energia Elétrica - Janeiro', (SELECT id FROM categorias_financeiras WHERE nome = 'Contas de Consumo' LIMIT 1), NULL, 450.00, DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'pendente'),
 ('Compra Mercadorias - Distribuidora Alimentos', (SELECT id FROM categorias_financeiras WHERE nome = 'Fornecedores' LIMIT 1), (SELECT id FROM fornecedores WHERE nome_fantasia = 'Distribuidora Alimentos Ltda' LIMIT 1), 3500.00, DATE_ADD(CURDATE(), INTERVAL 10 DAY), 'pendente'),
 ('Aluguel do Imóvel', (SELECT id FROM categorias_financeiras WHERE nome = 'Aluguel' LIMIT 1), NULL, 2500.00, DATE_ADD(CURDATE(), INTERVAL 3 DAY), 'pendente'),
