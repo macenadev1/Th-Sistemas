@@ -126,16 +126,58 @@ async function adicionarProduto(codigo) {
 
         // Verifica se já existe no carrinho
         const itemExistente = carrinho.find(item => item.codigo === codigo);
-        if (itemExistente) {
-            const novaQuantidade = itemExistente.quantidade + quantidadeDesejada;
-            // Verifica estoque apenas se a configuração NÃO permite venda com estoque zero
-            if (!configuracoes.permiteVendaEstoqueZero) {
-                if (novaQuantidade > produto.estoque) {
-                    mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}, no carrinho: ${itemExistente.quantidade}`, 'error');
-                    return;
-                }
+        
+        // Calcular quantidade total que ficará no carrinho
+        const quantidadeTotal = itemExistente ? (itemExistente.quantidade + quantidadeDesejada) : quantidadeDesejada;
+        
+        // Verifica estoque para a quantidade total
+        if (!configuracoes.permiteVendaEstoqueZero) {
+            if (quantidadeTotal > produto.estoque) {
+                const jaNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
+                mostrarNotificacao(`Estoque insuficiente! Disponível: ${produto.estoque}, no carrinho: ${jaNoCarrinho}`, 'error');
+                return;
             }
-            itemExistente.quantidade = novaQuantidade;
+        }
+        
+        // **CALCULAR PREÇO COM BASE NA QUANTIDADE TOTAL**
+        let precoFinal = parseFloat(produto.preco);
+        let observacaoPromocao = '';
+        
+        // Se o produto tem promoção configurada
+        if (produto.quantidade_promocional && produto.preco_promocional && 
+            produto.quantidade_promocional > 0 && produto.preco_promocional > 0) {
+            
+            const qtdPromo = parseInt(produto.quantidade_promocional);
+            const precoPromo = parseFloat(produto.preco_promocional);
+            const precoNormal = parseFloat(produto.preco);
+            
+            // Se a quantidade TOTAL no carrinho atinge a promoção
+            if (quantidadeTotal >= qtdPromo) {
+                // Calcular quantos "pacotes" promocionais cabem
+                const pacotesPromocionais = Math.floor(quantidadeTotal / qtdPromo);
+                const quantidadeRestante = quantidadeTotal % qtdPromo;
+                
+                // Calcular preço total: pacotes promocionais + unidades restantes
+                const totalPacotes = pacotesPromocionais * precoPromo;
+                const totalRestante = quantidadeRestante * precoNormal;
+                const valorTotal = totalPacotes + totalRestante;
+                
+                // Preço unitário médio
+                precoFinal = valorTotal / quantidadeTotal;
+                observacaoPromocao = ` (Promoção: ${qtdPromo}x por R$ ${precoPromo.toFixed(2)})`;
+            }
+        }
+        
+        if (itemExistente) {
+            // Atualizar quantidade e recalcular preço
+            itemExistente.quantidade = quantidadeTotal;
+            itemExistente.preco = precoFinal;
+            itemExistente.subtotal_exato = precoFinal * quantidadeTotal; // Armazenar subtotal exato
+            itemExistente.nome = produto.nome + observacaoPromocao;
+            itemExistente.promocao_ativa = !!observacaoPromocao;
+            if (observacaoPromocao) {
+                itemExistente.preco_original = parseFloat(produto.preco);
+            }
         } else {
             // Verifica estoque apenas se a configuração NÃO permite venda com estoque zero
             if (!configuracoes.permiteVendaEstoqueZero) {
@@ -150,13 +192,19 @@ async function adicionarProduto(codigo) {
             const precoOriginal = parseFloat(produto.preco);
             const precoComDesconto = precoOriginal * (1 - descontoPercentual / 100);
             
+            // **USAR PREÇO FINAL (que pode ser promocional)**
+            const precoParaUsar = observacaoPromocao ? precoFinal : precoComDesconto;
+            const precoOriginalParaMostrar = observacaoPromocao ? precoOriginal : (descontoPercentual > 0 ? precoOriginal : null);
+            
             carrinho.push({
                 codigo: codigo,
-                nome: produto.nome,
-                preco: precoComDesconto,
-                preco_original: precoOriginal,
-                desconto_percentual: descontoPercentual,
-                quantidade: quantidadeDesejada
+                nome: produto.nome + observacaoPromocao,
+                preco: precoParaUsar,
+                subtotal_exato: precoParaUsar * quantidadeDesejada, // Armazenar subtotal exato
+                preco_original: precoOriginalParaMostrar,
+                desconto_percentual: observacaoPromocao ? 0 : descontoPercentual,
+                quantidade: quantidadeDesejada,
+                promocao_ativa: !!observacaoPromocao
             });
         }
 
@@ -245,7 +293,7 @@ function atualizarCarrinho() {
                             font-weight: bold;
                         " title="Aumentar quantidade">+</button>
                     </div>
-                    <div class="item-price" style="min-width: 80px;">R$ ${(item.preco * item.quantidade).toFixed(2)}</div>
+                    <div class="item-price" style="min-width: 80px;">R$ ${(item.subtotal_exato || (item.preco * item.quantidade)).toFixed(2)}</div>
                     <button onclick="removerItemCarrinho(${index})" style="
                         background: #dc3545;
                         color: white;
@@ -266,7 +314,7 @@ function atualizarCarrinho() {
     }
 
     const totalQuantidade = carrinho.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValor = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    const totalValor = carrinho.reduce((sum, item) => sum + (item.subtotal_exato || (item.preco * item.quantidade)), 0);
 
     totalItemsSpan.textContent = totalQuantidade;
     subtotalSpan.textContent = `R$ ${totalValor.toFixed(2)}`;
@@ -285,6 +333,62 @@ function removerItemCarrinho(index) {
     carrinho.splice(index, 1);
     atualizarCarrinho();
     mostrarNotificacao(`✓ ${item.nome} removido do carrinho!`, 'info');
+}
+
+// Função auxiliar para recalcular promoção ao alterar quantidade
+async function recalcularPromocaoItem(item) {
+    try {
+        const response = await fetch(`${API_URL}/produtos/${item.codigo}`);
+        if (!response.ok) return;
+        
+        const produto = await response.json();
+        
+        // Verificar se tem promoção
+        if (produto.quantidade_promocional && produto.preco_promocional && 
+            produto.quantidade_promocional > 0 && produto.preco_promocional > 0) {
+            
+            const qtdPromo = parseInt(produto.quantidade_promocional);
+            const precoPromo = parseFloat(produto.preco_promocional);
+            const precoNormal = parseFloat(produto.preco);
+            const quantidadeTotal = item.quantidade;
+            
+            // Se a quantidade atinge a promoção
+            if (quantidadeTotal >= qtdPromo) {
+                // Calcular quantos "pacotes" promocionais cabem
+                const pacotesPromocionais = Math.floor(quantidadeTotal / qtdPromo);
+                const quantidadeRestante = quantidadeTotal % qtdPromo;
+                
+                // Calcular preço total: pacotes promocionais + unidades restantes
+                const totalPacotes = pacotesPromocionais * precoPromo;
+                const totalRestante = quantidadeRestante * precoNormal;
+                const valorTotal = totalPacotes + totalRestante;
+                
+                // Atualizar item com promoção
+                item.subtotal_exato = valorTotal;
+                item.preco = valorTotal / quantidadeTotal; // Preço médio para exibição
+                item.nome = produto.nome + ` (Promoção: ${qtdPromo}x por R$ ${precoPromo.toFixed(2)})`;
+                item.promocao_ativa = true;
+                item.preco_original = precoNormal;
+            } else {
+                // Sem promoção, usar preço normal
+                const descontoPercentual = parseFloat(produto.desconto_percentual) || 0;
+                const precoComDesconto = precoNormal * (1 - descontoPercentual / 100);
+                item.subtotal_exato = precoComDesconto * quantidadeTotal;
+                item.preco = precoComDesconto;
+                item.nome = produto.nome;
+                item.promocao_ativa = false;
+                if (descontoPercentual > 0) {
+                    item.preco_original = precoNormal;
+                    item.desconto_percentual = descontoPercentual;
+                }
+            }
+        } else {
+            // Produto sem promoção, recalcular subtotal normal
+            item.subtotal_exato = item.preco * item.quantidade;
+        }
+    } catch (error) {
+        console.error('Erro ao recalcular promoção:', error);
+    }
 }
 
 async function aumentarQuantidadeItem(index) {
@@ -315,11 +419,12 @@ async function aumentarQuantidadeItem(index) {
     }
     
     item.quantidade++;
+    await recalcularPromocaoItem(item);
     atualizarCarrinho();
     mostrarNotificacao(`✓ Quantidade aumentada para ${item.quantidade}`, 'success');
 }
 
-function diminuirQuantidadeItem(index) {
+async function diminuirQuantidadeItem(index) {
     if (index < 0 || index >= carrinho.length) return;
     
     const item = carrinho[index];
@@ -330,6 +435,7 @@ function diminuirQuantidadeItem(index) {
     }
     
     item.quantidade--;
+    await recalcularPromocaoItem(item);
     atualizarCarrinho();
     mostrarNotificacao(`✓ Quantidade diminuída para ${item.quantidade}`, 'info');
 }
@@ -373,6 +479,7 @@ async function alterarQuantidadeItem(index, novaQuantidade) {
     }
     
     item.quantidade = qtd;
+    await recalcularPromocaoItem(item);
     atualizarCarrinho();
     mostrarNotificacao(`✓ Quantidade alterada para ${qtd}`, 'success');
 }

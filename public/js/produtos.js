@@ -433,6 +433,20 @@ async function abrirEdicaoProduto(id) {
                 inputCustoEdicao.setValorDecimal(parseFloat(produto.preco_custo) || 0);
             }
             
+            // Campos promocionais
+            const inputPrecoPromocional = document.getElementById('editarPrecoPromocional');
+            if (inputPrecoPromocional) {
+                aplicarFormatacaoMoeda(inputPrecoPromocional);
+                if (produto.preco_promocional) {
+                    inputPrecoPromocional.setValorDecimal(parseFloat(produto.preco_promocional));
+                }
+            }
+            
+            const inputQtdPromocional = document.getElementById('editarQuantidadePromocional');
+            if (inputQtdPromocional && produto.quantidade_promocional) {
+                inputQtdPromocional.value = produto.quantidade_promocional;
+            }
+            
             // Carregar fornecedores e categorias
             await carregarFornecedoresSelect('editarFornecedorProduto', produto.fornecedor_id);
             await carregarCategoriasSelect('editarCategoriaProduto', produto.categoria_id);
@@ -490,6 +504,11 @@ async function salvarEdicaoProduto(event) {
     const ativo = document.getElementById('editarAtivo').checked;
     const fornecedor_id = document.getElementById('editarFornecedorProduto').value || null;
     const categoria_id = document.getElementById('editarCategoriaProduto').value || null;
+    
+    // Campos promocionais
+    const qtdPromocional = parseInt(document.getElementById('editarQuantidadePromocional').value) || null;
+    const inputPrecoPromocional = document.getElementById('editarPrecoPromocional');
+    const precoPromocional = inputPrecoPromocional.getValorDecimal ? inputPrecoPromocional.getValorDecimal() : (parseFloat(inputPrecoPromocional.value.replace(',', '.')) || null);
 
     try {
         const response = await fetch(`${API_URL}/produtos/${id}`, {
@@ -504,7 +523,9 @@ async function salvarEdicaoProduto(event) {
                 estoque_minimo: estoque_minimo, 
                 ativo,
                 fornecedor_id: fornecedor_id,
-                categoria_id: categoria_id
+                categoria_id: categoria_id,
+                quantidade_promocional: qtdPromocional,
+                preco_promocional: precoPromocional
             })
         });
 

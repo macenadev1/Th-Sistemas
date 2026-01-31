@@ -90,6 +90,28 @@
                 </div>
             </div>
             
+            <!-- Linha 5: Preço Promocional (Opcional) -->
+            <div style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; border: 2px solid #5a67d8;">
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 700; color: white; margin-bottom: 15px; font-size: 16px;">
+                    <span style="font-size: 22px;">🎁</span> Preço Promocional (Opcional)
+                </label>
+                <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin: 0 0 15px 0; line-height: 1.5;">
+                    💡 <strong>Exemplo:</strong> Bala custa R$ 0,15 cada. Configure "7 unidades" por "R$ 1,00" para ativar promoção automática no PDV.
+                </p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="color: white; font-weight: 600;">Quantidade Promocional:</label>
+                        <input type="number" id="editarQuantidadePromocional" min="1" step="1" placeholder="Ex: 7" style="background: white; border: 2px solid rgba(255,255,255,0.3);">
+                        <small style="color: rgba(255,255,255,0.85); display: block; margin-top: 5px;">Quantidade para ativar promoção</small>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="color: white; font-weight: 600;">Preço do Pacote (R$):</label>
+                        <input type="text" id="editarPrecoPromocional" placeholder="Ex: 1,00" style="background: white; border: 2px solid rgba(255,255,255,0.3);">
+                        <small style="color: rgba(255,255,255,0.85); display: block; margin-top: 5px;">Preço total do pacote promocional</small>
+                    </div>
+                </div>
+            </div>
+            
             <div class="form-group">
                 <label style="display: block; margin-bottom: 10px;">
                     <span style="font-weight: 600; font-size: 14px; color: #333;">Status do Produto</span>
