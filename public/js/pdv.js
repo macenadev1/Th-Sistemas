@@ -18,7 +18,7 @@ async function carregarHistoricoFechamentos() {
 // Verificar conexão com servidor
 async function verificarConexao() {
     try {
-        const response = await fetch(`${API_URL}/produtos`);
+        const response = await fetch(`${API_URL}/health`);
         serverOnline = response.ok;
         
         const badge = document.getElementById('statusBadge');
@@ -1422,11 +1422,8 @@ setInterval(() => {
     }
 }, 1000);
 
-// Verificar conexão periodicamente
-setInterval(verificarConexao, 5000);
-
 // Inicialização
-verificarConexao();
+verificarConexao(); // Verifica apenas uma vez no carregamento
 atualizarCarrinho();
 searchInput.focus();
 

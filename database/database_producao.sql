@@ -149,6 +149,8 @@ CREATE TABLE produtos (
     desconto_percentual DECIMAL(5, 2) NOT NULL DEFAULT 0,
     estoque INT NOT NULL DEFAULT 0,
     estoque_minimo INT NOT NULL DEFAULT 0,
+    quantidade_promocional INT NULL COMMENT 'Quantidade para ativar preço promocional (ex: 7 unidades)',
+    preco_promocional DECIMAL(10, 2) NULL COMMENT 'Preço total para a quantidade promocional (ex: R$ 1,00)',
     fornecedor_id INT NULL,
     categoria_id INT NULL,
     ativo BOOLEAN DEFAULT TRUE,
@@ -160,7 +162,8 @@ CREATE TABLE produtos (
     INDEX idx_nome (nome),
     INDEX idx_fornecedor_id (fornecedor_id),
     INDEX idx_categoria_id (categoria_id),
-    INDEX idx_estoque_alerta (estoque, estoque_minimo, ativo)
+    INDEX idx_estoque_alerta (estoque, estoque_minimo, ativo),
+    INDEX idx_promo_ativo (quantidade_promocional, preco_promocional, ativo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabela de vendas
@@ -273,6 +276,8 @@ CREATE TABLE contas_pagar (
     categoria_id INT NULL,
     fornecedor_id INT NULL,
     forma_pagamento ENUM('dinheiro', 'debito', 'credito', 'pix', 'boleto', 'transferencia') NULL,
+    origem_pagamento ENUM('reposicao', 'lucro') NULL COMMENT 'Origem do dinheiro: reposicao (custos) ou lucro (operacional)',
+    mes_referencia DATE NULL COMMENT 'Mês de referência da despesa (permite futuro, mas dedução sempre do mês atual)',
     observacoes TEXT,
     usuario_id INT NULL,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -1255,7 +1255,7 @@ async function carregarCaixaSection() {
  */
 async function verificarConexaoERP() {
     try {
-        const response = await fetch(`${API_URL}/produtos`);
+        const response = await fetch(`${API_URL}/health`);
         serverOnline = response.ok;
         
         const badge = document.getElementById('statusBadge');
@@ -1635,13 +1635,10 @@ function exportarRelatorioCSV() {
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ ERP Dashboard carregado');
-    verificarConexaoERP();
+    verificarConexaoERP(); // Verifica apenas uma vez no carregamento
     carregarDashboard();
     
-    // Verificar conexão periodicamente
-    setInterval(verificarConexaoERP, 5000);
-    
-    // Atualizar dashboard a cada 30 segundos
+    // Atualizar dashboard a cada 30 segundos (apenas se estiver na aba dashboard)
     setInterval(() => {
         if (document.querySelector('#dashboard-section.active')) {
             carregarDashboard();

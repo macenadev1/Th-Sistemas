@@ -70,7 +70,6 @@ function atualizarStatusCaixa() {
     console.log('🔍 Atualizando status do caixa... caixaAberto:', caixaAberto);
     const statusBadge = document.getElementById('caixaStatus');
     const saldoTexto = document.getElementById('saldoCaixaTexto');
-    console.log('🔍 Elemento saldoCaixaTexto encontrado?', saldoTexto);
     const btnAbrirCaixa = document.getElementById('btnAbrirCaixa');
     const btnReforcoCaixa = document.getElementById('btnReforcoCaixa');
     const btnSangria = document.getElementById('btnSangria');
@@ -80,9 +79,9 @@ function atualizarStatusCaixa() {
         const saldoAtual = caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias;
         console.log('💰 Saldo calculado:', saldoAtual, '= Abertura:', caixaData.valorAbertura, '+ Vendas:', caixaData.totalVendas, '+ Reforços:', caixaData.totalReforcos, '- Sangrias:', caixaData.totalSangrias);
         
-        // Atualizar saldoTexto SEMPRE que existir (modal ou PDV)
+        // Atualizar saldoTexto APENAS se existir (quando modal do caixa estiver aberto)
         if (saldoTexto) {
-            console.log('✅ Atualizando saldoCaixaTexto para:', saldoAtual.toFixed(2));
+            console.log('✅ Elemento saldoCaixaTexto encontrado - Atualizando para:', saldoAtual.toFixed(2));
             saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>`;
         }
         
@@ -156,13 +155,12 @@ function atualizarStatusCaixa() {
                 statusBadge.style.background = '#28a745';
                 statusBadge.innerHTML = '🔓 Caixa Aberto';
                 statusBadge.style.animation = 'none';
-                if (saldoTexto) {
-                    console.log('✅ Atualizando saldoCaixaTexto para:', saldoAtual.toFixed(2));
-                    saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>`;
-                } else {
-                    console.warn('⚠️ Elemento saldoCaixaTexto NÃO encontrado!');
-                }
             }
+        }
+        
+        // Atualizar saldoTexto se existir (quando modal estiver aberto)
+        if (saldoTexto) {
+            saldoTexto.innerHTML = `Saldo Atual: <strong style="color: #28a745;">R$ ${saldoAtual.toFixed(2)}</strong>`;
         }
         
         if (btnAbrirCaixa) btnAbrirCaixa.disabled = true;

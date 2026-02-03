@@ -44,6 +44,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// Health check endpoint (leve para verificar se servidor está online)
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date() });
+});
+
 // Job automático: Fechar mês todo dia 1º às 00:01
 cron.schedule('1 0 1 * *', async () => {
     console.log('\n🔄 [CRON] Executando fechamento automático de mês...');
