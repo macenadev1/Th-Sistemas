@@ -175,10 +175,16 @@ CREATE TABLE vendas (
     troco DECIMAL(10, 2) NOT NULL,
     quantidade_itens INT NOT NULL,
     desconto DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    cancelado BOOLEAN DEFAULT FALSE,
+    data_cancelamento TIMESTAMP NULL,
+    motivo_cancelamento TEXT NULL,
+    usuario_cancelamento_id INT NULL,
     data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (usuario_cancelamento_id) REFERENCES usuarios(id) ON DELETE SET NULL,
     INDEX idx_usuario_id (usuario_id),
-    INDEX idx_data_venda (data_venda)
+    INDEX idx_data_venda (data_venda),
+    INDEX idx_cancelado (cancelado)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabela de itens da venda

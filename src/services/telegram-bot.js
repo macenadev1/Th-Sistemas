@@ -195,7 +195,21 @@ class TelegramBotService {
         
         // Log de erros
         this.bot.on('polling_error', (error) => {
-            console.error('❌ Erro no polling do Telegram:', error.code);
+            // Ignorar erros comuns de timeout e conflito (são normais no polling)
+            const codigosIgnoraveis = ['EFATAL', 'ETELEGRAM', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'];
+            
+            // Verificar se é erro de conflito (409) - outro bot está rodando
+            if (error.response && error.response.statusCode === 409) {
+                console.warn('⚠️  Conflito de polling: Outro bot pode estar rodando com o mesmo token');
+                return;
+            }
+            
+            if (codigosIgnoraveis.includes(error.code)) {
+                // Não logar erros triviais de rede
+                return;
+            }
+            
+            console.error('❌ Erro no polling do Telegram:', error.code, error.message);
         });
     }
     
@@ -207,14 +221,15 @@ class TelegramBotService {
             const { getPool } = require('../config/database');
             const pool = getPool();
             
-            // Buscar vendas de hoje
+            // Buscar vendas de hoje (excluindo canceladas)
             const [vendas] = await pool.query(
                 `SELECT 
                     COUNT(*) as total_vendas,
                     COALESCE(SUM(total), 0) as valor_total,
                     COALESCE(SUM(quantidade_itens), 0) as total_itens
                 FROM vendas 
-                WHERE DATE(data_venda) = CURDATE()`
+                WHERE DATE(data_venda) = CURDATE()
+                AND cancelado = FALSE`
             );
             
             const totalVendas = vendas[0].total_vendas;
@@ -222,7 +237,7 @@ class TelegramBotService {
             const totalItens = vendas[0].total_itens;
             const ticketMedio = totalVendas > 0 ? valorTotal / totalVendas : 0;
             
-            // Buscar produtos mais vendidos de hoje
+            // Buscar produtos mais vendidos de hoje (excluindo vendas canceladas)
             const [produtosMaisVendidos] = await pool.query(
                 `SELECT 
                     iv.nome_produto as nome,
@@ -231,6 +246,7 @@ class TelegramBotService {
                 FROM itens_venda iv
                 INNER JOIN vendas v ON iv.venda_id = v.id
                 WHERE DATE(v.data_venda) = CURDATE()
+                AND v.cancelado = FALSE
                 GROUP BY iv.nome_produto
                 ORDER BY quantidade DESC
                 LIMIT 10`

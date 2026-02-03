@@ -167,7 +167,7 @@ router.post('/', async (req, res) => {
         const pool = getPool();
         const {
             descricao,
-            categoria_financeira_id,
+            categoria_id,
             fornecedor_id,
             valor,
             data_vencimento,
@@ -195,7 +195,7 @@ router.post('/', async (req, res) => {
         const [result] = await pool.query(`
             INSERT INTO contas_pagar (
                 descricao, 
-                categoria_financeira_id, 
+                categoria_id, 
                 fornecedor_id, 
                 valor, 
                 data_vencimento,
@@ -206,7 +206,7 @@ router.post('/', async (req, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             descricao,
-            categoria_financeira_id || null,
+            categoria_id || null,
             fornecedor_id || null,
             valor,
             data_vencimento,
@@ -233,9 +233,7 @@ router.put('/:id', async (req, res) => {
         const pool = getPool();
         const {
             descricao,
-            categoria_financeira_id,
-            fornecedor_id,
-            valor,
+        categoria_id,
             data_vencimento,
             observacoes,
             origem_pagamento,
@@ -279,7 +277,7 @@ router.put('/:id', async (req, res) => {
             WHERE id = ?
         `, [
             descricao,
-            categoria_financeira_id || null,
+            categoria_id || null,
             fornecedor_id || null,
             valor,
             data_vencimento,
@@ -323,11 +321,13 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
         // 2. CALCULAR REPOSIÇÃO E LUCRO DO MÊS (das vendas)
         // Receita: usar venda.total (já inclui descontos)
         // Custos: somar custos dos itens vendidos
+        // IMPORTANTE: Excluir vendas canceladas
         const [vendas] = await pool.query(`
             SELECT 
                 COALESCE(SUM(v.total), 0) AS receita_bruta
             FROM vendas v
             WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
         `, [ano, mes]);
         
         const [custos] = await pool.query(`
@@ -336,6 +336,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
             FROM itens_venda iv
             JOIN vendas v ON iv.venda_id = v.id
             WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
         `, [ano, mes]);
         
         const receitaBruta = parseFloat(vendas[0].receita_bruta) || 0;
@@ -449,11 +450,11 @@ router.put('/:id/pagar', async (req, res) => {
                 -- Saldo inicial manual
                 COALESCE(si.saldo_reposicao, 0) as saldo_inicial_reposicao,
                 COALESCE(si.saldo_lucro, 0) as saldo_inicial_lucro,
-                -- Custos e receitas do mês
+                -- Custos e receitas do mês (excluir vendas canceladas)
                 COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custos_mes,
                 COALESCE(SUM(iv.subtotal), 0) AS receita_mes
             FROM saldos_iniciais si
-            LEFT JOIN vendas v ON YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            LEFT JOIN vendas v ON YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ? AND v.cancelado = FALSE
             LEFT JOIN itens_venda iv ON iv.venda_id = v.id
             WHERE si.mes_ano = ?
             GROUP BY si.saldo_reposicao, si.saldo_lucro
@@ -723,19 +724,21 @@ router.post('/fechar-mes', async (req, res) => {
         const saldoInicialLucro = saldosIniciais.length > 0 
             ? parseFloat(saldosIniciais[0].saldo_lucro) : 0;
         
-        // 5. Calcular receita total das vendas
+        // 5. Calcular receita total das vendas (excluir canceladas)
         const [vendas] = await connection.query(`
             SELECT COALESCE(SUM(v.total), 0) AS receita_total
             FROM vendas v
             WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
         `, [anoAtual, mesAtual]);
         
-        // 6. Calcular custo total dos itens vendidos
+        // 6. Calcular custo total dos itens vendidos (excluir canceladas)
         const [custos] = await connection.query(`
             SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
             FROM itens_venda iv
             JOIN vendas v ON iv.venda_id = v.id
             WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
         `, [anoAtual, mesAtual]);
         
         const receitaMes = parseFloat(vendas[0].receita_total);

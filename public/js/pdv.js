@@ -1109,10 +1109,15 @@ async function abrirHistorico() {
     content.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">Carregando vendas...</p>';
 
     try {
+        // ✅ Buscar apenas vendas VÁLIDAS (não canceladas) - padrão da API
         const response = await fetch(`${API_URL}/vendas`);
         if (!response.ok) throw new Error('Erro ao carregar histórico');
         
+        // ✅ API /vendas retorna apenas vendas VÁLIDAS (não canceladas) por padrão
+        // Para incluir canceladas (auditoria): adicionar ?incluir_canceladas=true
         vendasCompletas = await response.json();
+        
+        console.log(`📊 Histórico: ${vendasCompletas.length} vendas válidas carregadas`);
         
         // Resetar filtro para "hoje" por padrão
         document.getElementById('filtroPeriodoVendas').value = 'hoje';
@@ -1238,12 +1243,28 @@ async function renderizarVendas(vendas) {
                         R$ ${parseFloat(venda.total).toFixed(2)}
                     </div>
                 </div>
-                <div style="display: flex; gap: 20px; font-size: 14px; color: #666;">
+                <div style="display: flex; gap: 20px; font-size: 14px; color: #666; margin-bottom: 10px;">
                     <span>💵 Pago: R$ ${parseFloat(venda.valor_pago).toFixed(2)}</span>
                     <span>💰 Troco: R$ ${parseFloat(venda.troco).toFixed(2)}</span>
                     <span>📦 Itens: ${venda.quantidade_itens}</span>
                 </div>
                 ${formasPagamentoHtml}
+                <div style="display: flex; gap: 10px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd;">
+                    <button onclick="event.stopPropagation(); editarVenda(${venda.id})" 
+                        style="flex: 1; background: #007bff; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.2s;"
+                        onmouseover="this.style.background='#0056b3'" 
+                        onmouseout="this.style.background='#007bff'"
+                        title="Editar venda">
+                        ✏️ Editar Venda
+                    </button>
+                    <button onclick="event.stopPropagation(); confirmarExclusaoVenda(${venda.id})" 
+                        style="flex: 1; background: #dc3545; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.2s;"
+                        onmouseover="this.style.background='#c82333'" 
+                        onmouseout="this.style.background='#dc3545'"
+                        title="Excluir venda">
+                        🗑️ Excluir Venda
+                    </button>
+                </div>
             </div>
         `;
     }
@@ -1421,6 +1442,139 @@ setInterval(() => {
         searchInput.focus();
     }
 }, 1000);
+
+// ==================== EDIÇÃO E EXCLUSÃO DE VENDAS ====================
+
+async function editarVenda(vendaId) {
+    if (!caixaAberto) {
+        mostrarNotificacao('⚠️ Caixa fechado! Não é possível editar vendas com o caixa fechado.', 'error');
+        return;
+    }
+
+    try {
+        // Buscar detalhes da venda
+        const response = await fetch(`${API_URL}/vendas/${vendaId}`);
+        if (!response.ok) throw new Error('Erro ao carregar venda');
+        
+        const dados = await response.json();
+        
+        // Confirmar edição
+        const confirma = confirm(
+            `📝 EDITAR VENDA #${vendaId}\n\n` +
+            `Ao editar esta venda:\n` +
+            `• O estoque dos produtos será revertido\n` +
+            `• Uma nova venda será criada\n` +
+            `• A venda original será cancelada\n\n` +
+            `Deseja continuar?`
+        );
+        
+        if (!confirma) return;
+        
+        // Limpar carrinho atual
+        carrinho = [];
+        pagamentos = [];
+        
+        // Carregar itens no carrinho
+        for (const item of dados.itens) {
+            carrinho.push({
+                codigo: item.codigo_barras,
+                nome: item.nome_produto,
+                preco: parseFloat(item.preco_unitario),
+                quantidade: parseInt(item.quantidade),
+                preco_original: null,
+                desconto_percentual: 0
+            });
+        }
+        
+        // Carregar formas de pagamento
+        if (dados.formas_pagamento && dados.formas_pagamento.length > 0) {
+            pagamentos = dados.formas_pagamento.map(fp => ({
+                forma: fp.forma_pagamento,
+                valor: parseFloat(fp.valor)
+            }));
+        }
+        
+        atualizarCarrinho();
+        
+        // Fechar histórico e abrir finalização
+        fecharModal('historicoModal');
+        
+        // Aguardar um pouco e abrir finalização
+        setTimeout(() => {
+            finalizarVenda();
+            mostrarNotificacao('✏️ Venda carregada para edição. Revise os itens e finalize.', 'info');
+        }, 300);
+        
+    } catch (error) {
+        console.error('Erro ao editar venda:', error);
+        mostrarNotificacao('❌ Erro ao carregar venda para edição', 'error');
+    }
+}
+
+async function confirmarExclusaoVenda(vendaId) {
+    try {
+        // Buscar detalhes da venda
+        const response = await fetch(`${API_URL}/vendas/${vendaId}`);
+        if (!response.ok) throw new Error('Erro ao carregar venda');
+        
+        const dados = await response.json();
+        const venda = dados.venda;
+        
+        // Montar mensagem de confirmação
+        let mensagem = `🗑️ EXCLUIR VENDA #${vendaId}\n\n`;
+        mensagem += `Valor: R$ ${parseFloat(venda.total).toFixed(2)}\n`;
+        mensagem += `Itens: ${venda.quantidade_itens}\n\n`;
+        mensagem += `⚠️ ATENÇÃO:\n`;
+        mensagem += `• O estoque será revertido\n`;
+        mensagem += `• O valor será deduzido do caixa (se aberto)\n`;
+        mensagem += `• Esta ação NÃO pode ser desfeita\n\n`;
+        mensagem += `Digite o motivo da exclusão (ou cancele):`;
+        
+        const motivo = prompt(mensagem);
+        
+        if (!motivo || motivo.trim() === '') {
+            mostrarNotificacao('Exclusão cancelada', 'info');
+            return;
+        }
+        
+        // Confirmar exclusão
+        const confirmaFinal = confirm(
+            `Tem certeza que deseja excluir a venda #${vendaId}?\n\n` +
+            `Motivo: ${motivo}`
+        );
+        
+        if (!confirmaFinal) {
+            mostrarNotificacao('Exclusão cancelada', 'info');
+            return;
+        }
+        
+        // Excluir venda
+        const deleteResponse = await fetch(`${API_URL}/vendas/${vendaId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ motivo: motivo.trim() })
+        });
+        
+        const result = await deleteResponse.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Erro ao excluir venda');
+        }
+        
+        mostrarNotificacao('✅ Venda excluída com sucesso!', 'success');
+        
+        // Recarregar estado do caixa
+        await carregarEstadoCaixa();
+        atualizarStatusCaixa();
+        
+        // Recarregar histórico
+        abrirHistorico();
+        
+    } catch (error) {
+        console.error('Erro ao excluir venda:', error);
+        mostrarNotificacao(`❌ ${error.message}`, 'error');
+    }
+}
 
 // Inicialização
 verificarConexao(); // Verifica apenas uma vez no carregamento
