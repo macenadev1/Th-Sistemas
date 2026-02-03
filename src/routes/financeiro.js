@@ -145,7 +145,7 @@ router.get('/:id', async (req, res) => {
                 cf.nome as categoria_nome,
                 f.nome_fantasia as fornecedor_nome
             FROM contas_pagar cp
-            LEFT JOIN categorias_financeiras cf ON cp.categoria_financeira_id = cf.id
+            LEFT JOIN categorias_financeiras cf ON cp.categoria_id = cf.id
             LEFT JOIN fornecedores f ON cp.fornecedor_id = f.id
             WHERE cp.id = ?
         `, [req.params.id]);
@@ -266,7 +266,7 @@ router.put('/:id', async (req, res) => {
         await pool.query(`
             UPDATE contas_pagar SET
                 descricao = ?,
-                categoria_financeira_id = ?,
+                categoria_id = ?,
                 fornecedor_id = ?,
                 valor = ?,
                 data_vencimento = ?,
