@@ -504,7 +504,6 @@ function finalizarVenda() {
     // Se já tem pagamentos, mostra o que já foi pago
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     if (pagamentos.length > 0) {
-        const total = calcularTotalComDesconto();
         const faltante = total - totalPago;
         mostrarNotificacao(`Pagamentos anteriores mantidos! Falta: R$ ${faltante.toFixed(2)}`, 'info');
     }
@@ -595,7 +594,10 @@ function selecionarFormaPagamentoComValor(forma) {
     
     // Verificar se pagamento está completo
     const novoTotalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
-    if (novoTotalPago >= total) {
+    const diferencaFinal = total - novoTotalPago;
+    
+    // Usar tolerância de 0.01 para compensar erros de arredondamento
+    if (diferencaFinal <= 0.01) {
         // Pagamento completo, mostrar modal de confirmação
         setTimeout(() => {
             mostrarModalConfirmacaoVenda();
@@ -687,7 +689,7 @@ function atualizarPagamentos() {
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     const troco = totalPago - total;
-    
+        
     // Atualizar totais
     document.getElementById('totalPago').textContent = `R$ ${totalPago.toFixed(2)}`;
     document.getElementById('faltaPagar').textContent = `R$ ${Math.max(0, faltante).toFixed(2)}`;
@@ -880,8 +882,10 @@ async function confirmarVenda() {
     const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
     const total = subtotal;
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
+    const diferenca = total - totalPago;
     
-    if (totalPago < total) {
+    // Usar tolerância de 0.01 para erros de arredondamento
+    if (diferenca > 0.01) {
         mostrarNotificacao('Pagamento insuficiente!', 'error');
         return;
     }
