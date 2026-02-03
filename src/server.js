@@ -1,9 +1,13 @@
+// Carregar variáveis de ambiente do arquivo .env
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const cron = require('node-cron');
 const { initDatabase, getPool } = require('./config/database');
+const TelegramBotService = require('./services/telegram-bot');
 
 const app = express();
 const PORT = 3000;
@@ -79,13 +83,28 @@ cron.schedule('1 0 1 * *', async () => {
     timezone: "America/Sao_Paulo"
 });
 
+// Inicializar Telegram Bot
+let telegramBot = null;
+try {
+    telegramBot = new TelegramBotService();
+    // Disponibilizar globalmente para uso nas rotas
+    global.telegramBot = telegramBot;
+} catch (error) {
+    console.warn('⚠️  Telegram Bot não inicializado:', error.message);
+}
+
 // Iniciar servidor
 initDatabase().then(() => {
     app.listen(PORT, () => {
         console.log(`\n🚀 Servidor rodando em http://localhost:${PORT}`);
         console.log(`📱 Abra no navegador: http://localhost:${PORT}`);
         console.log(`\n📊 Sistema PDV com MySQL pronto para uso!`);
-        console.log(`⏰ Job automático agendado: Fechamento de mês todo dia 1º às 00:01\n`);
+        console.log(`⏰ Job automático agendado: Fechamento de mês todo dia 1º às 00:01`);
+        if (telegramBot && telegramBot.bot) {
+            console.log(`🤖 Telegram Bot: @bomboniere_pdv_bot (ativo)\n`);
+        } else {
+            console.log(`⚠️  Telegram Bot: Não configurado (configure TELEGRAM_BOT_TOKEN no .env)\n`);
+        }
     });
 }).catch(error => {
     console.error('Erro ao inicializar:', error);

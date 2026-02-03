@@ -66,6 +66,28 @@ router.post('/', async (req, res) => {
         
         await connection.commit();
         
+        // Enviar cupom via Telegram (não bloqueia venda se falhar)
+        if (global.telegramBot) {
+            try {
+                await global.telegramBot.enviarCupomVenda({
+                    id: vendaId,
+                    itens: itens.map(item => ({
+                        nome: item.nome,
+                        quantidade: item.quantidade,
+                        preco: item.preco
+                    })),
+                    total: total,
+                    formasPagamento: formas_pagamento.map(fp => ({
+                        forma: fp.forma,
+                        valor: fp.valor
+                    })),
+                    troco: troco
+                });
+            } catch (error) {
+                console.error('❌ Erro ao enviar Telegram (venda concluída):', error.message);
+            }
+        }
+        
         res.json({ 
             success: true, 
             vendaId: vendaId,
