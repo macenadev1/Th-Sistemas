@@ -75,11 +75,12 @@ async function carregarDashboard() {
  */
 async function carregarEstatisticasGerais() {
     try {
-        // Vendas de hoje
+        // Vendas de hoje - API retorna apenas vendas NÃO CANCELADAS por padrão
         const vendasResponse = await fetch(`${API_URL}/vendas`);
         if (vendasResponse.ok) {
             const vendas = await vendasResponse.json();
             const hoje = new Date().toLocaleDateString('pt-BR');
+            // Filtro de vendas de hoje (API já exclui canceladas automaticamente)
             const vendasHoje = vendas.filter(v => {
                 const dataVenda = new Date(v.data_venda.replace(' ', 'T')).toLocaleDateString('pt-BR');
                 return dataVenda === hoje;
@@ -157,6 +158,7 @@ async function carregarVendasRecentes() {
         const response = await fetch(`${API_URL}/vendas`);
         if (!response.ok) return;
         
+        // API já retorna apenas vendas não canceladas por padrão
         const vendas = await response.json();
         const vendasRecentes = vendas.slice(0, 5);
         
@@ -930,6 +932,7 @@ async function carregarVendasSection() {
     content.innerHTML = '<p style="text-align: center; padding: 20px;">Carregando vendas...</p>';
     
     try {
+        // API /vendas retorna APENAS vendas válidas (não canceladas) por padrão
         const response = await fetch(`${API_URL}/vendas`);
         if (!response.ok) throw new Error('Erro ao carregar vendas');
         
@@ -990,6 +993,7 @@ function aplicarFiltrosVendasERP() {
     const busca = document.getElementById('filtroBuscaVendaERP').value.toLowerCase();
     const periodo = document.getElementById('filtroPeriodoVendaERP').value;
     
+    // API retorna apenas vendas válidas (não canceladas)
     let vendasFiltradas = [...window.vendasERPCompletas];
     
     // Filtro por ID
@@ -1386,7 +1390,7 @@ async function gerarRelatorioVendas() {
         
         const todasVendas = await response.json();
         
-        // Filtrar vendas no período
+        // Filtrar vendas no período - API já exclui canceladas automaticamente
         const vendas = todasVendas.filter(venda => {
             const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
             const dataVendaSemHora = new Date(dataVenda.toISOString().split('T')[0]);
@@ -2920,13 +2924,13 @@ async function gerarRelatorioProdutosVendidos() {
     container.innerHTML = '<p style="text-align: center; padding: 40px;"><strong>Carregando relatório...</strong></p>';
     
     try {
-        // Buscar todas as vendas no período
+        // Buscar todas as vendas no período (apenas não canceladas)
         const response = await fetch(`${API_URL}/vendas`);
         if (!response.ok) throw new Error('Erro ao carregar vendas');
         
         const todasVendas = await response.json();
         
-        // Filtrar vendas no período
+        // Filtrar vendas no período - backend já retorna apenas não canceladas
         const vendas = todasVendas.filter(venda => {
             const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
             const dataVendaSemHora = new Date(dataVenda.toISOString().split('T')[0]);

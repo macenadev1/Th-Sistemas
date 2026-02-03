@@ -111,8 +111,14 @@ async function gerarRelatorioVendasHorario() {
         
         const todasVendas = await response.json();
         
+        // CRÍTICO: Filtrar vendas canceladas
+        const vendasValidas = todasVendas.filter(venda => {
+            const cancelado = venda.cancelado === true || venda.cancelado === 1 || venda.cancelado === '1' || venda.cancelado === 'true';
+            return !cancelado;
+        });
+        
         // Filtrar vendas no período
-        const vendas = todasVendas.filter(venda => {
+        const vendas = vendasValidas.filter(venda => {
             const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
             const dataVendaSemHora = new Date(dataVenda.toISOString().split('T')[0]);
             const inicial = new Date(dataInicial);

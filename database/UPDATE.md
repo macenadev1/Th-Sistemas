@@ -2,6 +2,38 @@
 
 ## 📋 Histórico de Atualizações
 
+### ✅ Atualização 008: Controle de Cancelamento de Vendas (03/02/2026)
+**Descrição:** Adiciona campos para marcar vendas como canceladas, permitindo auditoria e reversão de estoque.
+
+**Alterações:**
+- `vendas` - Campo `cancelado BOOLEAN DEFAULT FALSE`
+- `vendas` - Campo `data_cancelamento TIMESTAMP NULL`
+- `vendas` - Campo `motivo_cancelamento TEXT NULL`
+- `vendas` - Campo `usuario_cancelamento_id INT NULL` (FK para usuarios)
+- Índices `idx_cancelado` e `idx_data_cancelamento`
+
+**Como aplicar:**
+```bash
+mysql -u root -p < database/008_cancelar_vendas.sql
+```
+
+**Benefícios:**
+- ✅ Soft delete de vendas (mantém histórico para auditoria)
+- ✅ Reversão automática de estoque ao cancelar
+- ✅ Atualização do total_vendas do caixa (se ainda aberto)
+- ✅ Rastreamento de quem e quando cancelou
+- ✅ Motivo obrigatório para cancelamento
+- ✅ Exclusão de vendas canceladas dos relatórios por padrão
+
+**Funcionalidades Frontend:**
+- Botão "🗑️ Excluir Venda" no histórico de vendas
+- Prompt para motivo do cancelamento
+- Confirmação antes de excluir
+- Notificação de sucesso com detalhes
+- API retorna apenas vendas válidas por padrão (use `?incluir_canceladas=true` para auditorias)
+
+---
+
 ### ✅ Atualização 002: Campo Estoque Mínimo (25/01/2026)
 **Descrição:** Adiciona campo `estoque_minimo` na tabela produtos para controle de reposição e alertas de estoque baixo.
 
