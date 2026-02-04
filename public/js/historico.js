@@ -326,6 +326,13 @@ async function verDetalhesFechamento(id) {
                 </div>
             </div>
             
+            <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; font-size: 20px; color: #333;">💳 Detalhamento de Formas de Pagamento</h3>
+                <div id="detalheFormasPagamentoFechamento" style="display: grid; gap: 10px;">
+                    <p style="text-align: center; color: #666;">Carregando...</p>
+                </div>
+            </div>
+            
             <div style="background: ${corDiferenca}; color: white; padding: 20px; border-radius: 10px; text-align: center;">
                 <h3 style="margin: 0 0 10px 0; font-size: 18px;">Diferença</h3>
                 <p style="margin: 0; font-size: 28px; font-weight: bold;">
@@ -335,6 +342,80 @@ async function verDetalhesFechamento(id) {
                 </p>
             </div>
         `;
+        
+        // Renderizar HTML primeiro
+        document.getElementById('detalhesFechamentoContent').innerHTML = html;
+        
+        // Carregar formas de pagamento do período do fechamento (assíncrono)
+        setTimeout(async () => {
+            try {
+                // Buscar todas as vendas
+                const vendasResponse = await fetch('http://localhost:3000/api/vendas');
+                if (vendasResponse.ok) {
+                    const todasVendas = await vendasResponse.json();
+                    
+                    // Filtrar vendas do período do fechamento
+                    const dataAberturaCaixa = new Date(fechamento.dataHoraAbertura.replace(' ', 'T'));
+                    const dataFechamentoCaixa = new Date(fechamento.dataHoraFechamento.replace(' ', 'T'));
+                    
+                    const vendasDoCaixa = todasVendas.filter(venda => {
+                        const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
+                        return dataVenda >= dataAberturaCaixa && dataVenda <= dataFechamentoCaixa;
+                    });
+                    
+                    console.log(`📊 Vendas no período do fechamento #${id}: ${vendasDoCaixa.length}`);
+                    
+                    // Buscar formas de pagamento de cada venda
+                    let totalDinheiro = 0;
+                    let totalMaquininha = 0;
+                    
+                    for (const venda of vendasDoCaixa) {
+                        const detalhesResponse = await fetch(`http://localhost:3000/api/vendas/${venda.id}`);
+                        if (detalhesResponse.ok) {
+                            const detalhes = await detalhesResponse.json();
+                            if (detalhes.formas_pagamento && detalhes.formas_pagamento.length > 0) {
+                                detalhes.formas_pagamento.forEach(fp => {
+                                    const valor = parseFloat(fp.valor);
+                                    if (fp.forma_pagamento === 'dinheiro') {
+                                        totalDinheiro += valor;
+                                    } else {
+                                        // débito, crédito e pix vão para maquininha
+                                        totalMaquininha += valor;
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    
+                    console.log(`💰 Formas de pagamento calculadas: Dinheiro R$ ${totalDinheiro.toFixed(2)} | Maquininha R$ ${totalMaquininha.toFixed(2)}`);
+                    
+                    // Atualizar elemento com os valores
+                    const detalheFormasPagamentoDiv = document.getElementById('detalheFormasPagamentoFechamento');
+                    if (detalheFormasPagamentoDiv) {
+                        detalheFormasPagamentoDiv.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; padding: 10px; background: white; border-radius: 6px; border-left: 3px solid #4caf50;">
+                                <span style="font-weight: 600;">💵 Dinheiro:</span>
+                                <span style="color: #4caf50; font-weight: bold; font-size: 18px;">R$ ${totalDinheiro.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 10px; background: white; border-radius: 6px; border-left: 3px solid #2196f3;">
+                                <span style="font-weight: 600;">💳 Maquininha (Débito + Crédito + PIX):</span>
+                                <span style="color: #2196f3; font-weight: bold; font-size: 18px;">R$ ${totalMaquininha.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 10px; background: #f0f0f0; border-radius: 6px; margin-top: 5px;">
+                                <span style="font-weight: 800;">💰 TOTAL:</span>
+                                <span style="color: #333; font-weight: 800; font-size: 18px;">R$ ${(totalDinheiro + totalMaquininha).toFixed(2)}</span>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar formas de pagamento do fechamento:', error);
+                const detalheFormasPagamentoDiv = document.getElementById('detalheFormasPagamentoFechamento');
+                if (detalheFormasPagamentoDiv) {
+                    detalheFormasPagamentoDiv.innerHTML = '<p style="text-align: center; color: #dc3545;">Erro ao carregar formas de pagamento</p>';
+                }
+            }
+        }, 100);
         
         // Adicionar movimentações se houver
         if (fechamento.movimentacoes && fechamento.movimentacoes.length > 0) {
