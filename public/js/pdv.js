@@ -2,6 +2,7 @@ const API_URL = 'http://localhost:3000/api';
 let carrinho = [];
 let serverOnline = false;
 let pagamentos = []; // Array para armazenar os pagamentos
+let processandoVenda = false; // Flag para evitar vendas duplicadas
 
 // Carregar histórico de fechamentos da API
 async function carregarHistoricoFechamentos() {
@@ -663,11 +664,44 @@ function mostrarModalConfirmacaoVenda() {
         document.getElementById('trocoConfirmacao').style.display = 'none';
     }
     
+    // 🔄 RESETAR: Garantir que o botão está no estado inicial
+    const btnConfirmar = document.querySelector('#confirmacaoVendaModal .btn-success');
+    if (btnConfirmar) {
+        btnConfirmar.disabled = false;
+        btnConfirmar.style.opacity = '1';
+        btnConfirmar.style.cursor = 'pointer';
+        btnConfirmar.innerHTML = '✓ Confirmar Venda';
+    }
+    
     document.getElementById('confirmacaoVendaModal').classList.add('active');
 }
 
 function confirmarVendaFinal() {
+    // 🛡️ PROTEÇÃO: Verificar se já está processando
+    if (processandoVenda) {
+        console.warn('⚠️ Venda já está sendo processada - ignorando requisição duplicada');
+        return;
+    }
+    
+    // 🔒 ATIVAR FLAG: Bloquear novas tentativas
+    processandoVenda = true;
+    
+    // Desabilitar botão imediatamente para evitar múltiplos cliques
+    const btnConfirmar = document.querySelector('#confirmacaoVendaModal .btn-success');
+    if (btnConfirmar) {
+        btnConfirmar.disabled = true;
+        btnConfirmar.style.opacity = '0.6';
+        btnConfirmar.style.cursor = 'not-allowed';
+        btnConfirmar.innerHTML = '⏳ Processando venda...';
+    }
+    
+    // Fechar modal ANTES de processar (evita múltiplos Enter)
     document.getElementById('confirmacaoVendaModal').classList.remove('active');
+    
+    // Mostrar loading no PDV
+    mostrarNotificacao('⏳ Processando venda...', 'info');
+    
+    // Processar venda
     confirmarVenda();
 }
 
@@ -903,6 +937,8 @@ async function confirmarVenda() {
     const troco = Math.max(0, totalPago - total);
 
     try {
+        console.log('📤 Enviando venda para API...');
+        
         const response = await fetch(`${API_URL}/vendas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -918,6 +954,8 @@ async function confirmarVenda() {
         });
 
         const result = await response.json();
+        
+        console.log('✅ Venda processada com sucesso:', result.vendaId);
 
         mostrarNotificacao('✓ Venda finalizada com sucesso!', 'success');
         
@@ -955,8 +993,12 @@ async function confirmarVenda() {
             mostrarCupom(dadosVenda);
         }
     } catch (error) {
-        console.error('Erro ao finalizar venda:', error);
-        mostrarNotificacao(error.message, 'error');
+        console.error('❌ Erro ao finalizar venda:', error);
+        mostrarNotificacao(error.message || 'Erro ao finalizar venda', 'error');
+    } finally {
+        // 🛡️ GARANTIR RESET: Sempre liberar flag, mesmo em caso de erro
+        processandoVenda = false;
+        console.log('🔓 Venda desbloqueada para novo processamento');
     }
 }
 
