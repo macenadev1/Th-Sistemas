@@ -44,6 +44,7 @@ class TelegramBotService {
                 `/vendas - 📊 Estatísticas de vendas de hoje\n` +
                 `/caixa - Status do caixa\n` +
                 `/estoque - Produtos com estoque baixo\n` +
+                `/groupid - 🆔 Descobrir ID do chat/grupo\n` +
                 `/help - Lista de comandos\n\n` +
                 `🆔 *Seu Chat ID:* \`${chatId}\`\n` +
                 `_(Configure este ID no arquivo .env como TELEGRAM_CHAT_ID)_`,
@@ -64,6 +65,7 @@ class TelegramBotService {
                 `/vendas - 📊 Ver estatísticas de vendas de hoje\n` +
                 `/caixa - Ver status do caixa\n` +
                 `/estoque - Ver produtos com estoque baixo\n` +
+                `/groupid - 🆔 Descobrir ID do chat/grupo atual\n` +
                 `/help - Mostrar esta mensagem\n\n` +
                 `💡 _O bot envia notificações automáticas de vendas, fechamentos e alertas._`,
                 { parse_mode: 'Markdown' }
@@ -177,12 +179,41 @@ class TelegramBotService {
             );
         });
         
+        // Comando /groupid - Descobrir ID do grupo
+        this.bot.onText(/\/groupid/, async (msg) => {
+            const chatId = msg.chat.id;
+            const chatType = msg.chat.type; // 'private', 'group', 'supergroup', 'channel'
+            const chatTitle = msg.chat.title || 'Chat Privado';
+            
+            let mensagem = `🆔 *INFORMAÇÕES DO CHAT*\n\n`;
+            mensagem += `📱 Tipo: \`${chatType}\`\n`;
+            mensagem += `📝 Nome: ${chatTitle}\n`;
+            mensagem += `🔢 Chat ID: \`${chatId}\`\n\n`;
+            
+            if (chatType === 'private') {
+                mensagem += `ℹ️ Este é um chat privado.\n\n`;
+                mensagem += `Para usar em um grupo:\n`;
+                mensagem += `1. Adicione o bot ao grupo\n`;
+                mensagem += `2. Digite /groupid no grupo\n`;
+                mensagem += `3. Copie o Chat ID\n`;
+                mensagem += `4. Configure no .env como TELEGRAM_CHAT_ID`;
+            } else {
+                mensagem += `✅ *Este é um grupo!*\n\n`;
+                mensagem += `📋 Para configurar, adicione no arquivo \`.env\`:\n\n`;
+                mensagem += `\`\`\`\nTELEGRAM_CHAT_ID=${chatId}\n\`\`\`\n\n`;
+                mensagem += `⚠️ Use o valor exato acima (incluindo o sinal de menos se houver)`;
+            }
+            
+            await this.bot.sendMessage(chatId, mensagem, { parse_mode: 'Markdown' });
+            console.log(`✅ Comando /groupid - Chat: ${chatTitle} (${chatId}) - Tipo: ${chatType}`);
+        });
+        
         // Handler para mensagens não reconhecidas
         this.bot.on('message', (msg) => {
             // Ignorar comandos conhecidos
             if (msg.text && msg.text.startsWith('/')) {
                 const comando = msg.text.split(' ')[0];
-                const comandosConhecidos = ['/start', '/help', '/status', '/vendas', '/caixa', '/estoque'];
+                const comandosConhecidos = ['/start', '/help', '/status', '/vendas', '/caixa', '/estoque', '/groupid'];
                 
                 if (!comandosConhecidos.includes(comando)) {
                     this.bot.sendMessage(msg.chat.id,
