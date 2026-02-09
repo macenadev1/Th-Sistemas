@@ -373,7 +373,7 @@ function confirmarSangria(event) {
     mostrarNotificacao(`✓ Sangria de R$ ${valor.toFixed(2)} realizada!`, 'info');
 }
 
-function abrirModalFechamentoCaixa() {
+async function abrirModalFechamentoCaixa() {
     const saldoEsperado = caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias;
     
     document.getElementById('fechValorAbertura').textContent = `R$ ${caixaData.valorAbertura.toFixed(2)}`;
@@ -381,6 +381,9 @@ function abrirModalFechamentoCaixa() {
     document.getElementById('fechReforcos').textContent = `R$ ${caixaData.totalReforcos.toFixed(2)}`;
     document.getElementById('fechSangrias').textContent = `R$ ${caixaData.totalSangrias.toFixed(2)}`;
     document.getElementById('fechSaldoEsperado').textContent = `R$ ${saldoEsperado.toFixed(2)}`;
+    
+    // Buscar formas de pagamento das vendas do período
+    await carregarFormasPagamentoCaixa();
     
     document.getElementById('diferencaFechamento').style.display = 'none';
     
@@ -422,6 +425,78 @@ function abrirModalFechamentoCaixa() {
             divDiferenca.style.display = 'none';
         }
     };
+}
+
+async function carregarFormasPagamentoCaixa() {
+    console.log('🔍 Carregando formas de pagamento do caixa...');
+    
+    // Atualizar elementos imediatamente com valores padrão
+    const fechDinheiroEl = document.getElementById('fechTotalDinheiro');
+    const fechMaquininhaEl = document.getElementById('fechTotalMaquininha');
+    
+    if (fechDinheiroEl) fechDinheiroEl.textContent = 'Carregando...';
+    if (fechMaquininhaEl) fechMaquininhaEl.textContent = 'Carregando...';
+    
+    try {
+        // Buscar todas as vendas
+        const response = await fetch(`${API_URL}/vendas`);
+        if (!response.ok) throw new Error('Erro ao buscar vendas');
+        
+        const todasVendas = await response.json();
+        
+        // Filtrar vendas do período do caixa aberto (após a abertura)
+        const dataAbertura = new Date(caixaData.dataHoraAbertura);
+        const vendasDoCaixa = todasVendas.filter(venda => {
+            const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
+            return dataVenda >= dataAbertura;
+        });
+        
+        console.log(`📊 Vendas no período: ${vendasDoCaixa.length}`);
+        
+        // Buscar formas de pagamento de cada venda
+        let totalDinheiro = 0;
+        let totalMaquininha = 0;
+        
+        for (const venda of vendasDoCaixa) {
+            const detalhesResponse = await fetch(`${API_URL}/vendas/${venda.id}`);
+            if (detalhesResponse.ok) {
+                const detalhes = await detalhesResponse.json();
+                if (detalhes.formas_pagamento && detalhes.formas_pagamento.length > 0) {
+                    detalhes.formas_pagamento.forEach(fp => {
+                        const valor = parseFloat(fp.valor);
+                        if (fp.forma_pagamento === 'dinheiro') {
+                            totalDinheiro += valor;
+                        } else {
+                            // débito, crédito e pix vão para maquininha
+                            totalMaquininha += valor;
+                        }
+                    });
+                }
+            }
+        }
+        
+        console.log(`💰 Calculado: Dinheiro R$ ${totalDinheiro.toFixed(2)} | Maquininha R$ ${totalMaquininha.toFixed(2)}`);
+        
+        // Atualizar campos no modal
+        if (fechDinheiroEl) {
+            fechDinheiroEl.textContent = `R$ ${totalDinheiro.toFixed(2)}`;
+            console.log('✅ Dinheiro atualizado');
+        } else {
+            console.error('❌ Elemento fechTotalDinheiro não encontrado!');
+        }
+        
+        if (fechMaquininhaEl) {
+            fechMaquininhaEl.textContent = `R$ ${totalMaquininha.toFixed(2)}`;
+            console.log('✅ Maquininha atualizada');
+        } else {
+            console.error('❌ Elemento fechTotalMaquininha não encontrado!');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar formas de pagamento:', error);
+        if (fechDinheiroEl) fechDinheiroEl.textContent = 'Erro';
+        if (fechMaquininhaEl) fechMaquininhaEl.textContent = 'Erro';
+    }
 }
 
 function confirmarFechamentoCaixa(event) {

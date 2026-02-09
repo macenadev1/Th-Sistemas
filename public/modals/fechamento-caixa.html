@@ -25,6 +25,19 @@
                 <span style="font-size: 20px; font-weight: 800;">SALDO ESPERADO:</span>
                 <span id="fechSaldoEsperado" style="font-size: 24px; font-weight: 800; color: #667eea;">R$ 0,00</span>
             </div>
+            
+            <!-- Detalhamento de Formas de Pagamento -->
+            <div id="fechFormasPagamento" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">💳 Detalhamento de Formas de Pagamento:</h4>
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <span style="font-weight: 600;">💵 Dinheiro:</span>
+                    <span id="fechTotalDinheiro" style="font-weight: bold; color: #28a745;">R$ 0,00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                    <span style="font-weight: 600;">💳 Maquininha (Débito/Crédito/PIX):</span>
+                    <span id="fechTotalMaquininha" style="font-weight: bold; color: #007bff;">R$ 0,00</span>
+                </div>
+            </div>
         </div>
         <form onsubmit="confirmarFechamentoCaixa(event)">
             <div class="form-group">
