@@ -16,6 +16,16 @@
                     <label style="display: block; margin-bottom: 5px; font-weight: bold;">📅 Data Final:</label>
                     <input type="date" id="dataFinalRelatorio" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
                 </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">💳 Forma de Pagamento:</label>
+                    <select id="filtroFormaPagamentoRelatorio" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                        <option value="todos">Todas as Formas</option>
+                        <option value="dinheiro">💵 Dinheiro</option>
+                        <option value="debito">💳 Débito</option>
+                        <option value="credito">💳 Crédito</option>
+                        <option value="pix">📱 PIX</option>
+                    </select>
+                </div>
                 <div style="display: flex; align-items: flex-end;">
                     <button onclick="gerarRelatorioVendas()" class="btn btn-primary" style="padding: 10px 25px; white-space: nowrap;">
                         🔍 Gerar Relatório
