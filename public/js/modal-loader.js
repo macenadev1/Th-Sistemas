@@ -39,9 +39,11 @@
         'relatorio-produtos-vendidos',
         'relatorio-estoque-baixo',
         'relatorio-vendas-horario',
+        'relatorio-estornos',
         'lista-contas-pagar',
         'cadastro-conta-pagar',
         'editar-conta-pagar',
+        'estorno-conta-pagar',
         'configurar-saldo-inicial'
     ];
 

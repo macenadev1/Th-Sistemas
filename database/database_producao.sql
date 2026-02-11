@@ -276,6 +276,7 @@ CREATE TABLE contas_pagar (
     id INT AUTO_INCREMENT PRIMARY KEY,
     descricao VARCHAR(255) NOT NULL,
     valor DECIMAL(10, 2) NOT NULL,
+    valor_estornado DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT 'Valor total estornado desta conta',
     data_vencimento DATE NOT NULL,
     data_pagamento DATE NULL,
     status ENUM('pendente', 'pago', 'vencido', 'cancelado') NOT NULL DEFAULT 'pendente',
@@ -298,7 +299,8 @@ CREATE TABLE contas_pagar (
     INDEX idx_fornecedor_id (fornecedor_id),
     INDEX idx_status_vencimento (status, data_vencimento),
     INDEX idx_origem_pagamento (origem_pagamento),
-    INDEX idx_mes_referencia (mes_referencia)
+    INDEX idx_mes_referencia (mes_referencia),
+    INDEX idx_valor_estornado (valor_estornado)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabela de saldos iniciais (módulo financeiro)
@@ -311,6 +313,26 @@ CREATE TABLE saldos_iniciais (
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_mes_ano (mes_ano)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de estornos de contas pagas
+CREATE TABLE estornos_contas_pagar (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    conta_pagar_id INT NOT NULL,
+    valor_estornado DECIMAL(10, 2) NOT NULL,
+    motivo TEXT NOT NULL,
+    saldo_antes_reposicao DECIMAL(10, 2) NOT NULL,
+    saldo_antes_lucro DECIMAL(10, 2) NOT NULL,
+    saldo_depois_reposicao DECIMAL(10, 2) NOT NULL,
+    saldo_depois_lucro DECIMAL(10, 2) NOT NULL,
+    mes_estornado DATE NOT NULL COMMENT 'Mês que recebeu o estorno (YYYY-MM-01)',
+    usuario_id INT NULL,
+    data_estorno TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conta_pagar_id) REFERENCES contas_pagar(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_conta_pagar_id (conta_pagar_id),
+    INDEX idx_data_estorno (data_estorno),
+    INDEX idx_mes_estornado (mes_estornado)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================

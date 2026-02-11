@@ -135,6 +135,66 @@ router.get('/dividas-futuras', async (req, res) => {
     }
 });
 
+// Relatório de estornos (todos ou por período)
+router.get('/relatorio/estornos', async (req, res) => {
+    try {
+        const pool = getPool();
+        const { data_inicio, data_fim } = req.query;
+        
+        let query = `
+            SELECT 
+                e.*,
+                cp.descricao as conta_descricao,
+                cp.valor as conta_valor_total,
+                cp.origem_pagamento,
+                f.nome_fantasia as fornecedor_nome,
+                u.nome as usuario_nome
+            FROM estornos_contas_pagar e
+            INNER JOIN contas_pagar cp ON e.conta_pagar_id = cp.id
+            LEFT JOIN fornecedores f ON cp.fornecedor_id = f.id
+            LEFT JOIN usuarios u ON e.usuario_id = u.id
+            WHERE 1=1
+        `;
+        
+        const params = [];
+        
+        if (data_inicio) {
+            query += ' AND e.data_estorno >= ?';
+            params.push(data_inicio);
+        }
+        
+        if (data_fim) {
+            query += ' AND e.data_estorno <= ?';
+            params.push(data_fim + ' 23:59:59');
+        }
+        
+        query += ' ORDER BY e.data_estorno DESC';
+        
+        const [estornos] = await pool.query(query, params);
+        
+        // Calcular totais
+        const totalEstornado = estornos.reduce((sum, e) => sum + parseFloat(e.valor_estornado), 0);
+        const totalReposicao = estornos.filter(e => e.origem_pagamento === 'reposicao')
+            .reduce((sum, e) => sum + parseFloat(e.valor_estornado), 0);
+        const totalLucro = estornos.filter(e => e.origem_pagamento === 'lucro')
+            .reduce((sum, e) => sum + parseFloat(e.valor_estornado), 0);
+        
+        res.json({
+            success: true,
+            estornos: estornos,
+            totais: {
+                total_estornado: totalEstornado,
+                total_reposicao: totalReposicao,
+                total_lucro: totalLucro,
+                quantidade: estornos.length
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao gerar relatório de estornos:', error);
+        res.status(500).json({ success: false, error: 'Erro ao gerar relatório' });
+    }
+});
+
 // Buscar conta específica
 router.get('/:id', async (req, res) => {
     try {
@@ -364,13 +424,29 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
         
         const pagamentosReposicao = pagamentos.find(p => p.origem_pagamento === 'reposicao')?.total_pago || 0;
         const pagamentosLucro = pagamentos.find(p => p.origem_pagamento === 'lucro')?.total_pago || 0;
+
+        // 4. CALCULAR ESTORNOS REALIZADOS NO MÊS CONSULTADO (por origem da conta)
+        const [estornos] = await pool.query(`
+            SELECT 
+                cp.origem_pagamento,
+                COALESCE(SUM(e.valor_estornado), 0) AS total_estornado
+            FROM estornos_contas_pagar e
+            INNER JOIN contas_pagar cp ON e.conta_pagar_id = cp.id
+            WHERE YEAR(e.data_estorno) = ?
+            AND MONTH(e.data_estorno) = ?
+            AND cp.origem_pagamento IS NOT NULL
+            GROUP BY cp.origem_pagamento
+        `, [ano, mes]);
+
+        const estornosReposicao = estornos.find(e => e.origem_pagamento === 'reposicao')?.total_estornado || 0;
+        const estornosLucro = estornos.find(e => e.origem_pagamento === 'lucro')?.total_estornado || 0;
         
-        // 4. CALCULAR SALDOS DISPONÍVEIS
+        // 5. CALCULAR SALDOS DISPONÍVEIS (estornos aumentam apenas o disponível, não a bruta)
         const reposicaoBruta = saldoInicialReposicao + custosReposicao;
-        const reposicaoDisponivel = reposicaoBruta - parseFloat(pagamentosReposicao);
+        const reposicaoDisponivel = reposicaoBruta - parseFloat(pagamentosReposicao) + parseFloat(estornosReposicao);
         
         const lucroBrutaTotal = saldoInicialLucro + lucroBruto;
-        const lucroDisponivel = lucroBrutaTotal - parseFloat(pagamentosLucro);
+        const lucroDisponivel = lucroBrutaTotal - parseFloat(pagamentosLucro) + parseFloat(estornosLucro);
         
         res.json({
             success: true,
@@ -381,6 +457,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
                     custos_mes: custosReposicao,
                     bruta: reposicaoBruta,
                     pagamentos: parseFloat(pagamentosReposicao),
+                    estornos: parseFloat(estornosReposicao),
                     disponivel: reposicaoDisponivel,
                     negativo: reposicaoDisponivel < 0
                 },
@@ -391,6 +468,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
                     lucro_mes: lucroBruto,
                     bruta: lucroBrutaTotal,
                     pagamentos: parseFloat(pagamentosLucro),
+                    estornos: parseFloat(estornosLucro),
                     disponivel: lucroDisponivel,
                     negativo: lucroDisponivel < 0
                 },
@@ -443,29 +521,37 @@ router.put('/:id/pagar', async (req, res) => {
         const dataAtual = new Date();
         const anoAtual = dataAtual.getFullYear();
         const mesAtual = dataAtual.getMonth() + 1;
-        
-        // Buscar saldos do mês atual
-        const [saldosResponse] = await pool.query(`
-            SELECT 
-                -- Saldo inicial manual
-                COALESCE(si.saldo_reposicao, 0) as saldo_inicial_reposicao,
-                COALESCE(si.saldo_lucro, 0) as saldo_inicial_lucro,
-                -- Custos e receitas do mês (excluir vendas canceladas)
-                COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custos_mes,
-                COALESCE(SUM(iv.subtotal), 0) AS receita_mes
-            FROM saldos_iniciais si
-            LEFT JOIN vendas v ON YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ? AND v.cancelado = FALSE
-            LEFT JOIN itens_venda iv ON iv.venda_id = v.id
-            WHERE si.mes_ano = ?
-            GROUP BY si.saldo_reposicao, si.saldo_lucro
-        `, [anoAtual, mesAtual, `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`]);
-        
-        const saldoInicialReposicao = saldosResponse.length > 0 ? parseFloat(saldosResponse[0].saldo_inicial_reposicao) : 0;
-        const saldoInicialLucro = saldosResponse.length > 0 ? parseFloat(saldosResponse[0].saldo_inicial_lucro) : 0;
-        const custosMes = saldosResponse.length > 0 ? parseFloat(saldosResponse[0].custos_mes) : 0;
-        const receitaMes = saldosResponse.length > 0 ? parseFloat(saldosResponse[0].receita_mes) : 0;
-        
-        // Pagamentos já realizados no mês
+        const mesReferenciaAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
+
+        // Saldo inicial manual (se existir)
+        const [saldoInicialRows] = await pool.query(
+            'SELECT saldo_reposicao, saldo_lucro FROM saldos_iniciais WHERE mes_ano = ?',
+            [mesReferenciaAtual]
+        );
+
+        const saldoInicialReposicao = saldoInicialRows.length > 0 ? parseFloat(saldoInicialRows[0].saldo_reposicao) : 0;
+        const saldoInicialLucro = saldoInicialRows.length > 0 ? parseFloat(saldoInicialRows[0].saldo_lucro) : 0;
+
+        // Receita e custos do mês (excluir vendas canceladas)
+        const [vendas] = await pool.query(`
+            SELECT COALESCE(SUM(v.total), 0) AS receita_total
+            FROM vendas v
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
+        `, [anoAtual, mesAtual]);
+
+        const [custos] = await pool.query(`
+            SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
+            FROM itens_venda iv
+            JOIN vendas v ON iv.venda_id = v.id
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
+        `, [anoAtual, mesAtual]);
+
+        const receitaMes = parseFloat(vendas[0].receita_total) || 0;
+        const custosMes = parseFloat(custos[0].custo_total) || 0;
+
+        // Pagamentos já realizados no mês (por origem)
         const [pagamentosRealizados] = await pool.query(`
             SELECT COALESCE(SUM(valor), 0) as total
             FROM contas_pagar
@@ -474,16 +560,30 @@ router.put('/:id/pagar', async (req, res) => {
             AND YEAR(data_pagamento) = ?
             AND MONTH(data_pagamento) = ?
         `, [origemFinal, anoAtual, mesAtual]);
-        
+
         const totalPago = parseFloat(pagamentosRealizados[0].total) || 0;
-        
-        // Calcular saldo disponível
+
+        // Estornos já realizados no mês (por origem da conta)
+        const [estornosRealizados] = await pool.query(`
+            SELECT COALESCE(SUM(e.valor_estornado), 0) as total
+            FROM estornos_contas_pagar e
+            INNER JOIN contas_pagar cp ON e.conta_pagar_id = cp.id
+            WHERE cp.origem_pagamento = ?
+            AND YEAR(e.data_estorno) = ?
+            AND MONTH(e.data_estorno) = ?
+        `, [origemFinal, anoAtual, mesAtual]);
+
+        const totalEstornado = parseFloat(estornosRealizados[0].total) || 0;
+
+        // Calcular saldo disponível (estornos aumentam apenas o disponível)
         let saldoDisponivel;
         if (origemFinal === 'reposicao') {
-            saldoDisponivel = saldoInicialReposicao + custosMes - totalPago;
+            const reposicaoBruta = saldoInicialReposicao + custosMes;
+            saldoDisponivel = reposicaoBruta - totalPago + totalEstornado;
         } else {
             const lucroMes = receitaMes - custosMes;
-            saldoDisponivel = saldoInicialLucro + lucroMes - totalPago;
+            const lucroBrutaTotal = saldoInicialLucro + lucroMes;
+            saldoDisponivel = lucroBrutaTotal - totalPago + totalEstornado;
         }
         
         const valorConta = parseFloat(exists[0].valor);
@@ -501,7 +601,6 @@ router.put('/:id/pagar', async (req, res) => {
         }
         
         const dataPagamentoFinal = data_pagamento || new Date().toISOString().split('T')[0];
-        const mesReferenciaAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
         
         // ATUALIZAR CONTA COM ORIGEM E MÊS ATUAL
         await pool.query(`
@@ -764,12 +863,32 @@ router.post('/fechar-mes', async (req, res) => {
         const pagamentosLucro = parseFloat(
             pagamentos.find(p => p.origem_pagamento === 'lucro')?.total_pago || 0
         );
+
+        // 8. Calcular estornos do mês por origem
+        const [estornos] = await connection.query(`
+            SELECT 
+                cp.origem_pagamento,
+                COALESCE(SUM(e.valor_estornado), 0) AS total_estornado
+            FROM estornos_contas_pagar e
+            INNER JOIN contas_pagar cp ON e.conta_pagar_id = cp.id
+            WHERE YEAR(e.data_estorno) = ?
+            AND MONTH(e.data_estorno) = ?
+            AND cp.origem_pagamento IS NOT NULL
+            GROUP BY cp.origem_pagamento
+        `, [anoAtual, mesAtual]);
+
+        const estornosReposicao = parseFloat(
+            estornos.find(e => e.origem_pagamento === 'reposicao')?.total_estornado || 0
+        );
+        const estornosLucro = parseFloat(
+            estornos.find(e => e.origem_pagamento === 'lucro')?.total_estornado || 0
+        );
+
+        // 9. Calcular disponível para próximo mês (estornos aumentam apenas disponível)
+        const reposicaoDisponivel = saldoInicialReposicao + custosMes - pagamentosReposicao + estornosReposicao;
+        const lucroDisponivel = saldoInicialLucro + lucroMes - pagamentosLucro + estornosLucro;
         
-        // 8. Calcular disponível para próximo mês
-        const reposicaoDisponivel = saldoInicialReposicao + custosMes - pagamentosReposicao;
-        const lucroDisponivel = saldoInicialLucro + lucroMes - pagamentosLucro;
-        
-        // 9. Criar/atualizar saldo inicial do próximo mês
+        // 10. Criar/atualizar saldo inicial do próximo mês
         if (saldoExistente.length > 0) {
             await connection.query(
                 'UPDATE saldos_iniciais SET saldo_reposicao = ?, saldo_lucro = ?, observacoes = ? WHERE mes_ano = ?',
@@ -813,6 +932,231 @@ router.post('/fechar-mes', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     } finally {
         connection.release();
+    }
+});
+
+// ==================== ESTORNOS ====================
+
+// Registrar estorno de uma conta paga
+router.post('/:id/estorno', async (req, res) => {
+    const pool = getPool();
+    const connection = await pool.getConnection();
+    
+    try {
+        await connection.beginTransaction();
+        
+        const contaId = req.params.id;
+        const { valor_estornado, motivo, usuario_id } = req.body;
+        
+        // Validações
+        if (!valor_estornado || valor_estornado <= 0) {
+            throw new Error('Valor do estorno deve ser maior que zero');
+        }
+        
+        if (!motivo || motivo.trim() === '') {
+            throw new Error('Motivo do estorno é obrigatório');
+        }
+        
+        // Buscar conta
+        const [conta] = await connection.query(
+            'SELECT * FROM contas_pagar WHERE id = ?',
+            [contaId]
+        );
+        
+        if (conta.length === 0) {
+            throw new Error('Conta não encontrada');
+        }
+        
+        const contaData = conta[0];
+        
+        // Verificar se conta está paga
+        if (contaData.status !== 'pago') {
+            throw new Error('Apenas contas pagas podem ser estornadas');
+        }
+        
+        // Verificar se valor do estorno não excede o valor pago
+        const valorJaEstornado = parseFloat(contaData.valor_estornado || 0);
+        const valorPago = parseFloat(contaData.valor);
+        const valorTotalEstornado = valorJaEstornado + parseFloat(valor_estornado);
+        
+        if (valorTotalEstornado > valorPago) {
+            throw new Error(`Valor total estornado (R$ ${valorTotalEstornado.toFixed(2)}) não pode exceder o valor pago (R$ ${valorPago.toFixed(2)})`);
+        }
+        
+        // Determinar mês atual para registrar estorno
+        const hoje = new Date();
+        const mesAtual = hoje.getMonth() + 1; // 1-12
+        const anoAtual = hoje.getFullYear();
+        const mesAnoAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
+
+        // Buscar saldo inicial do mês atual (se existir)
+        const [saldoInicial] = await connection.query(
+            'SELECT saldo_reposicao, saldo_lucro FROM saldos_iniciais WHERE mes_ano = ?',
+            [mesAnoAtual]
+        );
+        
+        const saldoInicialReposicao = saldoInicial.length > 0 ? parseFloat(saldoInicial[0].saldo_reposicao) : 0;
+        const saldoInicialLucro = saldoInicial.length > 0 ? parseFloat(saldoInicial[0].saldo_lucro) : 0;
+
+        // Calcular receita, custos e lucro do mês (sem alterar brutos)
+        const [vendas] = await connection.query(`
+            SELECT COALESCE(SUM(v.total), 0) AS receita_total
+            FROM vendas v
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
+        `, [anoAtual, mesAtual]);
+
+        const [custos] = await connection.query(`
+            SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
+            FROM itens_venda iv
+            JOIN vendas v ON iv.venda_id = v.id
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
+        `, [anoAtual, mesAtual]);
+
+        const receitaMes = parseFloat(vendas[0].receita_total);
+        const custosMes = parseFloat(custos[0].custo_total);
+        const lucroMes = receitaMes - custosMes;
+
+        // Calcular pagamentos por origem no mês
+        const [pagamentos] = await connection.query(`
+            SELECT 
+                origem_pagamento,
+                COALESCE(SUM(valor), 0) AS total_pago
+            FROM contas_pagar
+            WHERE status = 'pago'
+            AND YEAR(data_pagamento) = ?
+            AND MONTH(data_pagamento) = ?
+            AND origem_pagamento IS NOT NULL
+            GROUP BY origem_pagamento
+        `, [anoAtual, mesAtual]);
+
+        const pagamentosReposicao = parseFloat(
+            pagamentos.find(p => p.origem_pagamento === 'reposicao')?.total_pago || 0
+        );
+        const pagamentosLucro = parseFloat(
+            pagamentos.find(p => p.origem_pagamento === 'lucro')?.total_pago || 0
+        );
+
+        // Calcular estornos já realizados no mês por origem
+        const [estornos] = await connection.query(`
+            SELECT 
+                cp.origem_pagamento,
+                COALESCE(SUM(e.valor_estornado), 0) AS total_estornado
+            FROM estornos_contas_pagar e
+            INNER JOIN contas_pagar cp ON e.conta_pagar_id = cp.id
+            WHERE YEAR(e.data_estorno) = ?
+            AND MONTH(e.data_estorno) = ?
+            AND cp.origem_pagamento IS NOT NULL
+            GROUP BY cp.origem_pagamento
+        `, [anoAtual, mesAtual]);
+
+        const estornosReposicao = parseFloat(
+            estornos.find(e => e.origem_pagamento === 'reposicao')?.total_estornado || 0
+        );
+        const estornosLucro = parseFloat(
+            estornos.find(e => e.origem_pagamento === 'lucro')?.total_estornado || 0
+        );
+
+        // Saldos disponíveis atuais (não altera brutos)
+        const reposicaoBruta = saldoInicialReposicao + custosMes;
+        const lucroBrutaTotal = saldoInicialLucro + lucroMes;
+
+        const reposicaoDisponivelAtual = reposicaoBruta - pagamentosReposicao + estornosReposicao;
+        const lucroDisponivelAtual = lucroBrutaTotal - pagamentosLucro + estornosLucro;
+
+        const saldoAntesReposicao = reposicaoDisponivelAtual;
+        const saldoAntesLucro = lucroDisponivelAtual;
+        
+        // Devolver dinheiro para a origem correta (reposicao ou lucro)
+        const origemEstorno = contaData.origem_pagamento || 'lucro';
+        
+        let saldoDepoisReposicao = saldoAntesReposicao;
+        let saldoDepoisLucro = saldoAntesLucro;
+        
+        if (origemEstorno === 'reposicao') {
+            saldoDepoisReposicao += parseFloat(valor_estornado);
+        } else {
+            saldoDepoisLucro += parseFloat(valor_estornado);
+        }
+        
+        // NÃO altera saldos brutos; estorno impacta apenas o disponível via histórico
+        
+        // Registrar estorno
+        await connection.query(
+            `INSERT INTO estornos_contas_pagar 
+             (conta_pagar_id, valor_estornado, motivo, 
+              saldo_antes_reposicao, saldo_antes_lucro, 
+              saldo_depois_reposicao, saldo_depois_lucro, 
+              mes_estornado, usuario_id) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                contaId,
+                valor_estornado,
+                motivo.trim(),
+                saldoAntesReposicao,
+                saldoAntesLucro,
+                saldoDepoisReposicao,
+                saldoDepoisLucro,
+                mesAnoAtual,
+                usuario_id || null
+            ]
+        );
+        
+        // Atualizar valor total estornado na conta
+        await connection.query(
+            'UPDATE contas_pagar SET valor_estornado = valor_estornado + ? WHERE id = ?',
+            [valor_estornado, contaId]
+        );
+        
+        await connection.commit();
+        
+        console.log(`✅ Estorno registrado: Conta #${contaId}, Valor R$ ${valor_estornado}, Origem: ${origemEstorno}`);
+        
+        res.json({
+            success: true,
+            message: 'Estorno registrado com sucesso!',
+            dados: {
+                conta_id: contaId,
+                valor_estornado: parseFloat(valor_estornado),
+                origem_estorno: origemEstorno,
+                saldos_atualizados: {
+                    reposicao: saldoDepoisReposicao,
+                    lucro: saldoDepoisLucro
+                }
+            }
+        });
+        
+    } catch (error) {
+        await connection.rollback();
+        console.error('❌ Erro ao registrar estorno:', error);
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        connection.release();
+    }
+});
+
+// Listar estornos de uma conta
+router.get('/:id/estornos', async (req, res) => {
+    try {
+        const pool = getPool();
+        const contaId = req.params.id;
+        
+        const [estornos] = await pool.query(
+            `SELECT 
+                e.*,
+                u.nome as usuario_nome
+             FROM estornos_contas_pagar e
+             LEFT JOIN usuarios u ON e.usuario_id = u.id
+             WHERE e.conta_pagar_id = ?
+             ORDER BY e.data_estorno DESC`,
+            [contaId]
+        );
+        
+        res.json({ success: true, estornos: estornos });
+    } catch (error) {
+        console.error('Erro ao listar estornos:', error);
+        res.status(500).json({ success: false, error: 'Erro ao listar estornos' });
     }
 });
 

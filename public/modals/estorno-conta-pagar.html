@@ -1,0 +1,54 @@
+<!-- Modal de Estorno de Conta Paga -->
+<div id="estornoContaPagarModal" class="modal modal-nested">
+    <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>↩️ Registrar Estorno</h2>
+            <p id="estornoContaResumo" style="margin-top: 8px; color: #666;"></p>
+        </div>
+        
+        <form onsubmit="registrarEstornoConta(event)">
+            <input type="hidden" id="estornoContaId">
+            
+            <div style="padding: 20px; display: grid; gap: 15px;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <strong>Valor da Conta:</strong>
+                            <span id="estornoValorTotal">R$ 0,00</span>
+                        </div>
+                        <div>
+                            <strong>Já Estornado:</strong>
+                            <span id="estornoValorJa">R$ 0,00</span>
+                        </div>
+                        <div>
+                            <strong>Disponível:</strong>
+                            <span id="estornoValorDisponivel" style="color: #28a745; font-weight: bold;">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor do Estorno (R$):</label>
+                    <input type="text" id="valorEstornoConta" placeholder="0,00" required style="font-size: 22px; text-align: center; font-weight: bold;">
+                </div>
+
+                <div class="form-group">
+                    <label>Motivo do Estorno:</label>
+                    <textarea id="motivoEstornoConta" required rows="3" placeholder="Descreva o motivo do estorno" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px;"></textarea>
+                </div>
+
+                <div style="border-top: 1px solid #eee; padding-top: 15px;">
+                    <h3 style="margin: 0 0 10px 0;">🧾 Histórico de Estornos</h3>
+                    <div id="historicoEstornosConta" style="max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <p style="text-align: center; color: #999; padding: 10px;">Carregando...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="position: sticky; bottom: 0; background: white; border-top: 1px solid #ddd;">
+                <button type="submit" class="btn btn-success" style="flex: 1; font-size: 16px; padding: 14px;">✓ Registrar Estorno</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'estornoContaPagarModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

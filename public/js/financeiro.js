@@ -181,6 +181,10 @@ function renderizarContas(contas) {
                 }
         }
         
+        const valorEstornado = parseFloat(conta.valor_estornado || 0);
+        const valorTotalConta = parseFloat(conta.valor);
+        const valorDisponivelEstorno = Math.max(0, valorTotalConta - valorEstornado);
+
         html += `
             <div style="
                 background: ${statusBg}; 
@@ -207,6 +211,8 @@ function renderizarContas(contas) {
                             ${conta.categoria_nome ? `<div>🏷️ Categoria: ${conta.categoria_nome}</div>` : ''}
                             <div>📅 Vencimento: ${dataVencimento.toLocaleDateString('pt-BR')} ${alertaVencimento ? `- ${alertaVencimento}` : ''}</div>
                             ${conta.data_pagamento ? `<div>✅ Pago em: ${new Date(conta.data_pagamento).toLocaleDateString('pt-BR')}</div>` : ''}
+                            ${conta.status === 'pago' && valorEstornado > 0 ? `<div>↩️ Estornado: R$ ${valorEstornado.toFixed(2)}</div>` : ''}
+                            ${conta.status === 'pago' ? `<div>💡 Disponível p/ estorno: R$ ${valorDisponivelEstorno.toFixed(2)}</div>` : ''}
                         </div>
                     </div>
                     <div style="text-align: right; margin-left: 15px;">
@@ -228,6 +234,9 @@ function renderizarContas(contas) {
                                 </button>
                             ` : ''}
                             ${conta.status === 'pago' ? `
+                                <button onclick="abrirEstornoConta(${conta.id})" class="btn btn-warning" style="font-size: 12px; padding: 5px 10px; background: #ff9800; border-color: #ff9800;" title="Registrar Estorno">
+                                    ↩️ Estorno
+                                </button>
                                 <button onclick="verDetalhesConta(${conta.id})" class="btn btn-info" style="font-size: 12px; padding: 5px 10px;" title="Ver Detalhes">
                                     👁️
                                 </button>
@@ -898,6 +907,160 @@ async function verDetalhesConta(id) {
     } catch (error) {
         console.error('Erro ao carregar detalhes:', error);
         mostrarNotificacao('Erro ao carregar detalhes da conta', 'error');
+    }
+}
+
+// ==================== ESTORNOS ====================
+
+async function abrirEstornoConta(id) {
+    try {
+        const response = await fetch(`${window.API_URL}/contas-pagar/${id}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            mostrarNotificacao('Conta não encontrada', 'error');
+            return;
+        }
+
+        const conta = data.conta;
+        const valorEstornado = parseFloat(conta.valor_estornado || 0);
+        const valorTotal = parseFloat(conta.valor || 0);
+        const valorDisponivel = Math.max(0, valorTotal - valorEstornado);
+        
+        document.getElementById('estornoContaId').value = conta.id;
+        document.getElementById('estornoContaResumo').textContent = `${conta.descricao} • ${conta.fornecedor_nome || 'Sem fornecedor'}`;
+        document.getElementById('estornoValorTotal').textContent = `R$ ${valorTotal.toFixed(2)}`;
+        document.getElementById('estornoValorJa').textContent = `R$ ${valorEstornado.toFixed(2)}`;
+        document.getElementById('estornoValorDisponivel').textContent = `R$ ${valorDisponivel.toFixed(2)}`;
+
+        const inputValor = document.getElementById('valorEstornoConta');
+        if (inputValor && !inputValor.getValorDecimal) {
+            aplicarFormatacaoMoeda(inputValor);
+        }
+        if (inputValor && inputValor.setValorDecimal) {
+            inputValor.setValorDecimal(0);
+        } else if (inputValor) {
+            inputValor.value = '0,00';
+        }
+
+        const motivoInput = document.getElementById('motivoEstornoConta');
+        if (motivoInput) motivoInput.value = '';
+
+        abrirModal('estornoContaPagarModal', async () => {
+            await carregarHistoricoEstornosConta(conta.id);
+            if (inputValor) inputValor.focus();
+        });
+    } catch (error) {
+        console.error('Erro ao abrir estorno:', error);
+        mostrarNotificacao('Erro ao carregar dados da conta', 'error');
+    }
+}
+
+async function registrarEstornoConta(event) {
+    event.preventDefault();
+    
+    if (!serverOnline) {
+        mostrarNotificacao('Servidor offline!', 'error');
+        return;
+    }
+
+    const contaId = document.getElementById('estornoContaId').value;
+    const inputValor = document.getElementById('valorEstornoConta');
+    const valor = inputValor.getValorDecimal ? inputValor.getValorDecimal() : parseFloat(inputValor.value.replace(',', '.'));
+    const motivo = document.getElementById('motivoEstornoConta').value.trim();
+
+    if (!valor || valor <= 0) {
+        mostrarNotificacao('Informe um valor válido!', 'error');
+        return;
+    }
+    
+    if (!motivo) {
+        mostrarNotificacao('Informe o motivo do estorno!', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${window.API_URL}/contas-pagar/${contaId}/estorno`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                valor_estornado: valor,
+                motivo: motivo
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Erro ao registrar estorno');
+        }
+
+        mostrarNotificacao('✅ Estorno registrado com sucesso!', 'success');
+
+        await carregarHistoricoEstornosConta(contaId);
+        await carregarContasPagar();
+        aplicarFiltrosContas();
+        await carregarEstatisticasContas();
+
+        if (inputValor && inputValor.setValorDecimal) {
+            inputValor.setValorDecimal(0);
+        }
+        document.getElementById('motivoEstornoConta').value = '';
+
+        // Atualizar disponibilidade
+        const contaResponse = await fetch(`${window.API_URL}/contas-pagar/${contaId}`);
+        const contaData = await contaResponse.json();
+        if (contaData.success) {
+            const conta = contaData.conta;
+            const valorEstornado = parseFloat(conta.valor_estornado || 0);
+            const valorTotal = parseFloat(conta.valor || 0);
+            const valorDisponivel = Math.max(0, valorTotal - valorEstornado);
+            document.getElementById('estornoValorJa').textContent = `R$ ${valorEstornado.toFixed(2)}`;
+            document.getElementById('estornoValorDisponivel').textContent = `R$ ${valorDisponivel.toFixed(2)}`;
+        }
+    } catch (error) {
+        console.error('Erro ao registrar estorno:', error);
+        mostrarNotificacao(error.message || 'Erro ao registrar estorno', 'error');
+    }
+}
+
+async function carregarHistoricoEstornosConta(contaId) {
+    const container = document.getElementById('historicoEstornosConta');
+    if (!container) return;
+
+    container.innerHTML = '<p style="text-align: center; color: #999; padding: 10px;">Carregando...</p>';
+
+    try {
+        const response = await fetch(`${window.API_URL}/contas-pagar/${contaId}/estornos`);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao carregar estornos');
+        }
+
+        const estornos = data.estornos || [];
+
+        if (estornos.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #999; padding: 10px;">Nenhum estorno registrado</p>';
+            return;
+        }
+
+        container.innerHTML = estornos.map(estorno => {
+            const dataEstorno = new Date(estorno.data_estorno).toLocaleString('pt-BR');
+            return `
+                <div style="background: white; border: 1px solid #ddd; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>R$ ${parseFloat(estorno.valor_estornado).toFixed(2)}</strong>
+                        <span style="color: #666; font-size: 12px;">${dataEstorno}</span>
+                    </div>
+                    <div style="margin-top: 6px; color: #666; font-size: 13px;">${estorno.motivo}</div>
+                    ${estorno.usuario_nome ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">👤 ${estorno.usuario_nome}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Erro ao carregar histórico de estornos:', error);
+        container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 10px;">Erro ao carregar histórico</p>';
     }
 }
 
