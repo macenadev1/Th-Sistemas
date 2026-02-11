@@ -306,10 +306,12 @@ function abrirCadastroContaPagar() {
         await carregarFornecedoresSelectConta('fornecedorContaPagar');
         await carregarCategoriasFinanceirasSelect('categoriaContaPagar');
         
-        // Setar data de vencimento padrão (hoje + 30 dias)
+        // Setar data de vencimento padrão (hoje, horário local)
         const dataVencimento = new Date();
-        dataVencimento.setDate(dataVencimento.getDate() + 30);
-        document.getElementById('dataVencimentoContaPagar').value = dataVencimento.toISOString().split('T')[0];
+        const ano = dataVencimento.getFullYear();
+        const mes = String(dataVencimento.getMonth() + 1).padStart(2, '0');
+        const dia = String(dataVencimento.getDate()).padStart(2, '0');
+        document.getElementById('dataVencimentoContaPagar').value = `${ano}-${mes}-${dia}`;
         
         document.getElementById('descricaoContaPagar').focus();
     });
