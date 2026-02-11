@@ -1370,6 +1370,7 @@ function setarPeriodoRelatorio(tipo, botaoClicado) {
 async function gerarRelatorioVendas() {
     const dataInicial = document.getElementById('dataInicialRelatorio').value;
     const dataFinal = document.getElementById('dataFinalRelatorio').value;
+    const formaPagamento = document.getElementById('filtroFormaPagamentoRelatorio').value;
     
     if (!dataInicial || !dataFinal) {
         mostrarNotificacao('⚠️ Selecione as datas inicial e final', 'error');
@@ -1391,7 +1392,7 @@ async function gerarRelatorioVendas() {
         const todasVendas = await response.json();
         
         // Filtrar vendas no período - API já exclui canceladas automaticamente
-        const vendas = todasVendas.filter(venda => {
+        let vendas = todasVendas.filter(venda => {
             const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
             const dataVendaSemHora = new Date(dataVenda.toISOString().split('T')[0]);
             const inicial = new Date(dataInicial);
@@ -1399,6 +1400,28 @@ async function gerarRelatorioVendas() {
             
             return dataVendaSemHora >= inicial && dataVendaSemHora <= final;
         });
+        
+        // Filtrar por forma de pagamento se selecionada
+        if (formaPagamento !== 'todos') {
+            const vendasFiltradas = [];
+            
+            for (const venda of vendas) {
+                try {
+                    const detalhesResponse = await fetch(`${API_URL}/vendas/${venda.id}`);
+                    if (detalhesResponse.ok) {
+                        const detalhes = await detalhesResponse.json();
+                        // Verificar se a venda possui a forma de pagamento selecionada
+                        if (detalhes.formas_pagamento && detalhes.formas_pagamento.some(fp => fp.forma_pagamento === formaPagamento)) {
+                            vendasFiltradas.push(venda);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Erro ao verificar forma de pagamento da venda ${venda.id}:`, error);
+                }
+            }
+            
+            vendas = vendasFiltradas;
+        }
         
         if (vendas.length === 0) {
             container.innerHTML = `
@@ -1440,6 +1463,12 @@ async function gerarRelatorioVendas() {
                     <p style="margin: 10px 0 0 0; color: #666;">
                         Período: ${new Date(dataInicial).toLocaleDateString('pt-BR')} até ${new Date(dataFinal).toLocaleDateString('pt-BR')}
                     </p>
+                    ${formaPagamento !== 'todos' ? `<p style="margin: 5px 0 0 0; color: #007bff; font-size: 14px; font-weight: bold;">
+                        Filtro: ${(() => {
+                            const nomes = { dinheiro: '💵 Dinheiro', debito: '💳 Débito', credito: '💳 Crédito', pix: '📱 PIX' };
+                            return nomes[formaPagamento] || formaPagamento;
+                        })()}
+                    </p>` : ''}
                     <p style="margin: 5px 0 0 0; color: #999; font-size: 14px;">
                         Gerado em: ${new Date().toLocaleString('pt-BR')}
                     </p>
