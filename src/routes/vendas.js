@@ -116,7 +116,6 @@ router.get('/', async (req, res) => {
             `SELECT * FROM vendas ${whereClause} ORDER BY data_venda DESC LIMIT 1000`
         );
         
-        console.log(`📊 Listagem de vendas: ${rows.length} registros (canceladas: ${incluirCanceladas ? 'incluídas' : 'excluídas'})`);
         res.json(rows);
     } catch (error) {
         console.error('Erro ao listar vendas:', error);

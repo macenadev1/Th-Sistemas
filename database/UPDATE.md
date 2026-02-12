@@ -2,6 +2,28 @@
 
 ## 📋 Histórico de Atualizações
 
+### ✅ Atualização 009: Sistema de Estornos Financeiros (10/02/2026)
+**Descrição:** Adiciona controle de estornos para contas pagas, com histórico completo, auditoria e impacto nos saldos do mês.
+
+**Alterações:**
+- `contas_pagar` - Campo `valor_estornado DECIMAL(10,2) NOT NULL DEFAULT 0`
+- `estornos_contas_pagar` - Nova tabela para histórico de estornos
+- Índice `idx_valor_estornado` para otimizar consultas
+
+**Como aplicar:**
+```bash
+mysql -u root -p < database/009_estornos.sql
+```
+
+**Benefícios:**
+- ✅ Histórico completo de estornos
+- ✅ Auditoria com motivo e usuário
+- ✅ Saldo devolvido para reposição ou lucro
+- ✅ Relatórios específicos de estornos
+- ✅ Estornos parciais permitidos (com limite do valor pago)
+
+---
+
 ### ✅ Atualização 008: Controle de Cancelamento de Vendas (03/02/2026)
 **Descrição:** Adiciona campos para marcar vendas como canceladas, permitindo auditoria e reversão de estoque.
 
