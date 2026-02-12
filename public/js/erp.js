@@ -89,7 +89,6 @@ async function atualizarBadgesErp() {
 function inicializarAtalhosErp() {
     // Os atalhos estão em pdv.js para centralizar
     // Este arquivo apenas organiza as funções do menu
-    console.log('✅ Menu ERP carregado e pronto');
 }
 
 // Inicializar quando o DOM estiver pronto
