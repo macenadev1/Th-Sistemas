@@ -106,26 +106,21 @@ async function gerarRelatorioVendasHorario() {
     container.innerHTML = '<p style="text-align: center; padding: 40px;"><strong>Carregando relatório...</strong></p>';
     
     try {
-        const response = await fetch(`${API_URL}/vendas`);
-        if (!response.ok) throw new Error('Erro ao carregar vendas');
-        
-        const todasVendas = await response.json();
-        
-        // CRÍTICO: Filtrar vendas canceladas
-        const vendasValidas = todasVendas.filter(venda => {
-            const cancelado = venda.cancelado === true || venda.cancelado === 1 || venda.cancelado === '1' || venda.cancelado === 'true';
-            return !cancelado;
+        const query = new URLSearchParams({
+            data_inicial: dataInicial,
+            data_final: dataFinal,
+            forma_pagamento: 'todos'
         });
-        
-        // Filtrar vendas no período
-        const vendas = vendasValidas.filter(venda => {
-            const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
-            const dataVendaSemHora = new Date(dataVenda.toISOString().split('T')[0]);
-            const inicial = new Date(dataInicial);
-            const final = new Date(dataFinal);
-            
-            return dataVendaSemHora >= inicial && dataVendaSemHora <= final;
-        });
+
+        const response = await fetch(`${API_URL}/vendas/relatorio?${query.toString()}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Erro ao carregar vendas');
+        }
+
+        const vendas = data.vendas || [];
+        const itens = data.itens || [];
         
         if (vendas.length === 0) {
             container.innerHTML = `
@@ -139,14 +134,18 @@ async function gerarRelatorioVendasHorario() {
             return;
         }
         
-        // Buscar itens de todas as vendas em paralelo
-        const promessasItens = vendas.map(venda => 
-            fetch(`${API_URL}/vendas/${venda.id}`)
-                .then(res => res.json())
-                .then(data => ({ venda, itens: data.itens || [], formas_pagamento: data.formas_pagamento || [] }))
-        );
-        
-        const vendasComItens = await Promise.all(promessasItens);
+        const itensPorVenda = new Map();
+        itens.forEach(item => {
+            if (!itensPorVenda.has(item.venda_id)) {
+                itensPorVenda.set(item.venda_id, []);
+            }
+            itensPorVenda.get(item.venda_id).push(item);
+        });
+
+        const vendasComItens = vendas.map(venda => ({
+            venda,
+            itens: itensPorVenda.get(venda.id) || []
+        }));
         
         // Agrupar vendas por hora (0-23)
         const vendasPorHora = {};
