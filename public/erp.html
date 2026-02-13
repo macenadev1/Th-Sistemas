@@ -150,6 +150,31 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Evolucao de Vendas -->
+                <div class="dashboard-widget dashboard-widget-full">
+                    <div class="widget-header">
+                        <h3>📈 Evolucao de Vendas</h3>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input id="metaMensalEvolucaoVendas" type="number" min="0" step="0.01" placeholder="Meta mensal (R$)" oninput="carregarGraficoEvolucaoVendas()" style="padding: 6px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px; max-width: 170px;">
+                            <select id="filtroPeriodoEvolucaoVendas" onchange="carregarGraficoEvolucaoVendas()" style="padding: 6px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px;">
+                                <option value="30" selected>Ultimos 30 dias</option>
+                                <option value="90">Ultimos 90 dias</option>
+                                <option value="180">Ultimos 180 dias</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="widget-content grafico-content">
+                        <div id="graficoEvolucaoVendas" class="grafico-evolucao">
+                            <p style="text-align: center; color: #999; padding: 20px;">Carregando grafico...</p>
+                        </div>
+                        <div class="grafico-legenda">
+                            <span class="legenda-item"><span class="legenda-cor linha-vendas"></span><span id="legendaVendasEvolucao">Vendas diarias (barras)</span></span>
+                            <span class="legenda-item"><span class="legenda-cor linha-media"></span><span id="legendaMediaEvolucao">Media movel (7d)</span></span>
+                            <span class="legenda-item"><span class="legenda-cor linha-meta"></span>Meta mensal (proporcional)</span>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Produtos Section -->

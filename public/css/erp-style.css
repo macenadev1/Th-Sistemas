@@ -258,6 +258,75 @@
     gap: 20px;
 }
 
+.grafico-evolucao {
+    width: 100%;
+    min-height: 560px;
+}
+
+.grafico-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.grafico-tooltip {
+    position: absolute;
+    background: rgba(44, 62, 80, 0.95);
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    pointer-events: none;
+    transform: translate(-50%, -110%);
+    white-space: nowrap;
+    display: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+}
+
+.grafico-legenda {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: #666;
+    flex-wrap: wrap;
+}
+
+.legenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legenda-cor {
+    width: 14px;
+    height: 3px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+.linha-vendas {
+    background: #17a2b8;
+}
+
+.linha-media {
+    background: #6f42c1;
+}
+
+.linha-meta {
+    background: #ff8f00;
+}
+
+.dashboard-widget-full {
+    margin-top: 20px;
+}
+
+.grafico-content {
+    max-height: none;
+    overflow: visible;
+}
+
 .dashboard-widget {
     background: white;
     border-radius: 12px;
