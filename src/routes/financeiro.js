@@ -403,12 +403,6 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
         const custosReposicao = parseFloat(custos[0].custos_reposicao) || 0;
         const lucroBruto = receitaBruta - custosReposicao;
         
-        // DEBUG: Log dos valores calculados
-        console.log(`📊 Saldos ${ano}-${mes}:`);
-        console.log(`   Receita bruta: R$ ${receitaBruta.toFixed(2)}`);
-        console.log(`   Custos reposição: R$ ${custosReposicao.toFixed(2)}`);
-        console.log(`   Lucro bruto: R$ ${lucroBruto.toFixed(2)}`);
-        
         // 3. CALCULAR PAGAMENTOS REALIZADOS NO MÊS CONSULTADO (por origem)
         const [pagamentos] = await pool.query(`
             SELECT 

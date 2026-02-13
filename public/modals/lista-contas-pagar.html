@@ -24,6 +24,7 @@
                 <div id="qtdPagoMes" style="font-size: 12px; opacity: 0.9; margin-top: 5px;">0 conta(s)</div>
             </div>
         </div>
+
         
         <div style="padding: 0 20px 20px 20px;">
             <!-- Filtros -->
@@ -40,6 +41,17 @@
                     <option value="vencido">Vencidas</option>
                     <option value="pago">Pagas</option>
                     <option value="cancelado">Canceladas</option>
+                </select>
+
+                <select id="filtroOrigemPagamentoConta" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <option value="todos">Todas as Origens</option>
+                    <option value="reposicao">Reposicao</option>
+                    <option value="lucro">Lucro</option>
+                    <option value="sem_origem">Sem Origem</option>
+                </select>
+
+                <select id="filtroFornecedorConta" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <option value="todos">Todos os Fornecedores</option>
                 </select>
                 
                 <input 

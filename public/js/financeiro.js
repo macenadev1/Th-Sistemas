@@ -37,6 +37,8 @@ async function carregarContasPagar() {
     
     const data = await response.json();
     contasCompletas = data.contas || [];
+
+    atualizarOpcoesFiltrosContas();
     
     // Resetar filtros
     limparFiltrosContas();
@@ -72,6 +74,8 @@ function resetarPaginaEFiltrarContas() {
 function aplicarFiltrosContas() {
     const busca = document.getElementById('filtroBuscaConta').value.toLowerCase();
     const status = document.getElementById('filtroStatusConta').value;
+    const origemPagamento = document.getElementById('filtroOrigemPagamentoConta').value;
+    const fornecedorFiltro = document.getElementById('filtroFornecedorConta').value;
     const dataInicio = document.getElementById('filtroDataInicio').value;
     const dataFim = document.getElementById('filtroDataFim').value;
     
@@ -88,6 +92,30 @@ function aplicarFiltrosContas() {
     // Filtro por status
     if (status !== 'todos') {
         contasFiltradas = contasFiltradas.filter(conta => conta.status === status);
+    }
+
+    // Filtro por origem de pagamento
+    if (origemPagamento !== 'todos') {
+        if (origemPagamento === 'sem_origem') {
+            contasFiltradas = contasFiltradas.filter(conta => !conta.origem_pagamento);
+        } else {
+            contasFiltradas = contasFiltradas.filter(conta => conta.origem_pagamento === origemPagamento);
+        }
+    }
+
+    // Filtro por fornecedor
+    if (fornecedorFiltro !== 'todos') {
+        contasFiltradas = contasFiltradas.filter(conta => {
+            if (conta.fornecedor_id !== undefined && conta.fornecedor_id !== null) {
+                return String(conta.fornecedor_id) === fornecedorFiltro;
+            }
+
+            if (conta.fornecedor_nome) {
+                return conta.fornecedor_nome === fornecedorFiltro;
+            }
+
+            return false;
+        });
     }
     
     // Filtro por data de vencimento
@@ -109,6 +137,8 @@ function aplicarFiltrosContas() {
     
     // Atualizar contador
     document.getElementById('contadorContas').textContent = `${contasFiltradas.length} conta(s) encontrada(s)`;
+
+    atualizarCardsContas(contasFiltradas);
     
     // Renderizar contas filtradas
     renderizarContas(contasFiltradas);
@@ -117,10 +147,71 @@ function aplicarFiltrosContas() {
 function limparFiltrosContas() {
     document.getElementById('filtroBuscaConta').value = '';
     document.getElementById('filtroStatusConta').value = 'todos';
+    document.getElementById('filtroOrigemPagamentoConta').value = 'todos';
+    document.getElementById('filtroFornecedorConta').value = 'todos';
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
     paginaAtualContas = 1;
     aplicarFiltrosContas();
+}
+
+function atualizarCardsContas(contasFiltradas) {
+    const pendente = contasFiltradas.filter(c => c.status === 'pendente');
+    const vencido = contasFiltradas.filter(c => c.status === 'vencido');
+    const pago = contasFiltradas.filter(c => c.status === 'pago');
+
+    const totalPendente = pendente.reduce((sum, c) => sum + parseFloat(c.valor || 0), 0);
+    const totalVencido = vencido.reduce((sum, c) => sum + parseFloat(c.valor || 0), 0);
+    const totalPago = pago.reduce((sum, c) => sum + parseFloat(c.valor || 0), 0);
+
+    const totalPendenteEl = document.getElementById('totalPendente');
+    const qtdPendenteEl = document.getElementById('qtdPendente');
+    const totalVencidoEl = document.getElementById('totalVencido');
+    const qtdVencidoEl = document.getElementById('qtdVencido');
+    const totalPagoMesEl = document.getElementById('totalPagoMes');
+    const qtdPagoMesEl = document.getElementById('qtdPagoMes');
+
+    if (totalPendenteEl) totalPendenteEl.textContent = `R$ ${totalPendente.toFixed(2)}`;
+    if (qtdPendenteEl) qtdPendenteEl.textContent = `${pendente.length} conta(s)`;
+    if (totalVencidoEl) totalVencidoEl.textContent = `R$ ${totalVencido.toFixed(2)}`;
+    if (qtdVencidoEl) qtdVencidoEl.textContent = `${vencido.length} conta(s)`;
+    if (totalPagoMesEl) totalPagoMesEl.textContent = `R$ ${totalPago.toFixed(2)}`;
+    if (qtdPagoMesEl) qtdPagoMesEl.textContent = `${pago.length} conta(s)`;
+}
+
+function atualizarOpcoesFiltrosContas() {
+    const fornecedorSelect = document.getElementById('filtroFornecedorConta');
+    if (fornecedorSelect) {
+        const valorAtual = fornecedorSelect.value || 'todos';
+        const fornecedores = new Map();
+
+        contasCompletas.forEach(conta => {
+            if (conta.fornecedor_id !== undefined && conta.fornecedor_id !== null) {
+                const chave = String(conta.fornecedor_id);
+                const nome = conta.fornecedor_nome || `Fornecedor #${conta.fornecedor_id}`;
+                if (!fornecedores.has(chave)) {
+                    fornecedores.set(chave, nome);
+                }
+                return;
+            }
+
+            if (conta.fornecedor_nome) {
+                if (!fornecedores.has(conta.fornecedor_nome)) {
+                    fornecedores.set(conta.fornecedor_nome, conta.fornecedor_nome);
+                }
+            }
+        });
+
+        const opcoes = ['<option value="todos">Todos os Fornecedores</option>'];
+        Array.from(fornecedores.entries())
+            .sort((a, b) => a[1].localeCompare(b[1]))
+            .forEach(([valor, nome]) => {
+                opcoes.push(`<option value="${valor}">${nome}</option>`);
+            });
+
+        fornecedorSelect.innerHTML = opcoes.join('');
+        fornecedorSelect.value = fornecedores.has(valorAtual) ? valorAtual : 'todos';
+    }
 }
 
 function renderizarContas(contas) {
@@ -1070,6 +1161,8 @@ async function carregarHistoricoEstornosConta(contaId) {
 document.addEventListener('modalsLoaded', () => {
     const filtroBuscaConta = document.getElementById('filtroBuscaConta');
     const filtroStatusConta = document.getElementById('filtroStatusConta');
+    const filtroOrigemPagamentoConta = document.getElementById('filtroOrigemPagamentoConta');
+    const filtroFornecedorConta = document.getElementById('filtroFornecedorConta');
     const filtroDataInicio = document.getElementById('filtroDataInicio');
     const filtroDataFim = document.getElementById('filtroDataFim');
     
@@ -1081,6 +1174,16 @@ document.addEventListener('modalsLoaded', () => {
     if (filtroStatusConta) {
         filtroStatusConta.removeEventListener('change', resetarPaginaEFiltrarContas);
         filtroStatusConta.addEventListener('change', resetarPaginaEFiltrarContas);
+    }
+
+    if (filtroOrigemPagamentoConta) {
+        filtroOrigemPagamentoConta.removeEventListener('change', resetarPaginaEFiltrarContas);
+        filtroOrigemPagamentoConta.addEventListener('change', resetarPaginaEFiltrarContas);
+    }
+
+    if (filtroFornecedorConta) {
+        filtroFornecedorConta.removeEventListener('change', resetarPaginaEFiltrarContas);
+        filtroFornecedorConta.addEventListener('change', resetarPaginaEFiltrarContas);
     }
     
     if (filtroDataInicio) {

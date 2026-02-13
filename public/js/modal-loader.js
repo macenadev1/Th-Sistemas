@@ -38,6 +38,7 @@
         'relatorio-caixa-periodo',
         'relatorio-produtos-vendidos',
         'relatorio-estoque-baixo',
+        'relatorio-vendas-item',
         'relatorio-vendas-horario',
         'relatorio-estornos',
         'lista-contas-pagar',
