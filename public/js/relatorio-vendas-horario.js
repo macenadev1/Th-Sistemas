@@ -71,8 +71,15 @@ function setarPeriodoRelatorioHorario(tipo, botaoClicado) {
     }
     
     // Formatar datas para input type="date"
-    document.getElementById('dataInicialRelatorioHorario').value = dataInicial.toISOString().split('T')[0];
-    document.getElementById('dataFinalRelatorioHorario').value = dataFinal.toISOString().split('T')[0];
+    const formatarDataLocal = (data) => {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    document.getElementById('dataInicialRelatorioHorario').value = formatarDataLocal(dataInicial);
+    document.getElementById('dataFinalRelatorioHorario').value = formatarDataLocal(dataFinal);
     
     // Mostrar notificação
     const nomesPeriodo = {

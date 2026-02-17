@@ -66,8 +66,15 @@ function setarPeriodoRelatorioProdutos(tipo, botaoClicado) {
     }
     
     // Formatar datas para input type="date"
-    document.getElementById('dataInicialRelatorioProdutos').value = dataInicial.toISOString().split('T')[0];
-    document.getElementById('dataFinalRelatorioProdutos').value = dataFinal.toISOString().split('T')[0];
+    const formatarDataLocal = (data) => {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    document.getElementById('dataInicialRelatorioProdutos').value = formatarDataLocal(dataInicial);
+    document.getElementById('dataFinalRelatorioProdutos').value = formatarDataLocal(dataFinal);
     
     // Mostrar notificação
     const nomesPeriodo = {
