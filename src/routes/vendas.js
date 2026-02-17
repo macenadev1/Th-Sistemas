@@ -123,6 +123,71 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Relatorio de vendas com itens/formas em lote
+router.get('/relatorio', async (req, res) => {
+    try {
+        const pool = getPool();
+        const { data_inicial, data_final, forma_pagamento } = req.query;
+
+        if (!data_inicial || !data_final) {
+            return res.status(400).json({
+                success: false,
+                message: 'Datas inicial e final sao obrigatorias'
+            });
+        }
+
+        const forma = forma_pagamento || 'todos';
+        const params = [data_inicial, data_final];
+        let filtroForma = '';
+
+        if (forma !== 'todos') {
+            filtroForma = 'AND fp.forma_pagamento = ?';
+            params.push(forma);
+        }
+
+        const [vendas] = await pool.query(
+            `SELECT DISTINCT v.*
+             FROM vendas v
+             LEFT JOIN formas_pagamento_venda fp ON fp.venda_id = v.id
+             WHERE v.cancelado = FALSE
+               AND DATE(v.data_venda) BETWEEN ? AND ?
+               ${filtroForma}
+             ORDER BY v.data_venda DESC`,
+            params
+        );
+
+        if (vendas.length === 0) {
+            return res.json({ success: true, vendas: [], itens: [], formas_pagamento: [] });
+        }
+
+        const vendaIds = vendas.map(venda => venda.id);
+        const placeholders = vendaIds.map(() => '?').join(',');
+
+        const [itens] = await pool.query(
+            `SELECT * FROM itens_venda WHERE venda_id IN (${placeholders})`,
+            vendaIds
+        );
+
+        const [formasPagamento] = await pool.query(
+            `SELECT * FROM formas_pagamento_venda WHERE venda_id IN (${placeholders})`,
+            vendaIds
+        );
+
+        res.json({
+            success: true,
+            vendas,
+            itens,
+            formas_pagamento: formasPagamento
+        });
+    } catch (error) {
+        console.error('Erro ao gerar relatorio de vendas:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao gerar relatorio de vendas'
+        });
+    }
+});
+
 // Detalhes de uma venda
 router.get('/:id', async (req, res) => {
     try {
