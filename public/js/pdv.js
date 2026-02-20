@@ -670,31 +670,51 @@ function mostrarModalConfirmacaoVenda() {
         btnConfirmar.disabled = false;
         btnConfirmar.style.opacity = '1';
         btnConfirmar.style.cursor = 'pointer';
-        btnConfirmar.innerHTML = '✓ Confirmar Venda';
+        btnConfirmar.innerHTML = '✓ CONFIRMAR [Enter]';
     }
     
     document.getElementById('confirmacaoVendaModal').classList.add('active');
 }
 
-function confirmarVendaFinal() {
-    // 🛡️ PROTEÇÃO: Verificar se já está processando
+function atualizarEstadoBotoesVenda(processando) {
+    const btnConfirmarModal = document.querySelector('#confirmacaoVendaModal .btn-success');
+    if (btnConfirmarModal) {
+        btnConfirmarModal.disabled = processando;
+        btnConfirmarModal.style.opacity = processando ? '0.6' : '1';
+        btnConfirmarModal.style.cursor = processando ? 'not-allowed' : 'pointer';
+        btnConfirmarModal.innerHTML = processando ? '⏳ Processando venda...' : '✓ CONFIRMAR [Enter]';
+    }
+
+    const btnConfirmarFinalizacao = document.getElementById('btnConfirmarVenda');
+    if (btnConfirmarFinalizacao) {
+        btnConfirmarFinalizacao.disabled = processando;
+        btnConfirmarFinalizacao.style.opacity = processando ? '0.6' : '1';
+        btnConfirmarFinalizacao.style.cursor = processando ? 'not-allowed' : 'pointer';
+    }
+}
+
+function iniciarProcessamentoVenda() {
     if (processandoVenda) {
         console.warn('⚠️ Venda já está sendo processada - ignorando requisição duplicada');
+        return false;
+    }
+
+    processandoVenda = true;
+    atualizarEstadoBotoesVenda(true);
+    return true;
+}
+
+function finalizarProcessamentoVenda() {
+    processandoVenda = false;
+    atualizarEstadoBotoesVenda(false);
+    console.log('🔓 Venda desbloqueada para novo processamento');
+}
+
+function confirmarVendaFinal() {
+    if (!iniciarProcessamentoVenda()) {
         return;
     }
-    
-    // 🔒 ATIVAR FLAG: Bloquear novas tentativas
-    processandoVenda = true;
-    
-    // Desabilitar botão imediatamente para evitar múltiplos cliques
-    const btnConfirmar = document.querySelector('#confirmacaoVendaModal .btn-success');
-    if (btnConfirmar) {
-        btnConfirmar.disabled = true;
-        btnConfirmar.style.opacity = '0.6';
-        btnConfirmar.style.cursor = 'not-allowed';
-        btnConfirmar.innerHTML = '⏳ Processando venda...';
-    }
-    
+
     // Fechar modal ANTES de processar (evita múltiplos Enter)
     document.getElementById('confirmacaoVendaModal').classList.remove('active');
     
@@ -702,7 +722,7 @@ function confirmarVendaFinal() {
     mostrarNotificacao('⏳ Processando venda...', 'info');
     
     // Processar venda
-    confirmarVenda();
+    confirmarVenda({ jaBloqueada: true });
 }
 
 function cancelarConfirmacaoVenda() {
@@ -907,36 +927,43 @@ if (document.getElementById('valorPagamento')) {
     inicializarInputPagamento();
 }
 
-async function confirmarVenda() {
-    if (!caixaAberto) {
-        mostrarNotificacao('⚠️ Caixa fechado! Não é possível finalizar a venda.', 'error');
-        return;
-    }
+async function confirmarVenda(opcoes = {}) {
+    const { jaBloqueada = false } = opcoes;
+    const bloqueioAtivado = jaBloqueada ? true : iniciarProcessamentoVenda();
 
-    const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-    const total = subtotal;
-    const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
-    const diferenca = total - totalPago;
-    
-    // Usar tolerância de 0.01 para erros de arredondamento
-    if (diferenca > 0.01) {
-        mostrarNotificacao('Pagamento insuficiente!', 'error');
+    if (!bloqueioAtivado) {
         return;
     }
-    
-    if (pagamentos.length === 0) {
-        mostrarNotificacao('Adicione pelo menos uma forma de pagamento!', 'error');
-        return;
-    }
-
-    if (!serverOnline) {
-        mostrarNotificacao('Servidor offline! Não foi possível finalizar.', 'error');
-        return;
-    }
-
-    const troco = Math.max(0, totalPago - total);
 
     try {
+        if (!caixaAberto) {
+            mostrarNotificacao('⚠️ Caixa fechado! Não é possível finalizar a venda.', 'error');
+            return;
+        }
+
+        const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+        const total = subtotal;
+        const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
+        const diferenca = total - totalPago;
+        
+        // Usar tolerância de 0.01 para erros de arredondamento
+        if (diferenca > 0.01) {
+            mostrarNotificacao('Pagamento insuficiente!', 'error');
+            return;
+        }
+        
+        if (pagamentos.length === 0) {
+            mostrarNotificacao('Adicione pelo menos uma forma de pagamento!', 'error');
+            return;
+        }
+
+        if (!serverOnline) {
+            mostrarNotificacao('Servidor offline! Não foi possível finalizar.', 'error');
+            return;
+        }
+
+        const troco = Math.max(0, totalPago - total);
+
         console.log('📤 Enviando venda para API...');
         
         const response = await fetch(`${API_URL}/vendas`, {
@@ -996,9 +1023,7 @@ async function confirmarVenda() {
         console.error('❌ Erro ao finalizar venda:', error);
         mostrarNotificacao(error.message || 'Erro ao finalizar venda', 'error');
     } finally {
-        // 🛡️ GARANTIR RESET: Sempre liberar flag, mesmo em caso de erro
-        processandoVenda = false;
-        console.log('🔓 Venda desbloqueada para novo processamento');
+        finalizarProcessamentoVenda();
     }
 }
 
