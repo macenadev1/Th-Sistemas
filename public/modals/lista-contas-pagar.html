@@ -78,6 +78,18 @@
             <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                 <strong id="contadorContas">0 conta(s) encontrada(s)</strong>
             </div>
+
+            <div id="resumoSelecaoContas" style="margin-bottom: 15px; padding: 12px 15px; background: #e9f5ff; border: 1px solid #cfe8ff; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <strong id="textoSelecaoContas">Nenhuma conta selecionada</strong>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button onclick="limparSelecaoContas()" class="btn" style="background: #6c757d; color: white; padding: 8px 14px; font-size: 13px;">
+                        Limpar Seleção
+                    </button>
+                    <button id="btnPagarSelecionadasContas" onclick="abrirPagamentoContasSelecionadas()" class="btn btn-success" style="padding: 8px 14px; font-size: 13px;" disabled>
+                        💳 Pagar Selecionadas
+                    </button>
+                </div>
+            </div>
             
             <!-- Lista de contas -->
             <div id="contasPagarContent" style="min-height: 200px;">
