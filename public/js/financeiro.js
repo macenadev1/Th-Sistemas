@@ -3,6 +3,8 @@
 let contasCompletas = [];
 let paginaAtualContas = 1;
 const itensPorPaginaContas = 10;
+const contasSelecionadas = new Set();
+let contasSelecionaveisPaginaAtual = [];
 
 // ==================== LISTAGEM DE CONTAS A PAGAR ====================
 
@@ -37,6 +39,7 @@ async function carregarContasPagar() {
     
     const data = await response.json();
     contasCompletas = data.contas || [];
+    sincronizarSelecaoContas();
 
     atualizarOpcoesFiltrosContas();
     
@@ -68,6 +71,77 @@ async function carregarEstatisticasContas() {
 
 function resetarPaginaEFiltrarContas() {
     paginaAtualContas = 1;
+    aplicarFiltrosContas();
+}
+
+function contaPodeSerPaga(conta) {
+    return conta.status === 'pendente' || conta.status === 'vencido';
+}
+
+function sincronizarSelecaoContas() {
+    const idsValidos = new Set(
+        contasCompletas
+            .filter(conta => contaPodeSerPaga(conta))
+            .map(conta => Number(conta.id))
+    );
+
+    for (const id of contasSelecionadas) {
+        if (!idsValidos.has(Number(id))) {
+            contasSelecionadas.delete(id);
+        }
+    }
+}
+
+function atualizarResumoSelecaoContas() {
+    const texto = document.getElementById('textoSelecaoContas');
+    const botaoPagar = document.getElementById('btnPagarSelecionadasContas');
+    const totalSelecionado = contasCompletas
+        .filter(conta => contasSelecionadas.has(Number(conta.id)))
+        .reduce((sum, conta) => sum + parseFloat(conta.valor || 0), 0);
+
+    if (texto) {
+        if (contasSelecionadas.size === 0) {
+            texto.textContent = 'Nenhuma conta selecionada';
+        } else {
+            texto.textContent = `${contasSelecionadas.size} conta(s) selecionada(s) • Total: R$ ${totalSelecionado.toFixed(2)}`;
+        }
+    }
+
+    if (botaoPagar) {
+        botaoPagar.disabled = contasSelecionadas.size === 0;
+    }
+
+    const checkboxSelecionarTodosPagina = document.getElementById('checkboxSelecionarTodosPagina');
+    if (checkboxSelecionarTodosPagina) {
+        const todosSelecionados = contasSelecionaveisPaginaAtual.length > 0
+            && contasSelecionaveisPaginaAtual.every(id => contasSelecionadas.has(Number(id)));
+        checkboxSelecionarTodosPagina.checked = todosSelecionados;
+    }
+}
+
+function toggleSelecionarConta(id, selecionado) {
+    const contaId = Number(id);
+    if (selecionado) {
+        contasSelecionadas.add(contaId);
+    } else {
+        contasSelecionadas.delete(contaId);
+    }
+    atualizarResumoSelecaoContas();
+}
+
+function toggleSelecionarTodasPagina(selecionado) {
+    for (const contaId of contasSelecionaveisPaginaAtual) {
+        if (selecionado) {
+            contasSelecionadas.add(Number(contaId));
+        } else {
+            contasSelecionadas.delete(Number(contaId));
+        }
+    }
+    aplicarFiltrosContas();
+}
+
+function limparSelecaoContas() {
+    contasSelecionadas.clear();
     aplicarFiltrosContas();
 }
 
@@ -139,9 +213,11 @@ function aplicarFiltrosContas() {
     document.getElementById('contadorContas').textContent = `${contasFiltradas.length} conta(s) encontrada(s)`;
 
     atualizarCardsContas(contasFiltradas);
+    sincronizarSelecaoContas();
     
     // Renderizar contas filtradas
     renderizarContas(contasFiltradas);
+    atualizarResumoSelecaoContas();
 }
 
 function limparFiltrosContas() {
@@ -216,6 +292,7 @@ function atualizarOpcoesFiltrosContas() {
 
 function renderizarContas(contas) {
     const content = document.getElementById('contasPagarContent');
+    contasSelecionaveisPaginaAtual = [];
     
     if (contas.length === 0) {
         content.innerHTML = `
@@ -226,6 +303,7 @@ function renderizarContas(contas) {
             </div>
         `;
         document.getElementById('paginacaoContas').innerHTML = '';
+        atualizarResumoSelecaoContas();
         return;
     }
 
@@ -235,7 +313,18 @@ function renderizarContas(contas) {
     const fim = inicio + itensPorPaginaContas;
     const contasPagina = contas.slice(inicio, fim);
 
-    let html = '<div style="padding: 10px;"><div style="display: grid; gap: 10px;">';
+    contasSelecionaveisPaginaAtual = contasPagina
+        .filter(conta => contaPodeSerPaga(conta))
+        .map(conta => Number(conta.id));
+
+    let html = `
+        <div style="padding: 10px;">
+            <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="checkboxSelecionarTodosPagina" onchange="toggleSelecionarTodasPagina(this.checked)">
+                <label for="checkboxSelecionarTodosPagina" style="font-weight: 600; cursor: pointer;">Selecionar todas da página (pendentes/vencidas)</label>
+            </div>
+            <div style="display: grid; gap: 10px;">
+    `;
     
     for (const conta of contasPagina) {
         const dataVencimento = new Date(conta.data_vencimento);
@@ -275,6 +364,8 @@ function renderizarContas(contas) {
         const valorEstornado = parseFloat(conta.valor_estornado || 0);
         const valorTotalConta = parseFloat(conta.valor);
         const valorDisponivelEstorno = Math.max(0, valorTotalConta - valorEstornado);
+        const selecionavel = contaPodeSerPaga(conta);
+        const marcado = contasSelecionadas.has(Number(conta.id));
 
         html += `
             <div style="
@@ -287,6 +378,7 @@ function renderizarContas(contas) {
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                     <div style="flex: 1;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            ${selecionavel ? `<input type="checkbox" ${marcado ? 'checked' : ''} onchange="toggleSelecionarConta(${conta.id}, this.checked)" title="Selecionar conta">` : ''}
                             <strong style="font-size: 16px;">${conta.descricao}</strong>
                             <span style="
                                 background: ${statusColor}; 
@@ -341,6 +433,7 @@ function renderizarContas(contas) {
 
     html += '</div></div>';
     content.innerHTML = html;
+    atualizarResumoSelecaoContas();
     
     renderizarPaginacaoContas(totalPaginas, contas);
 }
@@ -694,6 +787,158 @@ async function salvarEdicaoConta(event) {
 
 // ==================== PAGAR CONTA ====================
 
+async function abrirPagamentoContasSelecionadas() {
+    if (contasSelecionadas.size === 0) {
+        mostrarNotificacao('Selecione pelo menos uma conta para pagar.', 'error');
+        return;
+    }
+
+    const contasParaPagar = contasCompletas.filter(conta => 
+        contasSelecionadas.has(Number(conta.id)) && contaPodeSerPaga(conta)
+    );
+
+    if (contasParaPagar.length === 0) {
+        mostrarNotificacao('As contas selecionadas não estão disponíveis para pagamento.', 'error');
+        return;
+    }
+
+    const total = contasParaPagar.reduce((sum, conta) => sum + parseFloat(conta.valor || 0), 0);
+    const possuiContaSemOrigem = contasParaPagar.some(conta => !conta.origem_pagamento);
+
+    const formas = {
+        'dinheiro': 'Dinheiro',
+        'debito': 'Débito',
+        'credito': 'Crédito',
+        'pix': 'PIX',
+        'boleto': 'Boleto',
+        'transferencia': 'Transferência'
+    };
+
+    let opcoesHtml = '';
+    for (const [key, label] of Object.entries(formas)) {
+        opcoesHtml += `<option value="${key}">${label}</option>`;
+    }
+
+    const confirmacao = await new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 450px;" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2>💳 Pagar Contas Selecionadas</h2>
+                    <p style="margin-top: 10px;">${contasParaPagar.length} conta(s) selecionada(s)</p>
+                    <p style="font-size: 24px; font-weight: bold; color: #28a745; margin-top: 10px;">
+                        R$ ${total.toFixed(2)}
+                    </p>
+                </div>
+                <div style="padding: 20px;">
+                    ${possuiContaSemOrigem ? `
+                        <div class="form-group">
+                            <label>💰 Origem do Pagamento (para contas sem origem):</label>
+                            <select id="origemPagamentoLoteConta" required style="padding: 12px; font-size: 16px;">
+                                <option value="">-- Selecione --</option>
+                                <option value="reposicao">💼 Reposição (Estoque)</option>
+                                <option value="lucro">💵 Lucro (Livre)</option>
+                            </select>
+                        </div>
+                    ` : ''}
+                    <div class="form-group">
+                        <label>Forma de Pagamento:</label>
+                        <select id="formaPagamentoLoteConta" required style="padding: 12px; font-size: 16px;">
+                            <option value="">-- Selecione --</option>
+                            ${opcoesHtml}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data do Pagamento:</label>
+                        <input type="date" id="dataPagamentoLoteConta" value="${new Date().toISOString().split('T')[0]}" required style="padding: 12px; font-size: 16px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Observações (opcional):</label>
+                        <textarea id="obsPagamentoLoteConta" rows="3" placeholder="Ex: Pagamento em lote"></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-success" onclick="this.closest('.modal').dispatchEvent(new CustomEvent('confirmar'))" style="flex: 1; font-size: 16px;">
+                        ✓ Confirmar Pagamento
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="this.closest('.modal').dispatchEvent(new CustomEvent('cancelar'))" style="flex: 1;">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.addEventListener('confirmar', () => {
+            const origemInput = modal.querySelector('#origemPagamentoLoteConta');
+            const formaInput = modal.querySelector('#formaPagamentoLoteConta');
+            const dataInput = modal.querySelector('#dataPagamentoLoteConta');
+            const obsInput = modal.querySelector('#obsPagamentoLoteConta');
+            const forma = formaInput ? formaInput.value : '';
+            const data = dataInput ? dataInput.value : '';
+            const obs = obsInput ? obsInput.value : '';
+            const origem = origemInput ? origemInput.value : null;
+
+            if (possuiContaSemOrigem && !origem) {
+                mostrarNotificacao('⚠️ Selecione a origem do pagamento para as contas sem origem!', 'error');
+                return;
+            }
+
+            if (!forma) {
+                mostrarNotificacao('⚠️ Selecione a forma de pagamento!', 'error');
+                return;
+            }
+
+            if (!data) {
+                mostrarNotificacao('⚠️ Selecione a data do pagamento!', 'error');
+                return;
+            }
+
+            modal.remove();
+            resolve({ origem, forma, data, obs });
+        });
+
+        modal.addEventListener('cancelar', () => {
+            modal.remove();
+            resolve(null);
+        });
+    });
+
+    if (!confirmacao) return;
+
+    try {
+        const response = await fetch(`${window.API_URL}/contas-pagar/pagar-lote`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contas_ids: contasParaPagar.map(conta => conta.id),
+                origem_pagamento: confirmacao.origem,
+                data_pagamento: confirmacao.data,
+                forma_pagamento: confirmacao.forma,
+                observacoes: confirmacao.obs
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Erro ao pagar contas selecionadas');
+        }
+
+        mostrarNotificacao(`✓ ${result.qtd_processadas || contasParaPagar.length} conta(s) paga(s) com sucesso!`, 'success');
+        contasSelecionadas.clear();
+
+        await carregarContasPagar();
+        await carregarEstatisticasContas();
+        aplicarFiltrosContas();
+    } catch (error) {
+        console.error('Erro ao pagar contas selecionadas:', error);
+        mostrarNotificacao(error.message, 'error');
+    }
+}
+
 async function pagarConta(id) {
     // Buscar dados da conta
     try {
@@ -792,11 +1037,14 @@ async function pagarConta(id) {
             
             modal.addEventListener('confirmar', () => {
                 // Se conta já tem origem, usar ela; senão, pegar do select
-                const origemInput = document.getElementById('origemPagamentoConta');
+                const origemInput = modal.querySelector('#origemPagamentoConta');
+                const formaInput = modal.querySelector('#formaPagamentoConta');
+                const dataInput = modal.querySelector('#dataPagamentoConta');
+                const obsInput = modal.querySelector('#obsPagamentoConta');
                 const origem = origemAtual || (origemInput ? origemInput.value : null);
-                const forma = document.getElementById('formaPagamentoConta').value;
-                const data = document.getElementById('dataPagamentoConta').value;
-                const obs = document.getElementById('obsPagamentoConta').value;
+                const forma = formaInput ? formaInput.value : '';
+                const data = dataInput ? dataInput.value : '';
+                const obs = obsInput ? obsInput.value : '';
                 
                 // Validar origem do pagamento (só se não houver origem_atual)
                 if (!origem) {

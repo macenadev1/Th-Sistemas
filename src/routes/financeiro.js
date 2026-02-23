@@ -287,13 +287,225 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Pagar múltiplas contas em lote
+router.put('/pagar-lote', async (req, res) => {
+    const pool = getPool();
+    const connection = await pool.getConnection();
+
+    try {
+        const { contas_ids, data_pagamento, forma_pagamento, observacoes, origem_pagamento } = req.body;
+
+        if (!Array.isArray(contas_ids) || contas_ids.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Informe pelo menos uma conta para pagamento em lote'
+            });
+        }
+
+        const idsUnicos = [...new Set(contas_ids.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0))];
+        if (idsUnicos.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'IDs de contas inválidos para pagamento em lote'
+            });
+        }
+
+        if (origem_pagamento && !['reposicao', 'lucro'].includes(origem_pagamento)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Origem inválida. Use "reposicao" ou "lucro".'
+            });
+        }
+
+        await connection.beginTransaction();
+
+        const [contas] = await connection.query(
+            `SELECT id, status, valor, origem_pagamento
+             FROM contas_pagar
+             WHERE id IN (?)
+             FOR UPDATE`,
+            [idsUnicos]
+        );
+
+        if (contas.length !== idsUnicos.length) {
+            const idsEncontrados = new Set(contas.map(conta => Number(conta.id)));
+            const idsNaoEncontrados = idsUnicos.filter(id => !idsEncontrados.has(id));
+
+            await connection.rollback();
+            return res.status(404).json({
+                success: false,
+                error: `Conta(s) não encontrada(s): ${idsNaoEncontrados.join(', ')}`
+            });
+        }
+
+        const contasInvalidas = contas.filter(conta => !['pendente', 'vencido'].includes(conta.status));
+        if (contasInvalidas.length > 0) {
+            await connection.rollback();
+            return res.status(400).json({
+                success: false,
+                error: 'Apenas contas pendentes ou vencidas podem ser pagas em lote'
+            });
+        }
+
+        const contasComOrigemFinal = contas.map(conta => {
+            const origemFinal = conta.origem_pagamento || origem_pagamento;
+            return {
+                id: conta.id,
+                valor: parseFloat(conta.valor || 0),
+                origem_final: origemFinal
+            };
+        });
+
+        const contaSemOrigem = contasComOrigemFinal.find(conta => !conta.origem_final);
+        if (contaSemOrigem) {
+            await connection.rollback();
+            return res.status(400).json({
+                success: false,
+                error: 'Origem do pagamento é obrigatória para contas sem origem definida'
+            });
+        }
+
+        const origemInvalidaConta = contasComOrigemFinal.find(conta => !['reposicao', 'lucro'].includes(conta.origem_final));
+        if (origemInvalidaConta) {
+            await connection.rollback();
+            return res.status(400).json({
+                success: false,
+                error: 'Uma ou mais contas possuem origem inválida para pagamento'
+            });
+        }
+
+        const dataPagamentoFinal = data_pagamento || new Date().toISOString().split('T')[0];
+        const dataRef = new Date(`${dataPagamentoFinal}T00:00:00`);
+        const anoAtual = dataRef.getFullYear();
+        const mesAtual = dataRef.getMonth() + 1;
+        const mesReferenciaAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
+
+        const totalPorOrigem = contasComOrigemFinal.reduce((acc, conta) => {
+            acc[conta.origem_final] = (acc[conta.origem_final] || 0) + conta.valor;
+            return acc;
+        }, {});
+
+        const [saldoInicialRows] = await connection.query(
+            'SELECT saldo_reposicao, saldo_lucro FROM saldos_iniciais WHERE mes_ano = ?',
+            [mesReferenciaAtual]
+        );
+
+        const saldoInicialReposicao = saldoInicialRows.length > 0 ? parseFloat(saldoInicialRows[0].saldo_reposicao) : 0;
+        const saldoInicialLucro = saldoInicialRows.length > 0 ? parseFloat(saldoInicialRows[0].saldo_lucro) : 0;
+
+        const [vendas] = await connection.query(`
+            SELECT COALESCE(SUM(v.total), 0) AS receita_total
+            FROM vendas v
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
+        `, [anoAtual, mesAtual]);
+
+        const [custos] = await connection.query(`
+            SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
+            FROM itens_venda iv
+            JOIN vendas v ON iv.venda_id = v.id
+            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
+            AND v.cancelado = FALSE
+        `, [anoAtual, mesAtual]);
+
+        const receitaMes = parseFloat(vendas[0].receita_total) || 0;
+        const custosMes = parseFloat(custos[0].custo_total) || 0;
+
+        for (const origem of Object.keys(totalPorOrigem)) {
+            const [pagamentosRealizados] = await connection.query(`
+                SELECT COALESCE(SUM(valor), 0) as total
+                FROM contas_pagar
+                WHERE status = 'pago'
+                AND origem_pagamento = ?
+                AND YEAR(data_pagamento) = ?
+                AND MONTH(data_pagamento) = ?
+            `, [origem, anoAtual, mesAtual]);
+
+            const [estornosRealizados] = await connection.query(`
+                SELECT COALESCE(SUM(e.valor_estornado), 0) as total
+                FROM estornos_contas_pagar e
+                INNER JOIN contas_pagar cp ON e.conta_pagar_id = cp.id
+                WHERE cp.origem_pagamento = ?
+                AND YEAR(e.data_estorno) = ?
+                AND MONTH(e.data_estorno) = ?
+            `, [origem, anoAtual, mesAtual]);
+
+            const totalPago = parseFloat(pagamentosRealizados[0].total) || 0;
+            const totalEstornado = parseFloat(estornosRealizados[0].total) || 0;
+
+            let saldoDisponivel;
+            if (origem === 'reposicao') {
+                const reposicaoBruta = saldoInicialReposicao + custosMes;
+                saldoDisponivel = reposicaoBruta - totalPago + totalEstornado;
+            } else {
+                const lucroMes = receitaMes - custosMes;
+                const lucroBrutaTotal = saldoInicialLucro + lucroMes;
+                saldoDisponivel = lucroBrutaTotal - totalPago + totalEstornado;
+            }
+
+            const totalLoteOrigem = totalPorOrigem[origem] || 0;
+            const saldoAposPagamento = saldoDisponivel - totalLoteOrigem;
+
+            if (saldoAposPagamento < 0) {
+                await connection.rollback();
+                return res.status(400).json({
+                    success: false,
+                    error: `Saldo insuficiente em ${origem === 'reposicao' ? 'Reposição' : 'Lucro'}. Disponível: R$ ${saldoDisponivel.toFixed(2)}, Necessário: R$ ${totalLoteOrigem.toFixed(2)}`,
+                    origem,
+                    saldo_disponivel: saldoDisponivel,
+                    valor_lote: totalLoteOrigem,
+                    faltante: Math.abs(saldoAposPagamento)
+                });
+            }
+        }
+
+        for (const conta of contasComOrigemFinal) {
+            await connection.query(`
+                UPDATE contas_pagar SET
+                    status = 'pago',
+                    data_pagamento = ?,
+                    forma_pagamento = ?,
+                    origem_pagamento = ?,
+                    mes_referencia = ?,
+                    observacoes = CONCAT(COALESCE(observacoes, ''), '\n', COALESCE(?, ''))
+                WHERE id = ?
+            `, [
+                dataPagamentoFinal,
+                forma_pagamento || null,
+                conta.origem_final,
+                mesReferenciaAtual,
+                observacoes || '',
+                conta.id
+            ]);
+        }
+
+        await connection.commit();
+
+        const totalPagoLote = contasComOrigemFinal.reduce((sum, conta) => sum + conta.valor, 0);
+        res.json({
+            success: true,
+            message: 'Contas pagas com sucesso',
+            qtd_processadas: contasComOrigemFinal.length,
+            valor_total: totalPagoLote
+        });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Erro ao pagar contas em lote:', error);
+        res.status(500).json({ success: false, error: 'Erro ao pagar contas em lote' });
+    } finally {
+        connection.release();
+    }
+});
+
 // Atualizar conta a pagar
 router.put('/:id', async (req, res) => {
     try {
         const pool = getPool();
         const {
             descricao,
-        categoria_id,
+            categoria_id,
+            fornecedor_id,
+            valor,
             data_vencimento,
             observacoes,
             origem_pagamento,
