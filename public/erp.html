@@ -149,6 +149,23 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Vendas por Forma de Pagamento -->
+                    <div class="dashboard-widget">
+                        <div class="widget-header">
+                            <h3>💳 Vendas por Forma de Pagamento</h3>
+                            <select id="filtroPeriodoPagamentos" onchange="carregarGraficoPizzaPagamentos()" style="padding: 6px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px;">
+                                <option value="hoje">Hoje</option>
+                                <option value="7dias">Ultimos 7 dias</option>
+                                <option value="mes" selected>Este mes</option>
+                            </select>
+                        </div>
+                        <div class="widget-content">
+                            <div id="graficoPizzaPagamentos" class="grafico-pizza-pagamentos">
+                                <p style="text-align: center; color: #999; padding: 20px;">Carregando grafico...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Evolucao de Vendas -->

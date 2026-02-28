@@ -257,6 +257,50 @@ router.get('/stats/resumo', async (req, res) => {
     }
 });
 
+// Estatísticas por forma de pagamento (apenas vendas não canceladas)
+router.get('/stats/formas-pagamento', async (req, res) => {
+    try {
+        const pool = getPool();
+        const periodo = String(req.query.periodo || 'mes').toLowerCase();
+
+        let filtroData = "AND DATE(v.data_venda) BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND CURDATE()";
+
+        if (periodo === 'hoje') {
+            filtroData = 'AND DATE(v.data_venda) = CURDATE()';
+        } else if (periodo === '7dias') {
+            filtroData = 'AND DATE(v.data_venda) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE()';
+        }
+
+        const [rows] = await pool.query(
+            `SELECT
+                agregado.forma_pagamento,
+                SUM(agregado.valor_liquido) AS valor_total,
+                COUNT(*) AS quantidade_vendas
+             FROM (
+                SELECT
+                    fp.venda_id,
+                    fp.forma_pagamento,
+                    CASE
+                        WHEN fp.forma_pagamento = 'dinheiro' THEN GREATEST(SUM(fp.valor) - COALESCE(MAX(v.troco), 0), 0)
+                        ELSE SUM(fp.valor)
+                    END AS valor_liquido
+                FROM formas_pagamento_venda fp
+                INNER JOIN vendas v ON v.id = fp.venda_id
+                WHERE v.cancelado = FALSE
+                ${filtroData}
+                GROUP BY fp.venda_id, fp.forma_pagamento
+             ) AS agregado
+             GROUP BY agregado.forma_pagamento
+             ORDER BY valor_total DESC`
+        );
+
+        res.json({ success: true, data: rows, periodo_aplicado: periodo });
+    } catch (error) {
+        console.error('Erro ao buscar estatísticas de formas de pagamento:', error);
+        res.status(500).json({ success: false, message: 'Erro ao buscar estatísticas de formas de pagamento' });
+    }
+});
+
 // Cancelar/Excluir venda (marca como cancelada e reverte estoque)
 router.delete('/:id', async (req, res) => {
     const pool = getPool();

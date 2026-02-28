@@ -377,6 +377,61 @@
     gap: 10px;
 }
 
+.grafico-pizza-pagamentos {
+    min-height: 260px;
+}
+
+.pizza-pagamentos-layout {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.pizza-chart-wrap {
+    flex: 0 0 220px;
+    display: flex;
+    justify-content: center;
+}
+
+.pizza-legenda {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pizza-legenda-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.pizza-legenda-cor {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.pizza-legenda-nome {
+    font-size: 13px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.pizza-legenda-valor {
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+}
+
 .venda-item, .produto-item {
     padding: 12px;
     background: #f8f9fa;

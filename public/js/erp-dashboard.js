@@ -78,7 +78,8 @@ async function carregarDashboard() {
             carregarEstatisticasGerais({ vendas, produtos, caixa }),
             carregarVendasRecentes(vendas),
             carregarProdutosEstoqueBaixo(produtos),
-            carregarGraficoEvolucaoVendas(vendas)
+            carregarGraficoEvolucaoVendas(vendas),
+            carregarGraficoPizzaPagamentos()
         ]);
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
@@ -584,6 +585,120 @@ function configurarTooltipGrafico(container) {
             tooltip.style.display = 'none';
         });
     });
+}
+
+/**
+ * Carregar grafico de pizza de vendas por forma de pagamento
+ */
+async function carregarGraficoPizzaPagamentos() {
+    const container = document.getElementById('graficoPizzaPagamentos');
+    if (!container) return;
+
+    const filtroPeriodo = document.getElementById('filtroPeriodoPagamentos');
+    const periodo = filtroPeriodo?.value || 'mes';
+
+    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Carregando grafico...</p>';
+
+    try {
+        const response = await fetch(`${API_URL}/vendas/stats/formas-pagamento?periodo=${encodeURIComponent(periodo)}`);
+        if (!response.ok) throw new Error('Erro ao carregar formas de pagamento');
+
+        const resultado = await response.json();
+        const dados = Array.isArray(resultado?.data) ? resultado.data : [];
+
+        if (!dados.length) {
+            container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Sem dados de pagamento para exibir</p>';
+            return;
+        }
+
+        const total = dados.reduce((soma, item) => soma + parseFloat(item.valor_total || 0), 0);
+        if (total <= 0) {
+            container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Sem valores de vendas para exibir</p>';
+            return;
+        }
+
+        container.innerHTML = renderizarGraficoPizzaPagamentos(dados, total);
+    } catch (error) {
+        console.error('Erro ao carregar grafico de pagamentos:', error);
+        container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">Erro ao carregar grafico</p>';
+    }
+}
+
+function renderizarGraficoPizzaPagamentos(dados, total) {
+    const configuracao = {
+        dinheiro: { nome: 'Dinheiro', cor: '#28a745' },
+        pix: { nome: 'PIX', cor: '#17a2b8' },
+        debito: { nome: 'Debito', cor: '#6f42c1' },
+        credito: { nome: 'Credito', cor: '#fd7e14' }
+    };
+
+    let anguloAtual = -90;
+
+    const setores = dados.map((item, indice) => {
+        const chave = String(item.forma_pagamento || '').toLowerCase();
+        const valor = parseFloat(item.valor_total || 0);
+        const percentual = (valor / total) * 100;
+        const anguloSetor = (valor / total) * 360;
+
+        const inicio = polarParaCartesiano(100, 100, 85, anguloAtual);
+        anguloAtual += anguloSetor;
+        const fim = polarParaCartesiano(100, 100, 85, anguloAtual);
+        const arcoGrande = anguloSetor > 180 ? 1 : 0;
+        const corPadrao = ['#28a745', '#17a2b8', '#6f42c1', '#fd7e14', '#e83e8c', '#20c997'];
+        const cor = configuracao[chave]?.cor || corPadrao[indice % corPadrao.length];
+
+        return {
+            caminho: `M 100 100 L ${inicio.x} ${inicio.y} A 85 85 0 ${arcoGrande} 1 ${fim.x} ${fim.y} Z`,
+            nome: configuracao[chave]?.nome || formatarFormaPagamento(chave),
+            cor,
+            valor,
+            percentual
+        };
+    });
+
+    return `
+        <div class="pizza-pagamentos-layout">
+            <div class="pizza-chart-wrap">
+                <svg viewBox="0 0 200 200" width="220" height="220" role="img" aria-label="Distribuicao de vendas por forma de pagamento">
+                    ${setores.map(setor => `<path d="${setor.caminho}" fill="${setor.cor}"></path>`).join('')}
+                    <circle cx="100" cy="100" r="43" fill="#fff"></circle>
+                    <text x="100" y="95" text-anchor="middle" fill="#666" font-size="10" font-weight="600">Total</text>
+                    <text x="100" y="110" text-anchor="middle" fill="#2c3e50" font-size="11" font-weight="700">${formatarMoedaBRL(total)}</text>
+                </svg>
+            </div>
+            <div class="pizza-legenda">
+                ${setores.map(setor => `
+                    <div class="pizza-legenda-item">
+                        <span class="pizza-legenda-cor" style="background:${setor.cor};"></span>
+                        <span class="pizza-legenda-nome">${setor.nome}</span>
+                        <span class="pizza-legenda-valor">${formatarMoedaBRL(setor.valor)} (${setor.percentual.toFixed(1)}%)</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function polarParaCartesiano(centroX, centroY, raio, anguloGraus) {
+    const anguloRad = ((anguloGraus - 90) * Math.PI) / 180;
+    return {
+        x: centroX + (raio * Math.cos(anguloRad)),
+        y: centroY + (raio * Math.sin(anguloRad))
+    };
+}
+
+function formatarFormaPagamento(formaPagamento) {
+    if (!formaPagamento) return 'Nao informado';
+
+    return formaPagamento
+        .split('_')
+        .map(parte => parte.charAt(0).toUpperCase() + parte.slice(1))
+        .join(' ');
+}
+
+function formatarMoedaBRL(valor) {
+    const numero = Number(valor) || 0;
+    return `R$ ${numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // ==================== VARIÁVEIS DE PAGINAÇÃO PRODUTOS ERP ====================
