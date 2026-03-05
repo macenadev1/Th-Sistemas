@@ -262,10 +262,27 @@ router.get('/stats/formas-pagamento', async (req, res) => {
     try {
         const pool = getPool();
         const periodo = String(req.query.periodo || 'mes').toLowerCase();
+        const data = req.query.data;
+        const dataInicial = req.query.data_inicial;
+        const dataFinal = req.query.data_final;
 
         let filtroData = "AND DATE(v.data_venda) BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND CURDATE()";
+        const params = [];
 
-        if (periodo === 'hoje') {
+        if (dataInicial && dataFinal) {
+            if (new Date(dataInicial) > new Date(dataFinal)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Data inicial nao pode ser maior que data final'
+                });
+            }
+
+            filtroData = 'AND DATE(v.data_venda) BETWEEN ? AND ?';
+            params.push(dataInicial, dataFinal);
+        } else if (data) {
+            filtroData = 'AND DATE(v.data_venda) = ?';
+            params.push(data);
+        } else if (periodo === 'hoje') {
             filtroData = 'AND DATE(v.data_venda) = CURDATE()';
         } else if (periodo === '7dias') {
             filtroData = 'AND DATE(v.data_venda) BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE()';
@@ -292,9 +309,18 @@ router.get('/stats/formas-pagamento', async (req, res) => {
              ) AS agregado
              GROUP BY agregado.forma_pagamento
              ORDER BY valor_total DESC`
+            ,
+            params
         );
 
-        res.json({ success: true, data: rows, periodo_aplicado: periodo });
+        res.json({
+            success: true,
+            data: rows,
+            periodo_aplicado: dataInicial && dataFinal ? 'intervalo_personalizado' : (data ? 'data_especifica' : periodo),
+            data_aplicada: data || null,
+            data_inicial_aplicada: dataInicial || null,
+            data_final_aplicada: dataFinal || null
+        });
     } catch (error) {
         console.error('Erro ao buscar estatísticas de formas de pagamento:', error);
         res.status(500).json({ success: false, message: 'Erro ao buscar estatísticas de formas de pagamento' });

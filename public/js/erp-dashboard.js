@@ -590,17 +590,150 @@ function configurarTooltipGrafico(container) {
 /**
  * Carregar grafico de pizza de vendas por forma de pagamento
  */
+let periodoPagamentosSelecionado = {
+    dataInicial: null,
+    dataFinal: null
+};
+
+let listenerFecharSeletorPagamentosRegistrado = false;
+
+function formatarDataExibicao(dataISO) {
+    if (!dataISO) return '';
+    const [ano, mes, dia] = dataISO.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+function atualizarLabelPeriodoPagamentos() {
+    const label = document.getElementById('labelPeriodoPagamentos');
+    if (!label) return;
+
+    if (!periodoPagamentosSelecionado.dataInicial || !periodoPagamentosSelecionado.dataFinal) {
+        label.textContent = 'Selecionar periodo';
+        return;
+    }
+
+    label.textContent = `${formatarDataExibicao(periodoPagamentosSelecionado.dataInicial)} - ${formatarDataExibicao(periodoPagamentosSelecionado.dataFinal)}`;
+}
+
+function inicializarPeriodoPagamentosPadrao() {
+    if (periodoPagamentosSelecionado.dataInicial && periodoPagamentosSelecionado.dataFinal) return;
+
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+
+    const formatarDataInput = (data) => {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    periodoPagamentosSelecionado.dataInicial = formatarDataInput(inicioMes);
+    periodoPagamentosSelecionado.dataFinal = formatarDataInput(hoje);
+
+    const inputInicial = document.getElementById('filtroDataInicialPagamentos');
+    const inputFinal = document.getElementById('filtroDataFinalPagamentos');
+    if (inputInicial) inputInicial.value = periodoPagamentosSelecionado.dataInicial;
+    if (inputFinal) inputFinal.value = periodoPagamentosSelecionado.dataFinal;
+
+    atualizarLabelPeriodoPagamentos();
+}
+
+function alternarSeletorPeriodoPagamentos(event) {
+    if (event) event.stopPropagation();
+
+    inicializarPeriodoPagamentosPadrao();
+
+    const seletor = document.getElementById('seletorPeriodoPagamentos');
+    if (!seletor) return;
+
+    seletor.style.display = seletor.style.display === 'block' ? 'none' : 'block';
+
+    if (!listenerFecharSeletorPagamentosRegistrado) {
+        document.addEventListener('click', fecharSeletorPeriodoPagamentos);
+        listenerFecharSeletorPagamentosRegistrado = true;
+    }
+}
+
+function fecharSeletorPeriodoPagamentos() {
+    const seletor = document.getElementById('seletorPeriodoPagamentos');
+    if (!seletor) return;
+    seletor.style.display = 'none';
+}
+
+function definirPeriodoRapidoPagamentos(tipo) {
+    const hoje = new Date();
+    const dataFinal = new Date(hoje);
+    const dataInicial = new Date(hoje);
+
+    if (tipo === 'mes') {
+        dataInicial.setDate(1);
+    }
+
+    const formatarDataInput = (data) => {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    const inputInicial = document.getElementById('filtroDataInicialPagamentos');
+    const inputFinal = document.getElementById('filtroDataFinalPagamentos');
+
+    if (inputInicial) inputInicial.value = formatarDataInput(dataInicial);
+    if (inputFinal) inputFinal.value = formatarDataInput(dataFinal);
+
+    aplicarPeriodoPagamentos();
+}
+
+function aplicarPeriodoPagamentos() {
+    const inputInicial = document.getElementById('filtroDataInicialPagamentos');
+    const inputFinal = document.getElementById('filtroDataFinalPagamentos');
+
+    const dataInicial = inputInicial?.value;
+    const dataFinal = inputFinal?.value;
+
+    if (!dataInicial || !dataFinal) {
+        mostrarNotificacao('Selecione data inicial e data final', 'error');
+        return;
+    }
+
+    if (new Date(dataInicial) > new Date(dataFinal)) {
+        mostrarNotificacao('Data inicial nao pode ser maior que data final', 'error');
+        return;
+    }
+
+    periodoPagamentosSelecionado.dataInicial = dataInicial;
+    periodoPagamentosSelecionado.dataFinal = dataFinal;
+
+    atualizarLabelPeriodoPagamentos();
+    fecharSeletorPeriodoPagamentos();
+    carregarGraficoPizzaPagamentos();
+}
+
 async function carregarGraficoPizzaPagamentos() {
     const container = document.getElementById('graficoPizzaPagamentos');
     if (!container) return;
 
-    const filtroPeriodo = document.getElementById('filtroPeriodoPagamentos');
-    const periodo = filtroPeriodo?.value || 'mes';
+    inicializarPeriodoPagamentosPadrao();
+
+    const dataInicial = periodoPagamentosSelecionado.dataInicial;
+    const dataFinal = periodoPagamentosSelecionado.dataFinal;
+
+    if (!dataInicial || !dataFinal) {
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Selecione inicio e fim no calendario para visualizar o grafico</p>';
+        return;
+    }
 
     container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Carregando grafico...</p>';
 
     try {
-        const response = await fetch(`${API_URL}/vendas/stats/formas-pagamento?periodo=${encodeURIComponent(periodo)}`);
+        const params = new URLSearchParams({
+            data_inicial: dataInicial,
+            data_final: dataFinal
+        });
+
+        const response = await fetch(`${API_URL}/vendas/stats/formas-pagamento?${params.toString()}`);
         if (!response.ok) throw new Error('Erro ao carregar formas de pagamento');
 
         const resultado = await response.json();
