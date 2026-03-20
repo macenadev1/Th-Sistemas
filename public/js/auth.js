@@ -1,7 +1,7 @@
 // ==================== MÓDULO DE AUTENTICAÇÃO ====================
 
 // Definir API_URL globalmente se não existir (para tela de login standalone)
-window.API_URL = window.API_URL || 'http://localhost:3000/api';
+window.API_URL = window.API_URL || '/api';
 
 // Obter token armazenado
 function getToken() {

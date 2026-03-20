@@ -1,13 +1,13 @@
 const mysql = require('mysql2/promise');
 
 const dbConfig = {
-    host: '127.0.0.1',
-    port: 3306,
-    user: 'root',
-    password: '@Bomboniere2025',
-    database: 'BomboniereERP',
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'BomboniereERP',
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
     queueLimit: 0
 };
 
@@ -16,20 +16,15 @@ let pool;
 async function initDatabase() {
     try {
         pool = mysql.createPool(dbConfig);
-        console.log('✅ Conectado ao MySQL com sucesso!');
-        
-        // Testar conexão
+        console.log('Conectado ao MySQL com sucesso!');
+
         const connection = await pool.getConnection();
-        console.log('✅ Pool de conexões criado!');
+        console.log('Pool de conexoes criado!');
         connection.release();
-        
+
         return pool;
     } catch (error) {
-        console.error('❌ Erro ao conectar ao MySQL:', error.message);
-        console.log('\n📝 Instruções:');
-        console.log('1. Certifique-se que o MySQL está rodando');
-        console.log('2. Configure user/password no src/config/database.js');
-        console.log('3. Execute o arquivo database/database.sql no MySQL');
+        console.error('Erro ao conectar ao MySQL:', error.message);
         throw error;
     }
 }

@@ -10,7 +10,8 @@ const { initDatabase, getPool } = require('./config/database');
 const TelegramBotService = require('./services/telegram-bot');
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
+const APP_URL = process.env.APP_URL || `http://127.0.0.1:${PORT}`;
 
 // Middleware
 app.use(cors());
@@ -65,7 +66,7 @@ cron.schedule('1 0 1 * *', async () => {
         
         // Fazer requisição interna para a rota de fechamento
         const axios = require('axios');
-        const response = await axios.post(`http://localhost:${PORT}/api/contas-pagar/fechar-mes`, {
+        const response = await axios.post(`${APP_URL}/api/contas-pagar/fechar-mes`, {
             ano: anoAnterior,
             mes: mesAnterior,
             forcar: false

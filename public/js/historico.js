@@ -1,12 +1,14 @@
 // ==================== HISTÓRICO DE FECHAMENTOS ====================
 
+window.API_URL = window.API_URL || '/api';
+
 // Variável global para armazenar histórico completo
 let historicoCompleto = [];
 
 // Carregar histórico de fechamentos da API
 async function carregarHistoricoFechamentos() {
     try {
-        const response = await fetch('http://localhost:3000/api/caixa/fechamentos');
+        const response = await fetch(`${window.API_URL}/caixa/fechamentos`);
         const data = await response.json();
         return data.success ? data.fechamentos : [];
     } catch (error) {
@@ -225,7 +227,7 @@ function renderizarHistorico(historico) {
 
 async function verDetalhesFechamento(id) {
     try {
-        const response = await fetch(`http://localhost:3000/api/caixa/fechamentos/${id}`);
+        const response = await fetch(`${window.API_URL}/caixa/fechamentos/${id}`);
         const data = await response.json();
         
         if (!data.success) {
@@ -350,7 +352,7 @@ async function verDetalhesFechamento(id) {
         setTimeout(async () => {
             try {
                 // Buscar todas as vendas
-                const vendasResponse = await fetch('http://localhost:3000/api/vendas');
+                const vendasResponse = await fetch(`${window.API_URL}/vendas`);
                 if (vendasResponse.ok) {
                     const todasVendas = await vendasResponse.json();
                     
@@ -370,7 +372,7 @@ async function verDetalhesFechamento(id) {
                     let totalMaquininha = 0;
                     
                     for (const venda of vendasDoCaixa) {
-                        const detalhesResponse = await fetch(`http://localhost:3000/api/vendas/${venda.id}`);
+                        const detalhesResponse = await fetch(`${window.API_URL}/vendas/${venda.id}`);
                         if (detalhesResponse.ok) {
                             const detalhes = await detalhesResponse.json();
                             if (detalhes.formas_pagamento && detalhes.formas_pagamento.length > 0) {
@@ -474,7 +476,7 @@ function voltarParaHistorico() {
 async function limparHistoricoFechamentos() {
     if (confirm('Deseja realmente limpar todo o histórico de fechamentos?\n\nEsta ação não pode ser desfeita!')) {
         try {
-            const response = await fetch('http://localhost:3000/api/caixa/fechamentos', {
+            const response = await fetch(`${window.API_URL}/caixa/fechamentos`, {
                 method: 'DELETE'
             });
             const data = await response.json();

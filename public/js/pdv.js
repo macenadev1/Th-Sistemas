@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = window.API_URL || '/api';
+window.API_URL = API_URL;
 let carrinho = [];
 let serverOnline = false;
 let pagamentos = []; // Array para armazenar os pagamentos
@@ -7,7 +8,7 @@ let processandoVenda = false; // Flag para evitar vendas duplicadas
 // Carregar histórico de fechamentos da API
 async function carregarHistoricoFechamentos() {
     try {
-        const response = await fetch('http://localhost:3000/api/caixa/fechamentos');
+        const response = await fetch(`${API_URL}/caixa/fechamentos`);
         const data = await response.json();
         return data.success ? data.fechamentos : [];
     } catch (error) {

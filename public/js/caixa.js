@@ -618,7 +618,7 @@ function confirmarFechamentoCaixaFinal() {
     };
     
     // Enviar para a API
-    fetch('http://localhost:3000/api/caixa/fechamentos', {
+    fetch(`${API_URL}/caixa/fechamentos`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
