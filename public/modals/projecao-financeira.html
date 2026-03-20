@@ -1,0 +1,227 @@
+<!-- Modal de Projeção Financeira -->
+<div id="projecaoFinanceiraModal" class="modal">
+    <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>📈 Projeção de Receitas</h2>
+            <p style="margin-top: 8px; color: #aaa; font-size: 14px;">
+                Estime quanto vai entrar no caixa nos próximos dias, com base no histórico de vendas
+            </p>
+        </div>
+
+        <div style="padding: 20px;">
+
+            <!-- Painel de Parâmetros -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e9ecef;">
+                <h3 style="margin: 0 0 20px 0; color: #333; font-size: 16px;">⚙️ Parâmetros da Projeção</h3>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 20px;">
+
+                    <!-- Período de Referência -->
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555; font-size: 14px;">
+                            📅 Base histórica:
+                        </label>
+                        <select id="projecaoDiasReferencia"
+                                style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="14">Últimos 14 dias</option>
+                            <option value="30" selected>Últimos 30 dias</option>
+                            <option value="60">Últimos 60 dias</option>
+                            <option value="90">Últimos 90 dias</option>
+                        </select>
+                    </div>
+
+                    <!-- Dias Futuros -->
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555; font-size: 14px;">
+                            🔭 Projetar próximos X dias:
+                        </label>
+                        <input type="number" id="projecaoDiasFuturos" value="7" min="1" max="90"
+                               style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+
+                    <!-- Margem de Segurança -->
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555; font-size: 14px;">
+                            🛡️ Margem de segurança:
+                            <span id="projecaoMargemLabel" style="color: #dc3545; font-size: 16px; font-weight: bold;"> 20%</span>
+                        </label>
+                        <input type="range" id="projecaoMargemSlider" min="0" max="40" value="20" step="5"
+                               style="width: 100%; margin-bottom: 4px; cursor: pointer;"
+                               oninput="atualizarLabelMargem(this.value)">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+                            <span>0% — Otimista</span>
+                            <span>40% — Conservador</span>
+                        </div>
+                    </div>
+
+                    <!-- Valor da Obrigação (Boleto) -->
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555; font-size: 14px;">
+                            💸 Obrigação / Boleto (R$):
+                        </label>
+                        <input type="text" id="projecaoValorObrigacao"
+                               placeholder="Ex: 800,00  (opcional)"
+                               style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                        <small style="color: #999; font-size: 12px; display: block; margin-top: 4px;">
+                            Se preenchido, mostra semáforo de decisão
+                        </small>
+                    </div>
+
+                    <!-- Origem do Boleto -->
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #555; font-size: 14px;">
+                            🏷️ Este boleto é de:
+                        </label>
+                        <select id="projecaoOrigemBoleto"
+                                style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                            <option value="reposicao">📦 Reposição (compra de mercadoria)</option>
+                            <option value="lucro">✨ Lucro (despesa operacional)</option>
+                            <option value="total">💵 Receita Total (qualquer origem)</option>
+                        </select>
+                        <small style="color: #999; font-size: 12px; display: block; margin-top: 4px;">
+                            Comparamos o boleto com a projeção do budget correto
+                        </small>
+                    </div>
+
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button onclick="calcularProjecao()" id="btnCalcularProjecao"
+                            class="btn btn-primary"
+                            style="padding: 12px 48px; font-size: 16px; background: #007bff; border-radius: 8px;">
+                        🚀 Calcular Projeção
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estado Vazio Inicial -->
+            <div id="projecaoEstadoVazio" style="text-align: center; padding: 60px 20px; color: #aaa;">
+                <div style="font-size: 72px; margin-bottom: 20px;">📈</div>
+                <p style="font-size: 16px; margin-bottom: 8px; color: #666;">Configure os parâmetros acima e clique em <strong>Calcular Projeção</strong></p>
+                <p style="font-size: 14px;">O sistema analisará o histórico de vendas e estimará a entrada de caixa para o período informado</p>
+            </div>
+
+            <!-- Resultado da Projeção (oculto até calcular) -->
+            <div id="projecaoResultado" style="display: none;">
+
+                <!-- Cards de Resultado -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 16px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 6px;">📥 Receita Bruta Projetada</div>
+                        <div id="projecaoReceita" style="font-size: 26px; font-weight: bold; line-height: 1.1;">R$ 0,00</div>
+                        <div id="projecaoReceitaInfo" style="font-size: 11px; opacity: 0.8; margin-top: 6px;">—</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid rgba(255,255,255,0.3);">
+                        <div style="font-size: 12px; opacity: 0.95; margin-bottom: 6px; font-weight: bold;">📦 Reposição Projetada</div>
+                        <div id="projecaoReposicao" style="font-size: 26px; font-weight: bold; line-height: 1.1;">R$ 0,00</div>
+                        <div id="projecaoReposicaoInfo" style="font-size: 11px; opacity: 0.85; margin-top: 6px;">Custo de mercadoria</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid rgba(255,255,255,0.3);">
+                        <div style="font-size: 12px; opacity: 0.95; margin-bottom: 6px; font-weight: bold;">✨ Lucro na Mão</div>
+                        <div id="projecaoLucro" style="font-size: 26px; font-weight: bold; line-height: 1.1;">R$ 0,00</div>
+                        <div id="projecaoMargemHistorica" style="font-size: 11px; opacity: 0.85; margin-top: 6px;">Margem: —</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 6px;">📊 Média Diária Histórica</div>
+                        <div id="projecaoMediaDia" style="font-size: 26px; font-weight: bold; line-height: 1.1;">R$ 0,00</div>
+                        <div id="projecaoBaseDias" style="font-size: 11px; opacity: 0.8; margin-top: 6px;">— dias analisados</div>
+                    </div>
+                </div>
+
+                <!-- Barra de Distribuição Visual -->
+                <div id="projecaoBarraDistrib" style="background: #f8f9fa; border-radius: 8px; padding: 16px 20px; margin-bottom: 25px; border: 1px solid #e9ecef;">
+                    <div style="font-size: 13px; font-weight: bold; color: #555; margin-bottom: 10px;">💡 Distribuição da receita projetada:</div>
+                    <div style="display: flex; height: 28px; border-radius: 6px; overflow: hidden; gap: 2px;">
+                        <div id="projecaoBarraReposicao"
+                             style="background: linear-gradient(90deg,#fa709a,#fee140); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; color:white; min-width:30px; transition: width 0.5s;">
+                            📦
+                        </div>
+                        <div id="projecaoBarraLucro"
+                             style="background: linear-gradient(90deg,#43e97b,#38f9d7); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; color:white; min-width:30px; transition: width 0.5s;">
+                            ✨
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top: 6px; font-size: 12px; color: #666;">
+                        <span>📦 Reposição: <strong id="projecaoBarraReposicaoPct">—</strong></span>
+                        <span>✨ Lucro: <strong id="projecaoBarraLucroPct">—</strong></span>
+                    </div>
+                </div>
+
+                <!-- Semáforo de Decisão (só aparece com obrigação preenchida) -->
+                <div id="projecaoSemaforo" style="display: none; margin-bottom: 25px; padding: 24px 30px; border-radius: 12px; text-align: center;">
+                    <div id="projecaoSemaforoIcone" style="font-size: 52px; margin-bottom: 12px;"></div>
+                    <div id="projecaoSemaforoTitulo" style="font-size: 22px; font-weight: bold; margin-bottom: 10px;"></div>
+                    <div id="projecaoSemaforoDetalhe" style="font-size: 15px; line-height: 1.5;"></div>
+                </div>
+
+                <!-- 3 Cenários -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e9ecef;">
+                    <h4 style="margin: 0 0 15px 0; color: #333;">
+                        🎯 Três Cenários para os próximos <span id="projecaoCenarioDias">—</span> dia(s)
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <div style="text-align: center; padding: 16px; background: #dc3545; color: white; border-radius: 8px;">
+                            <div style="font-size: 12px; margin-bottom: 6px; opacity: 0.9;">😟 Pessimista</div>
+                            <div id="projecaoPessimista" style="font-size: 20px; font-weight: bold;">—</div>
+                            <div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">Média − 1 desvio padrão</div>
+                        </div>
+                        <div style="text-align: center; padding: 16px; background: #007bff; color: white; border-radius: 8px;">
+                            <div style="font-size: 12px; margin-bottom: 6px; opacity: 0.9;">🎯 Realista</div>
+                            <div id="projecaoRealista" style="font-size: 20px; font-weight: bold;">—</div>
+                            <div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">Com margem de segurança</div>
+                        </div>
+                        <div style="text-align: center; padding: 16px; background: #28a745; color: white; border-radius: 8px;">
+                            <div style="font-size: 12px; margin-bottom: 6px; opacity: 0.9;">😊 Otimista</div>
+                            <div id="projecaoOtimista" style="font-size: 20px; font-weight: bold;">—</div>
+                            <div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">Média + 1 desvio padrão</div>
+                        </div>
+                    </div>
+                    <p style="margin: 14px 0 0 0; font-size: 12px; color: #888; text-align: center;">
+                        ℹ️ Desvio padrão calculado sobre os dias do período histórico selecionado (dias sem venda = R$ 0)
+                    </p>
+                </div>
+
+                <!-- Gráfico -->
+                <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #333;">📊 Vendas Diárias + Projeção</h4>
+                    <div id="projecaoGrafico" style="overflow-x: auto; min-height: 220px;">
+                        <!-- SVG renderizado aqui -->
+                    </div>
+                </div>
+
+                <!-- Tabela Detalhamento Histórico -->
+                <div>
+                    <h4 style="margin: 0 0 15px 0; color: #333;">📋 Detalhamento Histórico por Dia</h4>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="background: #f8f9fa;">
+                                    <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #dee2e6;">📅 Data</th>
+                                    <th style="padding: 10px 12px; text-align: center; border-bottom: 2px solid #dee2e6;">🛒 Vendas</th>
+                                    <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #dee2e6;">💵 Receita</th>
+                                    <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #dee2e6;">🏷️ Custo</th>
+                                    <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #dee2e6;">💰 Lucro</th>
+                                    <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #dee2e6;">📊 Margem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projecaoTabelaBody">
+                                <!-- Linhas renderizadas aqui -->
+                            </tbody>
+                            <tfoot id="projecaoTabelaFoot">
+                                <!-- Totais renderizados aqui -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="modal-actions" style="position: sticky; bottom: 0; background: white; border-top: 1px solid #ddd; margin: 0 -20px -20px; padding: 15px 20px;">
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('projecaoFinanceiraModal')">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>
