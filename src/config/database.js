@@ -3,12 +3,18 @@ const mysql = require('mysql2/promise');
 const isProduction = process.env.NODE_ENV === 'production';
 
 function getDbConfig() {
+    const envHost = process.env.DB_HOST || process.env.MYSQLHOST;
+    const envPort = process.env.DB_PORT || process.env.MYSQLPORT;
+    const envUser = process.env.DB_USER || process.env.MYSQLUSER;
+    const envPassword = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD;
+    const envDatabase = process.env.DB_NAME || process.env.MYSQLDATABASE;
+
     const config = {
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT || 3306),
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
+        host: envHost,
+        port: Number(envPort || 3306),
+        user: envUser,
+        password: envPassword,
+        database: envDatabase,
         waitForConnections: true,
         connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
         queueLimit: 0,
@@ -25,12 +31,6 @@ function getDbConfig() {
         config.password = config.password || '';
         config.database = config.database || 'BomboniereERP';
     }
-
-    if (!config.host && process.env.MYSQLHOST) config.host = process.env.MYSQLHOST;
-    if (!config.port && process.env.MYSQLPORT) config.port = Number(process.env.MYSQLPORT);
-    if (!config.user && process.env.MYSQLUSER) config.user = process.env.MYSQLUSER;
-    if (!config.password && process.env.MYSQLPASSWORD) config.password = process.env.MYSQLPASSWORD;
-    if (!config.database && process.env.MYSQLDATABASE) config.database = process.env.MYSQLDATABASE;
 
     if (process.env.MYSQL_URL) {
         try {
