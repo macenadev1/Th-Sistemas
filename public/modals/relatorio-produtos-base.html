@@ -1,0 +1,54 @@
+<!-- Modal de Relatório de Produtos da Base -->
+<div id="relatorioProdutosBaseModal" class="modal">
+    <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🗂️ Relatório de Produtos da Base</h2>
+        </div>
+
+        <div style="padding: 20px;">
+            <div style="display: flex; gap: 15px; margin-bottom: 24px; background: #f8f9fa; padding: 20px; border-radius: 8px; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 220px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔎 Busca por nome/código</label>
+                    <input type="text" id="buscaRelatorioProdutosBase" placeholder="Digite nome ou código de barras" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                </div>
+                <div style="flex: 1; min-width: 180px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📌 Status</label>
+                    <select id="filtroStatusProdutosBase" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                        <option value="todos">Todos</option>
+                        <option value="ativos">Somente ativos</option>
+                        <option value="inativos">Somente inativos</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 180px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📦 Estoque</label>
+                    <select id="filtroEstoqueProdutosBase" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                        <option value="todos">Todos</option>
+                        <option value="zerado">Somente zerado</option>
+                        <option value="baixo">Baixo/alerta</option>
+                        <option value="positivo">Somente positivo</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button onclick="gerarRelatorioProdutosBase()" class="btn btn-primary" style="padding: 10px 20px; white-space: nowrap;">
+                        🔍 Gerar Relatório
+                    </button>
+                </div>
+            </div>
+
+            <div id="resultadoRelatorioProdutosBase" style="min-height: 200px;">
+                <p style="text-align: center; color: #999; padding: 60px 20px; font-size: 16px;">
+                    Ajuste os filtros e clique em "Gerar Relatório" para visualizar os dados
+                </p>
+            </div>
+        </div>
+
+        <div class="modal-actions" style="position: sticky; bottom: 0; background: white; border-top: 1px solid #ddd; margin: 0 -20px -20px; padding: 15px 20px;">
+            <button type="button" class="btn btn-success" onclick="exportarRelatorioProdutosBaseCSV()" id="btnExportarProdutosBaseCSV" disabled style="background: #28a745;">
+                📤 Exportar CSV
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('relatorioProdutosBaseModal')">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>
