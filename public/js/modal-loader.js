@@ -45,7 +45,8 @@
         'cadastro-conta-pagar',
         'editar-conta-pagar',
         'estorno-conta-pagar',
-        'configurar-saldo-inicial'
+        'configurar-saldo-inicial',
+        'projecao-financeira'
     ];
 
     /**
