@@ -32,6 +32,7 @@ function navegarPara(event, secao) {
         'produtos': '📦 Produtos',
         'clientes': '👥 Clientes',
         'fornecedores': '🏢 Fornecedores',
+        'funcionarios': '👔 Funcionários',
         'caixa': '💰 Caixa',
         'vendas': '🛒 Vendas',
         'financeiro': '💸 Financeiro',
@@ -50,6 +51,8 @@ function navegarPara(event, secao) {
         carregarClientesSection();
     } else if (secao === 'fornecedores') {
         carregarFornecedoresSection();
+    } else if (secao === 'funcionarios') {
+        carregarFuncionariosSection();
     } else if (secao === 'vendas') {
         carregarVendasSection();
     } else if (secao === 'financeiro') {

@@ -2,6 +2,47 @@
 
 ## 📋 Histórico de Atualizações
 
+### ✅ Atualização 011: Salário Proporcional por Admissão (27/03/2026)
+**Descrição:** Ajusta a folha para calcular salário proporcional quando o funcionário é admitido durante o mês da competência.
+
+**Alterações:**
+- `itens_folha_pagamento` - Campo `salario_base_integral DECIMAL(10,2)`
+- `itens_folha_pagamento` - Campo `dias_periodo TINYINT`
+- `itens_folha_pagamento` - Campo `dias_trabalhados TINYINT`
+
+**Como aplicar:**
+```bash
+mysql -u root -p BomboniereERP < database/011_folha_salario_proporcional.sql
+```
+
+**Benefícios:**
+- ✅ Cálculo automático de salário proporcional por dias no mês
+- ✅ Transparência no detalhamento da folha (integral x proporcional)
+- ✅ Compatível com meses de 28, 29, 30 e 31 dias
+
+---
+
+### ✅ Atualização 010: Módulo de Funcionários e Folha de Pagamento (27/03/2026)
+**Descrição:** Adiciona cadastro de funcionários e geração de folha mensal com descontos e bonificações manuais, incluindo integração com contas a pagar.
+
+**Tabelas criadas:**
+- `funcionarios` - Cadastro base dos funcionários (nome, admissão, salário base, ativo)
+- `folha_pagamento` - Cabeçalho da folha por competência (mês/ano, status, totais)
+- `itens_folha_pagamento` - Detalhes da folha por funcionário (bruto, desconto, líquido, pago)
+
+**Como aplicar:**
+```bash
+mysql -u root -p BomboniereERP < database/010_modulo_folha_pagamento.sql
+```
+
+**Benefícios:**
+- ✅ Gestão mensal de salários dentro do ERP
+- ✅ Descontos e bonificações manuais por funcionário
+- ✅ Controle de status da folha (`rascunho` → `fechada` → `paga`)
+- ✅ Integração de pagamento com o módulo de contas a pagar
+
+---
+
 ### ✅ Atualização 009: Sistema de Estornos Financeiros (10/02/2026)
 **Descrição:** Adiciona controle de estornos para contas pagas, com histórico completo, auditoria e impacto nos saldos do mês.
 

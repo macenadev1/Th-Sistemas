@@ -2,7 +2,7 @@
 -- DATABASE PRODUÇÃO - BomboniereERP
 -- ==========================================
 -- Versão limpa sem dados de teste
--- Última atualização: 28/01/2026
+-- Última atualização: 28/03/2026
 -- ==========================================
 
 -- Criar banco de dados
@@ -19,6 +19,9 @@ DROP TABLE IF EXISTS fechamentos_caixa;
 DROP TABLE IF EXISTS formas_pagamento_venda;
 DROP TABLE IF EXISTS itens_venda;
 DROP TABLE IF EXISTS vendas;
+DROP TABLE IF EXISTS itens_folha_pagamento;
+DROP TABLE IF EXISTS folha_pagamento;
+DROP TABLE IF EXISTS funcionarios;
 DROP TABLE IF EXISTS contas_pagar;
 DROP TABLE IF EXISTS produtos;
 DROP TABLE IF EXISTS clientes;
@@ -271,6 +274,40 @@ CREATE TABLE movimentacoes_caixa (
 -- TABELAS DO MÓDULO FINANCEIRO
 -- ==========================================
 
+-- Tabela de funcionários
+CREATE TABLE funcionarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    data_admissao DATE NOT NULL,
+    salario_base DECIMAL(10, 2) NOT NULL,
+    observacoes TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_nome (nome),
+    INDEX idx_ativo (ativo),
+    INDEX idx_data_admissao (data_admissao)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de folha de pagamento mensal
+CREATE TABLE folha_pagamento (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    mes TINYINT NOT NULL,
+    ano SMALLINT NOT NULL,
+    status ENUM('rascunho', 'fechada', 'paga', 'cancelada') NOT NULL DEFAULT 'rascunho',
+    total_bruto DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    total_descontos DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    total_liquido DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    data_geracao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_pagamento DATE NULL,
+    usuario_id INT NULL,
+    CONSTRAINT chk_folha_mes CHECK (mes BETWEEN 1 AND 12),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    UNIQUE KEY uk_mes_ano (mes, ano),
+    INDEX idx_status (status),
+    INDEX idx_ano_mes (ano, mes)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Tabela de contas a pagar
 CREATE TABLE contas_pagar (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -301,6 +338,32 @@ CREATE TABLE contas_pagar (
     INDEX idx_origem_pagamento (origem_pagamento),
     INDEX idx_mes_referencia (mes_referencia),
     INDEX idx_valor_estornado (valor_estornado)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de itens por funcionário na folha
+CREATE TABLE itens_folha_pagamento (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folha_id INT NOT NULL,
+    funcionario_id INT NOT NULL,
+    salario_base_integral DECIMAL(10, 2) NOT NULL,
+    salario_base DECIMAL(10, 2) NOT NULL,
+    dias_periodo TINYINT NOT NULL DEFAULT 30,
+    dias_trabalhados TINYINT NOT NULL DEFAULT 30,
+    bonificacao DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    desconto_manual DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    total_descontos DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    liquido DECIMAL(10, 2) NOT NULL,
+    observacoes TEXT,
+    pago BOOLEAN DEFAULT FALSE,
+    conta_pagar_id INT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (folha_id) REFERENCES folha_pagamento(id) ON DELETE CASCADE,
+    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE RESTRICT,
+    FOREIGN KEY (conta_pagar_id) REFERENCES contas_pagar(id) ON DELETE SET NULL,
+    UNIQUE KEY uk_folha_funcionario (folha_id, funcionario_id),
+    INDEX idx_folha_id (folha_id),
+    INDEX idx_funcionario_id (funcionario_id),
+    INDEX idx_pago (pago)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabela de saldos iniciais (módulo financeiro)
@@ -426,3 +489,10 @@ SELECT '⚠️  LEMBRE-SE: Trocar senha do admin após primeiro login!' AS alert
 SELECT '' AS espaco;
 SELECT 'Login: admin@bomboniere.com' AS credenciais;
 SELECT 'Senha: @Bomboniere2025' AS senha_padrao;
+
+-- ==========================================
+-- SCRIPTS INCREMENTAIS (BANCO JA EM PRODUCAO)
+-- ==========================================
+-- Para bancos em uso, rode nesta ordem:
+-- 1) mysql -u root -p BomboniereERP < database/010_modulo_folha_pagamento.sql
+-- 2) mysql -u root -p BomboniereERP < database/011_folha_salario_proporcional.sql

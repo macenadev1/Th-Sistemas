@@ -32,6 +32,10 @@
                 <span class="menu-icon">🏢</span>
                 <span class="menu-text">Fornecedores</span>
             </a>
+            <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'funcionarios')">
+                <span class="menu-icon">👔</span>
+                <span class="menu-text">Funcionários</span>
+            </a>
             <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'caixa')">
                 <span class="menu-icon">💰</span>
                 <span class="menu-text">Caixa</span>
@@ -238,6 +242,16 @@
                 </div>
                 <div id="fornecedores-content">
                     <p>Carregando fornecedores...</p>
+                </div>
+            </section>
+
+            <!-- Funcionários Section -->
+            <section id="funcionarios-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Funcionários e Folha de Pagamento</h2>
+                </div>
+                <div id="funcionarios-content">
+                    <p>Carregando módulo...</p>
                 </div>
             </section>
 
@@ -506,6 +520,7 @@
     <script src="js/fornecedores.js"></script>
     <script src="js/produtos.js"></script>
     <script src="js/financeiro.js"></script>
+    <script src="js/funcionarios.js"></script>
     <script src="js/erp.js"></script>
     <script src="js/erp-dashboard.js"></script>
     <script src="js/relatorio-vendas-periodo.js"></script>
