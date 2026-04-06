@@ -30,6 +30,11 @@ function saveUsuario(usuario) {
     localStorage.setItem('usuario_logado', JSON.stringify(usuario));
 }
 
+function podeAcessarERP(usuario = null) {
+    const usuarioAtual = usuario || getUsuarioLogado();
+    return !!usuarioAtual && usuarioAtual.role === 'admin';
+}
+
 // Verificar se está autenticado
 async function verificarAutenticacao() {
     const token = getToken();
@@ -126,11 +131,11 @@ if (window.location.pathname === '/login.html' || window.location.pathname.endsW
             e.preventDefault();
             
             const btnLogin = document.getElementById('btnLogin');
-            const email = document.getElementById('email').value.trim();
+            const login = document.getElementById('login').value.trim();
             const senha = document.getElementById('senha').value;
             const rememberMe = document.getElementById('rememberMe').checked;
 
-            if (!email || !senha) {
+            if (!login || !senha) {
                 mostrarNotificacao('Preencha todos os campos!', 'error');
                 return;
             }
@@ -145,7 +150,7 @@ if (window.location.pathname === '/login.html' || window.location.pathname.endsW
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ email, senha, rememberMe })
+                    body: JSON.stringify({ login, senha, rememberMe })
                 });
 
                 const data = await response.json();
@@ -194,6 +199,20 @@ if (window.location.pathname !== '/login.html' && !window.location.pathname.ends
             // Adicionar informações do usuário no header (se existir)
             const usuario = getUsuarioLogado();
             if (usuario) {
+                // Operador não pode abrir a tela ERP.
+                if (window.location.pathname.endsWith('/erp.html') && !podeAcessarERP(usuario)) {
+                    mostrarNotificacao('Acesso ao ERP permitido apenas para administrador', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 300);
+                    return;
+                }
+
+                const erpLink = document.getElementById('erpLink');
+                if (erpLink && !podeAcessarERP(usuario)) {
+                    erpLink.style.display = 'none';
+                }
+
                 atualizarInfoUsuario(usuario);
             }
         }
@@ -250,3 +269,4 @@ window.fetch = function(...args) {
 window.logout = logout;
 window.getUsuarioLogado = getUsuarioLogado;
 window.verificarAutenticacao = verificarAutenticacao;
+window.podeAcessarERP = podeAcessarERP;

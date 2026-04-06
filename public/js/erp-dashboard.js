@@ -32,6 +32,7 @@ function navegarPara(event, secao) {
         'produtos': '📦 Produtos',
         'clientes': '👥 Clientes',
         'fornecedores': '🏢 Fornecedores',
+        'usuarios': '🔐 Usuários',
         'caixa': '💰 Caixa',
         'vendas': '🛒 Vendas',
         'financeiro': '💸 Financeiro',
@@ -50,6 +51,12 @@ function navegarPara(event, secao) {
         carregarClientesSection();
     } else if (secao === 'fornecedores') {
         carregarFornecedoresSection();
+    } else if (secao === 'usuarios') {
+        if (typeof carregarUsuariosSection === 'function') {
+            carregarUsuariosSection();
+        } else {
+            mostrarNotificacao('Módulo de usuários indisponível', 'error');
+        }
     } else if (secao === 'vendas') {
         carregarVendasSection();
     } else if (secao === 'financeiro') {

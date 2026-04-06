@@ -111,25 +111,29 @@ router.post('/login', async (req, res) => {
     const pool = getPool();
     
     try {
-        const { email, senha, rememberMe } = req.body;
+        const { email, login, senha, rememberMe } = req.body;
+        const identificador = (login || email || '').trim();
 
-        if (!email || !senha) {
+        if (!identificador || !senha) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Email e senha são obrigatórios' 
+                message: 'Usuário/e-mail e senha são obrigatórios' 
             });
         }
 
-        // Buscar usuário
+        // Buscar por e-mail (case-insensitive) ou nome de usuário.
         const [usuarios] = await pool.query(
-            'SELECT * FROM usuarios WHERE email = ? AND ativo = TRUE',
-            [email]
+            `SELECT * 
+             FROM usuarios 
+             WHERE (LOWER(email) = LOWER(?) OR LOWER(nome) = LOWER(?)) 
+             AND ativo = TRUE`,
+            [identificador, identificador]
         );
 
         if (usuarios.length === 0) {
             return res.status(401).json({ 
                 success: false, 
-                message: 'Email ou senha incorretos' 
+                message: 'Usuário/e-mail ou senha incorretos' 
             });
         }
 
@@ -141,7 +145,7 @@ router.post('/login', async (req, res) => {
         if (!senhaCorreta) {
             return res.status(401).json({ 
                 success: false, 
-                message: 'Email ou senha incorretos' 
+                message: 'Usuário/e-mail ou senha incorretos' 
             });
         }
 

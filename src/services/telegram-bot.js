@@ -23,6 +23,38 @@ class TelegramBotService {
         // Configurar comandos e listeners
         this.configurarComandos();
     }
+
+    /**
+     * Envia mensagem e trata migração automática de grupo -> supergrupo.
+     */
+    async enviarComFallbackMigracao(chatId, mensagem, opcoes = {}) {
+        try {
+            await this.bot.sendMessage(chatId, mensagem, opcoes);
+            return { success: true, chatId };
+        } catch (error) {
+            const migrateToChatId = error?.response?.body?.parameters?.migrate_to_chat_id;
+            const descricaoErro = (error?.response?.body?.description || error?.message || '').toLowerCase();
+            const erroMigracao = descricaoErro.includes('group chat was upgraded to a supergroup chat');
+
+            if (!migrateToChatId && !erroMigracao) {
+                throw error;
+            }
+
+            const novoChatId = migrateToChatId ? String(migrateToChatId) : null;
+
+            if (!novoChatId) {
+                throw error;
+            }
+
+            console.warn(`⚠️  Chat migrado para supergrupo. Atualizando chat_id para ${novoChatId}`);
+            this.chatIdPadrao = novoChatId;
+
+            await this.bot.sendMessage(novoChatId, mensagem, opcoes);
+            console.log(`✅ Mensagem reenviada com novo chat_id: ${novoChatId}`);
+
+            return { success: true, chatId: novoChatId, migrated: true };
+        }
+    }
     
     configurarComandos() {
         if (!this.bot) return;
@@ -319,9 +351,13 @@ class TelegramBotService {
         const cupom = this.gerarTextoCupom(venda);
         
         try {
-            await this.bot.sendMessage(this.chatIdPadrao, cupom, {
+            const resultadoEnvio = await this.enviarComFallbackMigracao(this.chatIdPadrao, cupom, {
                 parse_mode: 'Markdown'
             });
+
+            if (resultadoEnvio.migrated) {
+                console.warn(`⚠️  Atualize o TELEGRAM_CHAT_ID no .env para: ${resultadoEnvio.chatId}`);
+            }
             
             console.log(`✅ Cupom #${venda.id} enviado via Telegram`);
             return { success: true };
@@ -356,9 +392,13 @@ class TelegramBotService {
         mensagem += `📊 Use /estoque para ver a lista completa`;
         
         try {
-            await this.bot.sendMessage(this.chatIdPadrao, mensagem, {
+            const resultadoEnvio = await this.enviarComFallbackMigracao(this.chatIdPadrao, mensagem, {
                 parse_mode: 'Markdown'
             });
+
+            if (resultadoEnvio.migrated) {
+                console.warn(`⚠️  Atualize o TELEGRAM_CHAT_ID no .env para: ${resultadoEnvio.chatId}`);
+            }
             
             console.log(`✅ Alerta de estoque enviado (${produtos.length} produtos)`);
             return { success: true };
@@ -397,9 +437,13 @@ class TelegramBotService {
         }
         
         try {
-            await this.bot.sendMessage(this.chatIdPadrao, mensagem, {
+            const resultadoEnvio = await this.enviarComFallbackMigracao(this.chatIdPadrao, mensagem, {
                 parse_mode: 'Markdown'
             });
+
+            if (resultadoEnvio.migrated) {
+                console.warn(`⚠️  Atualize o TELEGRAM_CHAT_ID no .env para: ${resultadoEnvio.chatId}`);
+            }
             
             console.log(`✅ Fechamento de caixa enviado via Telegram`);
             return { success: true };
@@ -466,9 +510,13 @@ class TelegramBotService {
         }
         
         try {
-            await this.bot.sendMessage(destinatario, mensagem, {
+            const resultadoEnvio = await this.enviarComFallbackMigracao(destinatario, mensagem, {
                 parse_mode: 'Markdown'
             });
+
+            if (!chatId && resultadoEnvio.migrated) {
+                console.warn(`⚠️  Atualize o TELEGRAM_CHAT_ID no .env para: ${resultadoEnvio.chatId}`);
+            }
             
             return { success: true };
         } catch (error) {

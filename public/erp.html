@@ -32,6 +32,10 @@
                 <span class="menu-icon">🏢</span>
                 <span class="menu-text">Fornecedores</span>
             </a>
+            <a href="#" id="menuUsuariosItem" class="erp-menu-item" onclick="navegarPara(event, 'usuarios')">
+                <span class="menu-icon">🔐</span>
+                <span class="menu-text">Usuários</span>
+            </a>
             <a href="#" class="erp-menu-item" onclick="navegarPara(event, 'caixa')">
                 <span class="menu-icon">💰</span>
                 <span class="menu-text">Caixa</span>
@@ -238,6 +242,17 @@
                 </div>
                 <div id="fornecedores-content">
                     <p>Carregando fornecedores...</p>
+                </div>
+            </section>
+
+            <!-- Usuarios Section -->
+            <section id="usuarios-section" class="erp-section">
+                <div class="section-header">
+                    <h2>Gerenciar Usuários</h2>
+                    <button onclick="abrirCadastroUsuario()" class="btn btn-success">+ Novo Usuário</button>
+                </div>
+                <div id="usuarios-content">
+                    <p>Carregando usuários...</p>
                 </div>
             </section>
 
@@ -504,6 +519,7 @@
     <script src="js/historico.js"></script>
     <script src="js/clientes.js"></script>
     <script src="js/fornecedores.js"></script>
+    <script src="js/usuarios.js"></script>
     <script src="js/produtos.js"></script>
     <script src="js/financeiro.js"></script>
     <script src="js/erp.js"></script>

@@ -1,0 +1,53 @@
+<!-- Modal de Edicao de Usuario -->
+<div id="editarUsuarioModal" class="modal modal-nested">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 560px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h2>✏️ Editar Usuário</h2>
+        </div>
+        <form id="formEditarUsuario" onsubmit="salvarEdicaoUsuario(event)">
+            <input type="hidden" id="editarIdUsuario">
+
+            <div style="display: grid; gap: 15px; padding: 20px;">
+                <div class="form-group">
+                    <label>Nome: *</label>
+                    <input type="text" id="editarNomeUsuario" required placeholder="Nome completo">
+                </div>
+
+                <div class="form-group">
+                    <label>E-mail: *</label>
+                    <input type="email" id="editarEmailUsuario" required placeholder="usuario@email.com">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Perfil: *</label>
+                        <select id="editarRoleUsuario" required>
+                            <option value="operador">Operador</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <select id="editarAtivoUsuario">
+                            <option value="true">Ativo</option>
+                            <option value="false">Inativo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Nova senha (opcional):</label>
+                    <input type="password" id="editarSenhaUsuario" minlength="6" placeholder="Deixe em branco para manter a atual">
+                </div>
+
+                <small style="color: #666;">Ao trocar status/perfil de administradores, o sistema impede remover o ultimo admin ativo.</small>
+            </div>
+
+            <div class="modal-actions" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <button type="submit" class="btn btn-success">✓ Salvar</button>
+                <button type="button" class="btn btn-warning" style="background: #ff9800; border-color: #ff9800; color: #fff;" onclick="desativarUsuarioEdicao()">Desativar</button>
+                <button type="button" class="btn btn-danger" onclick="fecharModalAninhado(event, 'editarUsuarioModal')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>

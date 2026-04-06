@@ -1438,6 +1438,17 @@ document.addEventListener('keydown', function(e) {
     // F10 para abrir Menu ERP em nova aba
     if (e.key === 'F10') {
         e.preventDefault();
+
+        const usuario = typeof window.getUsuarioLogado === 'function' ? window.getUsuarioLogado() : null;
+        const podeAbrirERP = typeof window.podeAcessarERP === 'function' ? window.podeAcessarERP(usuario) : false;
+
+        if (!podeAbrirERP) {
+            if (typeof mostrarNotificacao === 'function') {
+                mostrarNotificacao('Acesso ao ERP permitido apenas para administrador', 'error');
+            }
+            return;
+        }
+
         window.open('erp.html', '_blank');
     }
     

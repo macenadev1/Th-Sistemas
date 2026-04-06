@@ -71,7 +71,7 @@
             font-size: 14px;
         }
 
-        input[type="email"],
+        input[type="text"],
         input[type="password"] {
             width: 100%;
             padding: 14px 16px;
@@ -82,7 +82,7 @@
             font-family: inherit;
         }
 
-        input[type="email"]:focus,
+        input[type="text"]:focus,
         input[type="password"]:focus {
             outline: none;
             border-color: #667eea;
@@ -205,14 +205,14 @@
 
         <form id="loginForm">
             <div class="form-group">
-                <label for="email">Email</label>
+                <label for="login">Usuário ou E-mail</label>
                 <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    placeholder="seu@email.com" 
+                    type="text" 
+                    id="login" 
+                    name="login" 
+                    placeholder="Seu usuário ou e-mail" 
                     required 
-                    autocomplete="email"
+                    autocomplete="username"
                     autofocus
                 >
             </div>
