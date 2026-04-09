@@ -501,8 +501,19 @@ async function pagarFolhaERP(folhaId) {
 
 async function recalcularFolhaERP(folhaId) {
     try {
+        const diaInformado = prompt('Dia de fechamento da competência (1-31):', '30');
+        if (diaInformado === null) return;
+
+        const dia_fechamento = Number(diaInformado);
+        if (!Number.isInteger(dia_fechamento) || dia_fechamento < 1 || dia_fechamento > 31) {
+            mostrarNotificacao('Dia de fechamento inválido', 'error');
+            return;
+        }
+
         const response = await fetch(`${window.API_URL}/folha-pagamento/${folhaId}/recalcular-proporcional`, {
-            method: 'PUT'
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dia_fechamento })
         });
         const data = await response.json();
 

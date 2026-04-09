@@ -13,6 +13,26 @@ function calcularLiquido(salarioBase, bonificacao, descontoManual) {
     return toMoney(toMoney(salarioBase) + toMoney(bonificacao) - toMoney(descontoManual));
 }
 
+function contarDiasTrabalhoSegASab(dataInicio, dataFim) {
+    const inicio = toDateOnly(dataInicio);
+    const fim = toDateOnly(dataFim);
+    if (!inicio || !fim || inicio > fim) return 0;
+
+    let total = 0;
+    const cursor = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
+
+    while (cursor <= fim) {
+        const diaSemana = cursor.getDay();
+        // 0 = domingo, 1..6 = segunda..sabado
+        if (diaSemana !== 0) {
+            total += 1;
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return total;
+}
+
 function toDateOnly(input) {
     if (input instanceof Date && !Number.isNaN(input.getTime())) {
         return new Date(input.getFullYear(), input.getMonth(), input.getDate());
@@ -64,6 +84,39 @@ function calcularSalarioProporcional(salarioIntegral, dataAdmissao, ano, mes, di
     const salarioProporcional = toMoney((toMoney(salarioIntegral) * diasTrabalhados) / diasPeriodo);
 
     return {
+        diasTrabalhados,
+        salarioProporcional
+    };
+}
+
+function calcularSalarioProporcionalSegASab(salarioIntegral, dataAdmissao, dataInicioPeriodo, dataFimPeriodo) {
+    const diasPeriodo = contarDiasTrabalhoSegASab(dataInicioPeriodo, dataFimPeriodo);
+    if (diasPeriodo <= 0) {
+        return {
+            diasPeriodo: 0,
+            diasTrabalhados: 0,
+            salarioProporcional: 0
+        };
+    }
+
+    const admissao = toDateOnly(dataAdmissao);
+    const inicio = toDateOnly(dataInicioPeriodo);
+    const fim = toDateOnly(dataFimPeriodo);
+
+    if (!admissao || !inicio || !fim) {
+        return {
+            diasPeriodo,
+            diasTrabalhados: diasPeriodo,
+            salarioProporcional: toMoney(salarioIntegral)
+        };
+    }
+
+    const inicioTrabalho = admissao > inicio ? admissao : inicio;
+    const diasTrabalhados = contarDiasTrabalhoSegASab(inicioTrabalho, fim);
+    const salarioProporcional = toMoney((toMoney(salarioIntegral) * diasTrabalhados) / diasPeriodo);
+
+    return {
+        diasPeriodo,
         diasTrabalhados,
         salarioProporcional
     };
@@ -194,7 +247,9 @@ router.post('/gerar', requireAuth, async (req, res) => {
         const diaFechamento = Number.isInteger(Number(dia_fechamento))
             ? Math.min(Math.max(Number(dia_fechamento), 1), maxDiasMes)
             : maxDiasMes;
-        const diasPeriodo = diaFechamento;
+        const dataInicioPeriodo = `${anoNum}-${String(mesNum).padStart(2, '0')}-01`;
+        const dataFimPeriodo = `${anoNum}-${String(mesNum).padStart(2, '0')}-${String(diaFechamento).padStart(2, '0')}`;
+        const diasPeriodo = contarDiasTrabalhoSegASab(dataInicioPeriodo, dataFimPeriodo);
         const dataReferencia = `${anoNum}-${String(mesNum).padStart(2, '0')}-${String(diaFechamento).padStart(2, '0')}`;
 
         const [funcionarios] = await connection.query(
@@ -231,19 +286,18 @@ router.post('/gerar', requireAuth, async (req, res) => {
 
         for (const funcionario of funcionarios) {
             const salarioIntegral = toMoney(funcionario.salario_base);
-            const proporcional = calcularSalarioProporcional(
+            const proporcional = calcularSalarioProporcionalSegASab(
                 salarioIntegral,
                 funcionario.data_admissao,
-                anoNum,
-                mesNum,
-                diasPeriodo
+                dataInicioPeriodo,
+                dataFimPeriodo
             );
             const salarioBase = proporcional.salarioProporcional;
             const bonificacao = 0;
             const descontoManual = 0;
             const liquido = calcularLiquido(salarioBase, bonificacao, descontoManual);
             const observacaoAdmissao = proporcional.diasTrabalhados < diasPeriodo
-                ? `Admissao no mes: ${proporcional.diasTrabalhados}/${diasPeriodo} dias considerados`
+                ? `Admissao no mes: ${proporcional.diasTrabalhados}/${diasPeriodo} dias (seg-sab) considerados`
                 : null;
 
             totalBruto += salarioBase + bonificacao;
@@ -418,6 +472,7 @@ router.put('/:id/recalcular-proporcional', requireAuth, async (req, res) => {
     const connection = await pool.getConnection();
 
     try {
+        const diaFechamentoBody = Number(req.body?.dia_fechamento);
         await connection.beginTransaction();
 
         const [folhaRows] = await connection.query(
@@ -437,6 +492,16 @@ router.put('/:id/recalcular-proporcional', requireAuth, async (req, res) => {
             await connection.rollback();
             return res.status(400).json({ success: false, message: 'Só é possível recalcular folha em rascunho' });
         }
+
+        const ultimoDiaMes = new Date(Number(folha.ano), Number(folha.mes), 0);
+        const maxDiasMes = ultimoDiaMes.getDate();
+        const diaFechamento = Number.isInteger(diaFechamentoBody)
+            ? Math.min(Math.max(diaFechamentoBody, 1), maxDiasMes)
+            : null;
+        const dataInicioPeriodo = `${folha.ano}-${String(folha.mes).padStart(2, '0')}-01`;
+        const dataFimPeriodo = diaFechamento
+            ? `${folha.ano}-${String(folha.mes).padStart(2, '0')}-${String(diaFechamento).padStart(2, '0')}`
+            : null;
 
         const [itens] = await connection.query(
             `SELECT
@@ -458,15 +523,21 @@ router.put('/:id/recalcular-proporcional', requireAuth, async (req, res) => {
         let totalLiquido = 0;
 
         for (const item of itens) {
-            const diasPeriodo = Number(item.dias_periodo) > 0 ? Number(item.dias_periodo) : 30;
             const salarioIntegral = toMoney(item.salario_base_integral);
-            const proporcional = calcularSalarioProporcional(
-                salarioIntegral,
-                item.data_admissao,
-                Number(folha.ano),
-                Number(folha.mes),
-                diasPeriodo
-            );
+            const proporcional = dataFimPeriodo
+                ? calcularSalarioProporcionalSegASab(
+                    salarioIntegral,
+                    item.data_admissao,
+                    dataInicioPeriodo,
+                    dataFimPeriodo
+                )
+                : {
+                    diasPeriodo: Number(item.dias_periodo) > 0 ? Number(item.dias_periodo) : 30,
+                    diasTrabalhados: Number(item.dias_trabalhados) > 0 ? Number(item.dias_trabalhados) : (Number(item.dias_periodo) > 0 ? Number(item.dias_periodo) : 30),
+                    salarioProporcional: toMoney(item.salario_base)
+                };
+
+            const diasPeriodo = proporcional.diasPeriodo;
 
             const salarioBase = proporcional.salarioProporcional;
             const bonificacao = toMoney(item.bonificacao);
@@ -480,6 +551,7 @@ router.put('/:id/recalcular-proporcional', requireAuth, async (req, res) => {
             await connection.query(
                 `UPDATE itens_folha_pagamento
                  SET salario_base = ?,
+                     dias_periodo = ?,
                      dias_trabalhados = ?,
                      total_descontos = ?,
                      liquido = ?,
@@ -487,11 +559,12 @@ router.put('/:id/recalcular-proporcional', requireAuth, async (req, res) => {
                  WHERE id = ?`,
                 [
                     salarioBase,
+                    diasPeriodo,
                     proporcional.diasTrabalhados,
                     desconto,
                     liquido,
                     proporcional.diasTrabalhados < diasPeriodo
-                        ? `Admissao no mes: ${proporcional.diasTrabalhados}/${diasPeriodo} dias considerados`
+                        ? `Admissao no mes: ${proporcional.diasTrabalhados}/${diasPeriodo} dias (seg-sab) considerados`
                         : null,
                     item.id
                 ]
