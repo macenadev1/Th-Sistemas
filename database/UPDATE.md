@@ -2,6 +2,27 @@
 
 ## 📋 Histórico de Atualizações
 
+### ✅ Atualização 012: Taxas de Maquininha por Bandeira (09/04/2026)
+**Descrição:** Adiciona suporte a taxas por bandeira/parcela no recebimento de vendas, com persistência de valor bruto, taxa aplicada e valor líquido por forma de pagamento.
+
+**Alterações:**
+- `formas_pagamento_venda` - Campos `bandeira`, `parcelas`, `taxa_percentual`, `valor_taxa`, `valor_liquido`
+- `taxas_maquininha` - Nova tabela para regras de taxa por `forma_pagamento + bandeira + parcelas`
+- Backfill de `valor_liquido` para vendas antigas
+
+**Como aplicar:**
+```bash
+mysql -u root -p BomboniereERP < database/012_taxas_maquininha_bandeira.sql
+```
+
+**Benefícios:**
+- ✅ Taxa aplicada no momento da venda (evita distorção histórica)
+- ✅ Financeiro passa a trabalhar com receita líquida real
+- ✅ Suporte a taxa diferente por bandeira e parcelas
+- ✅ Compatível com histórico anterior (fallback por backfill)
+
+---
+
 ### ✅ Atualização 011: Salário Proporcional por Admissão (27/03/2026)
 **Descrição:** Ajusta a folha para calcular salário proporcional quando o funcionário é admitido durante o mês da competência.
 

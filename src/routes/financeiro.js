@@ -2,6 +2,44 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../config/database');
 
+async function obterReceitaLiquidaMes(executor, ano, mes) {
+    const [rows] = await executor.query(
+        `SELECT
+            GREATEST(
+                COALESCE(SUM(v.total), 0) - COALESCE(SUM(taxas.total_taxa_venda), 0),
+                0
+            ) AS receita_total
+         FROM vendas v
+         LEFT JOIN (
+            SELECT
+                fp.venda_id,
+                COALESCE(SUM(fp.valor_taxa), 0) AS total_taxa_venda
+            FROM formas_pagamento_venda fp
+            GROUP BY fp.venda_id
+         ) AS taxas ON taxas.venda_id = v.id
+         WHERE YEAR(v.data_venda) = ?
+           AND MONTH(v.data_venda) = ?
+           AND v.cancelado = FALSE`,
+        [ano, mes]
+    );
+
+    return parseFloat(rows[0].receita_total) || 0;
+}
+
+async function obterTotalTaxasMes(executor, ano, mes) {
+    const [rows] = await executor.query(
+        `SELECT COALESCE(SUM(fp.valor_taxa), 0) AS total_taxas
+         FROM formas_pagamento_venda fp
+         INNER JOIN vendas v ON v.id = fp.venda_id
+         WHERE YEAR(v.data_venda) = ?
+           AND MONTH(v.data_venda) = ?
+           AND v.cancelado = FALSE`,
+        [ano, mes]
+    );
+
+    return parseFloat(rows[0].total_taxas) || 0;
+}
+
 // ==================== CONTAS A PAGAR ====================
 
 // Listar todas as contas a pagar com filtros
@@ -393,12 +431,7 @@ router.put('/pagar-lote', async (req, res) => {
         const saldoInicialReposicao = saldoInicialRows.length > 0 ? parseFloat(saldoInicialRows[0].saldo_reposicao) : 0;
         const saldoInicialLucro = saldoInicialRows.length > 0 ? parseFloat(saldoInicialRows[0].saldo_lucro) : 0;
 
-        const [vendas] = await connection.query(`
-            SELECT COALESCE(SUM(v.total), 0) AS receita_total
-            FROM vendas v
-            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
-            AND v.cancelado = FALSE
-        `, [anoAtual, mesAtual]);
+        const receitaMes = await obterReceitaLiquidaMes(connection, anoAtual, mesAtual);
 
         const [custos] = await connection.query(`
             SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
@@ -408,8 +441,8 @@ router.put('/pagar-lote', async (req, res) => {
             AND v.cancelado = FALSE
         `, [anoAtual, mesAtual]);
 
-        const receitaMes = parseFloat(vendas[0].receita_total) || 0;
         const custosMes = parseFloat(custos[0].custo_total) || 0;
+        const totalTaxasMes = await obterTotalTaxasMes(connection, anoAtual, mesAtual);
 
         for (const origem of Object.keys(totalPorOrigem)) {
             const [pagamentosRealizados] = await connection.query(`
@@ -440,7 +473,7 @@ router.put('/pagar-lote', async (req, res) => {
             } else {
                 const lucroMes = receitaMes - custosMes;
                 const lucroBrutaTotal = saldoInicialLucro + lucroMes;
-                saldoDisponivel = lucroBrutaTotal - totalPago + totalEstornado;
+                saldoDisponivel = lucroBrutaTotal - totalPago - totalTaxasMes + totalEstornado;
             }
 
             const totalLoteOrigem = totalPorOrigem[origem] || 0;
@@ -594,13 +627,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
         // Receita: usar venda.total (já inclui descontos)
         // Custos: somar custos dos itens vendidos
         // IMPORTANTE: Excluir vendas canceladas
-        const [vendas] = await pool.query(`
-            SELECT 
-                COALESCE(SUM(v.total), 0) AS receita_bruta
-            FROM vendas v
-            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
-            AND v.cancelado = FALSE
-        `, [ano, mes]);
+        const receitaBruta = await obterReceitaLiquidaMes(pool, ano, mes);
         
         const [custos] = await pool.query(`
             SELECT 
@@ -611,8 +638,8 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
             AND v.cancelado = FALSE
         `, [ano, mes]);
         
-        const receitaBruta = parseFloat(vendas[0].receita_bruta) || 0;
         const custosReposicao = parseFloat(custos[0].custos_reposicao) || 0;
+        const totalTaxasMes = await obterTotalTaxasMes(pool, ano, mes);
         const lucroBruto = receitaBruta - custosReposicao;
         
         // 3. CALCULAR PAGAMENTOS REALIZADOS NO MÊS CONSULTADO (por origem)
@@ -652,7 +679,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
         const reposicaoDisponivel = reposicaoBruta - parseFloat(pagamentosReposicao) + parseFloat(estornosReposicao);
         
         const lucroBrutaTotal = saldoInicialLucro + lucroBruto;
-        const lucroDisponivel = lucroBrutaTotal - parseFloat(pagamentosLucro) + parseFloat(estornosLucro);
+        const lucroDisponivel = lucroBrutaTotal - totalTaxasMes - parseFloat(pagamentosLucro) + parseFloat(estornosLucro);
         
         res.json({
             success: true,
@@ -670,6 +697,7 @@ router.get('/saldos-mes/:ano/:mes', async (req, res) => {
                 lucro: {
                     saldo_inicial: saldoInicialLucro,
                     receita_mes: receitaBruta,
+                    taxas_mes: totalTaxasMes,
                     custos_mes: custosReposicao,
                     lucro_mes: lucroBruto,
                     bruta: lucroBrutaTotal,
@@ -739,12 +767,7 @@ router.put('/:id/pagar', async (req, res) => {
         const saldoInicialLucro = saldoInicialRows.length > 0 ? parseFloat(saldoInicialRows[0].saldo_lucro) : 0;
 
         // Receita e custos do mês (excluir vendas canceladas)
-        const [vendas] = await pool.query(`
-            SELECT COALESCE(SUM(v.total), 0) AS receita_total
-            FROM vendas v
-            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
-            AND v.cancelado = FALSE
-        `, [anoAtual, mesAtual]);
+        const receitaMes = await obterReceitaLiquidaMes(pool, anoAtual, mesAtual);
 
         const [custos] = await pool.query(`
             SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
@@ -754,8 +777,8 @@ router.put('/:id/pagar', async (req, res) => {
             AND v.cancelado = FALSE
         `, [anoAtual, mesAtual]);
 
-        const receitaMes = parseFloat(vendas[0].receita_total) || 0;
         const custosMes = parseFloat(custos[0].custo_total) || 0;
+        const totalTaxasMes = await obterTotalTaxasMes(pool, anoAtual, mesAtual);
 
         // Pagamentos já realizados no mês (por origem)
         const [pagamentosRealizados] = await pool.query(`
@@ -789,7 +812,7 @@ router.put('/:id/pagar', async (req, res) => {
         } else {
             const lucroMes = receitaMes - custosMes;
             const lucroBrutaTotal = saldoInicialLucro + lucroMes;
-            saldoDisponivel = lucroBrutaTotal - totalPago + totalEstornado;
+            saldoDisponivel = lucroBrutaTotal - totalTaxasMes - totalPago + totalEstornado;
         }
         
         const valorConta = parseFloat(exists[0].valor);
@@ -1030,12 +1053,7 @@ router.post('/fechar-mes', async (req, res) => {
             ? parseFloat(saldosIniciais[0].saldo_lucro) : 0;
         
         // 5. Calcular receita total das vendas (excluir canceladas)
-        const [vendas] = await connection.query(`
-            SELECT COALESCE(SUM(v.total), 0) AS receita_total
-            FROM vendas v
-            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
-            AND v.cancelado = FALSE
-        `, [anoAtual, mesAtual]);
+        const receitaMes = await obterReceitaLiquidaMes(connection, anoAtual, mesAtual);
         
         // 6. Calcular custo total dos itens vendidos (excluir canceladas)
         const [custos] = await connection.query(`
@@ -1046,8 +1064,8 @@ router.post('/fechar-mes', async (req, res) => {
             AND v.cancelado = FALSE
         `, [anoAtual, mesAtual]);
         
-        const receitaMes = parseFloat(vendas[0].receita_total);
         const custosMes = parseFloat(custos[0].custo_total);
+        const totalTaxasMes = await obterTotalTaxasMes(connection, anoAtual, mesAtual);
         const lucroMes = receitaMes - custosMes;
         
         // 7. Calcular pagamentos por origem
@@ -1092,7 +1110,7 @@ router.post('/fechar-mes', async (req, res) => {
 
         // 9. Calcular disponível para próximo mês (estornos aumentam apenas disponível)
         const reposicaoDisponivel = saldoInicialReposicao + custosMes - pagamentosReposicao + estornosReposicao;
-        const lucroDisponivel = saldoInicialLucro + lucroMes - pagamentosLucro + estornosLucro;
+        const lucroDisponivel = saldoInicialLucro + lucroMes - totalTaxasMes - pagamentosLucro + estornosLucro;
         
         // 10. Criar/atualizar saldo inicial do próximo mês
         if (saldoExistente.length > 0) {
@@ -1205,12 +1223,7 @@ router.post('/:id/estorno', async (req, res) => {
         const saldoInicialLucro = saldoInicial.length > 0 ? parseFloat(saldoInicial[0].saldo_lucro) : 0;
 
         // Calcular receita, custos e lucro do mês (sem alterar brutos)
-        const [vendas] = await connection.query(`
-            SELECT COALESCE(SUM(v.total), 0) AS receita_total
-            FROM vendas v
-            WHERE YEAR(v.data_venda) = ? AND MONTH(v.data_venda) = ?
-            AND v.cancelado = FALSE
-        `, [anoAtual, mesAtual]);
+        const receitaMes = await obterReceitaLiquidaMes(connection, anoAtual, mesAtual);
 
         const [custos] = await connection.query(`
             SELECT COALESCE(SUM(iv.preco_custo_unitario * iv.quantidade), 0) AS custo_total
@@ -1220,8 +1233,8 @@ router.post('/:id/estorno', async (req, res) => {
             AND v.cancelado = FALSE
         `, [anoAtual, mesAtual]);
 
-        const receitaMes = parseFloat(vendas[0].receita_total);
         const custosMes = parseFloat(custos[0].custo_total);
+        const totalTaxasMes = await obterTotalTaxasMes(connection, anoAtual, mesAtual);
         const lucroMes = receitaMes - custosMes;
 
         // Calcular pagamentos por origem no mês
@@ -1269,7 +1282,7 @@ router.post('/:id/estorno', async (req, res) => {
         const lucroBrutaTotal = saldoInicialLucro + lucroMes;
 
         const reposicaoDisponivelAtual = reposicaoBruta - pagamentosReposicao + estornosReposicao;
-        const lucroDisponivelAtual = lucroBrutaTotal - pagamentosLucro + estornosLucro;
+        const lucroDisponivelAtual = lucroBrutaTotal - totalTaxasMes - pagamentosLucro + estornosLucro;
 
         const saldoAntesReposicao = reposicaoDisponivelAtual;
         const saldoAntesLucro = lucroDisponivelAtual;

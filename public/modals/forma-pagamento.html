@@ -4,6 +4,24 @@
         <div class="modal-header">
             <h2 style="text-align: center; font-size: 28px;">💳 Selecione a Forma de Pagamento</h2>
             <p id="valorSelecionadoTexto" style="text-align: center; font-size: 24px; color: #667eea; font-weight: bold; margin-top: 10px;">Valor: R$ 0,00</p>
+            <p style="text-align: center; font-size: 14px; color: #666; margin-top: 8px;">Defina bandeira e parcelas abaixo. Depois selecione a forma com 1, 2, 3 ou 4.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px 10px 20px;">
+            <div>
+                <label for="bandeiraCartaoPagamento" style="display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: bold;">Bandeira cartão</label>
+                <select id="bandeiraCartaoPagamento" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <option value="visa">VISA</option>
+                    <option value="master">MASTERCARD</option>
+                    <option value="elo">ELO</option>
+                    <option value="amex">AMEX</option>
+                    <option value="hipercard">HIPERCARD</option>
+                    <option value="outra">OUTRA</option>
+                </select>
+            </div>
+            <div>
+                <label for="parcelasCartaoPagamento" style="display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: bold;">Parcelas (crédito)</label>
+                <input id="parcelasCartaoPagamento" type="number" min="1" max="12" value="1" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+            </div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px;">
             <!-- Dinheiro - Tecla 1 -->

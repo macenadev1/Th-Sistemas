@@ -2,6 +2,83 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../config/database');
 
+// GET - Listar taxas de maquininha
+router.get('/taxas-maquininha', async (req, res) => {
+    try {
+        const pool = getPool();
+        const [rows] = await pool.query(
+            `SELECT id, forma_pagamento, bandeira, parcelas, taxa_percentual, ativo
+             FROM taxas_maquininha
+             ORDER BY forma_pagamento, bandeira, parcelas`
+        );
+
+        res.json({
+            success: true,
+            taxas: rows
+        });
+    } catch (error) {
+        console.error('Erro ao listar taxas da maquininha:', error);
+        res.status(500).json({ success: false, error: 'Erro ao listar taxas da maquininha' });
+    }
+});
+
+// POST - Cadastrar ou atualizar taxa de maquininha
+router.post('/taxas-maquininha', async (req, res) => {
+    try {
+        const pool = getPool();
+        const { forma_pagamento, bandeira, parcelas, taxa_percentual, ativo } = req.body;
+
+        const forma = String(forma_pagamento || '').trim().toLowerCase();
+        let bandeiraNormalizada = bandeira ? String(bandeira).trim().toLowerCase() : null;
+        const parcelasNormalizadas = Number.parseInt(parcelas, 10) > 0 ? Number.parseInt(parcelas, 10) : 1;
+        const taxa = Number.parseFloat(taxa_percentual);
+
+        if (forma === 'pix' && !bandeiraNormalizada) {
+            bandeiraNormalizada = 'pix';
+        }
+
+        if (!['debito', 'credito', 'pix'].includes(forma)) {
+            return res.status(400).json({ success: false, error: 'Forma de pagamento invalida' });
+        }
+
+        if (forma === 'credito' && parcelasNormalizadas < 1) {
+            return res.status(400).json({ success: false, error: 'Parcelas invalidas para credito' });
+        }
+
+        if (!Number.isFinite(taxa) || taxa < 0 || taxa > 100) {
+            return res.status(400).json({ success: false, error: 'Taxa percentual invalida' });
+        }
+
+        await pool.query(
+            `INSERT INTO taxas_maquininha (forma_pagamento, bandeira, parcelas, taxa_percentual, ativo)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                taxa_percentual = VALUES(taxa_percentual),
+                ativo = VALUES(ativo),
+                data_atualizacao = NOW()`,
+            [forma, bandeiraNormalizada, parcelasNormalizadas, taxa, ativo !== false]
+        );
+
+        res.json({ success: true, message: 'Taxa salva com sucesso' });
+    } catch (error) {
+        console.error('Erro ao salvar taxa da maquininha:', error);
+        res.status(500).json({ success: false, error: 'Erro ao salvar taxa da maquininha' });
+    }
+});
+
+// DELETE - Desativar taxa de maquininha
+router.delete('/taxas-maquininha/:id', async (req, res) => {
+    try {
+        const pool = getPool();
+        await pool.query('UPDATE taxas_maquininha SET ativo = FALSE WHERE id = ?', [req.params.id]);
+
+        res.json({ success: true, message: 'Taxa desativada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao desativar taxa da maquininha:', error);
+        res.status(500).json({ success: false, error: 'Erro ao desativar taxa da maquininha' });
+    }
+});
+
 // GET - Obter configurações
 router.get('/', async (req, res) => {
     try {

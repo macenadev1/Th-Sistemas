@@ -121,6 +121,7 @@ async function gerarRelatorioVendasItem() {
 
         const vendas = data.vendas || [];
         const itensVendidos = data.itens || [];
+        const formasPagamento = data.formas_pagamento || [];
 
         if (vendas.length === 0) {
             container.innerHTML = `
@@ -169,6 +170,20 @@ async function gerarRelatorioVendasItem() {
             return;
         }
 
+        const formasPagamento = data.formas_pagamento || [];
+
+        const subtotalPorVenda = new Map();
+        itensVendidos.forEach(item => {
+            const vendaId = item.venda_id;
+            subtotalPorVenda.set(vendaId, (subtotalPorVenda.get(vendaId) || 0) + (parseFloat(item.subtotal) || 0));
+        });
+
+        const taxaPorVenda = new Map();
+        formasPagamento.forEach(fp => {
+            const vendaId = fp.venda_id;
+            taxaPorVenda.set(vendaId, (taxaPorVenda.get(vendaId) || 0) + (parseFloat(fp.valor_taxa) || 0));
+        });
+
         // Agrupar itens por produto
         const itensPorProduto = new Map();
 
@@ -185,6 +200,7 @@ async function gerarRelatorioVendasItem() {
                     quantidade: 0,
                     totalVendas: 0,
                     totalCustos: 0,
+                    totalTaxas: 0,
                     vendasIds: new Set(),
                     precoSomado: 0,
                     precoQtde: 0
@@ -196,10 +212,15 @@ async function gerarRelatorioVendasItem() {
             const subtotal = parseFloat(item.subtotal) || 0;
             const custoUnit = parseFloat(item.preco_custo_unitario) || 0;
             const precoUnit = parseFloat(item.preco_unitario) || 0;
+            const vendaId = item.venda_id;
+            const subtotalVenda = subtotalPorVenda.get(vendaId) || 0;
+            const taxaVenda = taxaPorVenda.get(vendaId) || 0;
+            const taxaRateioItem = subtotalVenda > 0 ? (taxaVenda * (subtotal / subtotalVenda)) : 0;
 
             registro.quantidade += quantidade;
             registro.totalVendas += subtotal;
             registro.totalCustos += custoUnit * quantidade;
+            registro.totalTaxas += taxaRateioItem;
             registro.precoSomado += precoUnit * quantidade;
             registro.precoQtde += quantidade;
             registro.vendasIds.add(item.venda_id);
@@ -210,6 +231,8 @@ async function gerarRelatorioVendasItem() {
                 const lucro = produto.totalVendas - produto.totalCustos;
                 const margem = produto.totalVendas > 0 ? (lucro / produto.totalVendas) * 100 : 0;
                 const precoMedio = produto.precoQtde > 0 ? produto.precoSomado / produto.precoQtde : 0;
+                const lucroLiquido = lucro - produto.totalTaxas;
+                const margemLiquida = produto.totalVendas > 0 ? (lucroLiquido / produto.totalVendas) * 100 : 0;
 
                 return {
                     nome: produto.nome,
@@ -218,8 +241,11 @@ async function gerarRelatorioVendasItem() {
                     quantidade: produto.quantidade,
                     totalVendas: produto.totalVendas,
                     totalCustos: produto.totalCustos,
+                    totalTaxas: produto.totalTaxas,
                     lucro: lucro,
                     margem: margem,
+                    lucroLiquido: lucroLiquido,
+                    margemLiquida: margemLiquida,
                     precoMedio: precoMedio,
                     numeroVendas: produto.vendasIds.size
                 };
@@ -231,6 +257,14 @@ async function gerarRelatorioVendasItem() {
         const totalCustos = produtos.reduce((sum, p) => sum + p.totalCustos, 0);
         const totalLucro = totalReceita - totalCustos;
         const margemTotal = totalReceita > 0 ? (totalLucro / totalReceita) * 100 : 0;
+        const totalTaxasPeriodo = formasPagamento.reduce((sum, fp) => sum + (parseFloat(fp.valor_taxa) || 0), 0);
+        const totalLiquidoRecebidoPeriodo = totalReceita - totalTaxasPeriodo;
+        const totalLucroLiquido = totalLucro - totalTaxasPeriodo;
+        const margemLiquidaTotal = totalReceita > 0 ? (totalLucroLiquido / totalReceita) * 100 : 0;
+        const totalTrocoPeriodo = vendas.reduce((sum, v) => sum + (parseFloat(v.troco) || 0), 0);
+        const totalTaxasPeriodo = formasPagamento.reduce((sum, fp) => sum + (parseFloat(fp.valor_taxa) || 0), 0);
+        const totalBrutoRecebidoPeriodo = formasPagamento.reduce((sum, fp) => sum + (parseFloat(fp.valor) || 0), 0);
+        const totalLiquidoRecebidoPeriodo = totalBrutoRecebidoPeriodo - totalTaxasPeriodo - totalTrocoPeriodo;
 
         // Salvar dados para exportacao
         window.dadosRelatorioVendasItemAtual = {
@@ -245,7 +279,11 @@ async function gerarRelatorioVendasItem() {
                 totalReceita: totalReceita,
                 totalCustos: totalCustos,
                 totalLucro: totalLucro,
-                margemTotal: margemTotal
+                margemTotal: margemTotal,
+                totalTaxas: totalTaxasPeriodo,
+                totalReceitaLiquida: totalLiquidoRecebidoPeriodo,
+                totalLucroLiquido: totalLucroLiquido,
+                margemLiquidaTotal: margemLiquidaTotal
             }
         };
 
@@ -281,6 +319,28 @@ async function gerarRelatorioVendasItem() {
                     <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
                         <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Lucro Total</div>
                         <div style="font-size: 36px; font-weight: bold;">R$ ${totalLucro.toFixed(2)}</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: -10px 0 20px 0;">
+                    <div style="background: #fff5f5; border: 1px solid #ffd6d6; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 13px; color: #a33; margin-bottom: 4px;">Taxas Maquininha (Período)</div>
+                        <div style="font-size: 22px; font-weight: bold; color: #dc3545;">R$ ${totalTaxasPeriodo.toFixed(2)}</div>
+                    </div>
+                    <div style="background: #f0fff4; border: 1px solid #c6f6d5; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 13px; color: #1f6f43; margin-bottom: 4px;">Receita Líquida (Período)</div>
+                        <div style="font-size: 22px; font-weight: bold; color: #28a745;">R$ ${totalLiquidoRecebidoPeriodo.toFixed(2)}</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: -10px 0 20px 0;">
+                    <div style="background: #fff5f5; border: 1px solid #ffd6d6; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 13px; color: #a33; margin-bottom: 4px;">Taxas Maquininha (Período)</div>
+                        <div style="font-size: 22px; font-weight: bold; color: #dc3545;">R$ ${totalTaxasPeriodo.toFixed(2)}</div>
+                    </div>
+                    <div style="background: #f0fff4; border: 1px solid #c6f6d5; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 13px; color: #1f6f43; margin-bottom: 4px;">Receita Líquida (Período)</div>
+                        <div style="font-size: 22px; font-weight: bold; color: #28a745;">R$ ${totalLiquidoRecebidoPeriodo.toFixed(2)}</div>
                     </div>
                 </div>
 
@@ -322,9 +382,12 @@ async function gerarRelatorioVendasItem() {
                                     <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qtd</th>
                                     <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Preco Medio</th>
                                     <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Receita</th>
+                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Taxas</th>
                                     <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Custo Total</th>
-                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Lucro</th>
-                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Margem %</th>
+                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Lucro Bruto</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Margem Bruta %</th>
+                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Lucro Líquido</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Margem Líquida %</th>
                                     <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Vendas</th>
                                 </tr>
                             </thead>
@@ -369,7 +432,7 @@ function exportarRelatorioVendasItemCSV() {
 
     const { produtosBase, periodo, totais } = window.dadosRelatorioVendasItemAtual;
 
-    let csv = 'Produto,Codigo,Categoria,Quantidade,Preco Medio (R$),Receita (R$),Custo Total (R$),Lucro (R$),Margem %,Numero de Vendas\n';
+    let csv = 'Produto,Codigo,Categoria,Quantidade,Preco Medio (R$),Receita (R$),Taxas (R$),Custo Total (R$),Lucro Bruto (R$),Margem Bruta %,Lucro Liquido (R$),Margem Liquida %,Numero de Vendas\n';
 
     produtosBase.forEach(produto => {
         csv += `"${produto.nome}",`;
@@ -378,14 +441,17 @@ function exportarRelatorioVendasItemCSV() {
         csv += `${produto.quantidade},`;
         csv += `${produto.precoMedio.toFixed(2)},`;
         csv += `${produto.totalVendas.toFixed(2)},`;
+        csv += `${produto.totalTaxas.toFixed(2)},`;
         csv += `${produto.totalCustos.toFixed(2)},`;
         csv += `${produto.lucro.toFixed(2)},`;
         csv += `${produto.margem.toFixed(1)}%,`;
+        csv += `${produto.lucroLiquido.toFixed(2)},`;
+        csv += `${produto.margemLiquida.toFixed(1)}%,`;
         csv += `${produto.numeroVendas}\n`;
     });
 
     csv += '\n';
-    csv += `TOTAIS,,${totais.totalItens},,${totais.totalReceita.toFixed(2)},${totais.totalCustos.toFixed(2)},${totais.totalLucro.toFixed(2)},${totais.margemTotal.toFixed(1)}%,\n`;
+    csv += `TOTAIS,,${totais.totalItens},,${totais.totalReceita.toFixed(2)},${totais.totalTaxas.toFixed(2)},${totais.totalCustos.toFixed(2)},${totais.totalLucro.toFixed(2)},${totais.margemTotal.toFixed(1)}%,${totais.totalLucroLiquido.toFixed(2)},${totais.margemLiquidaTotal.toFixed(1)}%,\n`;
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -478,7 +544,7 @@ function renderizarTabelaRelatorioVendasItem() {
     if (!corpo || !tfoot) return;
 
     if (totalItens === 0) {
-        corpo.innerHTML = '<tr><td colspan="10" style="padding: 20px; text-align: center; color: #999;">Nenhum item encontrado</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="13" style="padding: 20px; text-align: center; color: #999;">Nenhum item encontrado</td></tr>';
         tfoot.innerHTML = '';
         if (resumo) resumo.textContent = 'Nenhum item encontrado';
         atualizarPaginacaoRelatorioVendasItem(0, 0);
@@ -487,6 +553,7 @@ function renderizarTabelaRelatorioVendasItem() {
 
     corpo.innerHTML = itensPagina.map(produto => {
         const margemCor = produto.margem < 10 ? '#dc3545' : produto.margem < 30 ? '#ffc107' : '#28a745';
+        const margemLiquidaCor = produto.margemLiquida < 10 ? '#dc3545' : produto.margemLiquida < 30 ? '#ffc107' : '#007bff';
 
         return `
             <tr style="border-bottom: 1px solid #eee;">
@@ -496,9 +563,12 @@ function renderizarTabelaRelatorioVendasItem() {
                 <td style="padding: 12px; text-align: center; font-weight: bold; color: #17a2b8;">${produto.quantidade}</td>
                 <td style="padding: 12px; text-align: right; color: #666;">R$ ${produto.precoMedio.toFixed(2)}</td>
                 <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">R$ ${produto.totalVendas.toFixed(2)}</td>
+                <td style="padding: 12px; text-align: right; color: #dc3545;">R$ ${produto.totalTaxas.toFixed(2)}</td>
                 <td style="padding: 12px; text-align: right; color: #dc3545;">R$ ${produto.totalCustos.toFixed(2)}</td>
                 <td style="padding: 12px; text-align: right; font-weight: bold; color: ${produto.lucro >= 0 ? '#28a745' : '#dc3545'};">R$ ${produto.lucro.toFixed(2)}</td>
                 <td style="padding: 12px; text-align: center; font-weight: bold; color: ${margemCor};">${produto.margem.toFixed(1)}%</td>
+                <td style="padding: 12px; text-align: right; font-weight: bold; color: ${produto.lucroLiquido >= 0 ? '#007bff' : '#dc3545'};">R$ ${produto.lucroLiquido.toFixed(2)}</td>
+                <td style="padding: 12px; text-align: center; font-weight: bold; color: ${margemLiquidaCor};">${produto.margemLiquida.toFixed(1)}%</td>
                 <td style="padding: 12px; text-align: center; color: #666;">${produto.numeroVendas}</td>
             </tr>
         `;
@@ -506,9 +576,12 @@ function renderizarTabelaRelatorioVendasItem() {
 
     const totalQuantidade = dados.produtosFiltrados.reduce((sum, p) => sum + p.quantidade, 0);
     const totalReceita = dados.produtosFiltrados.reduce((sum, p) => sum + p.totalVendas, 0);
+    const totalTaxas = dados.produtosFiltrados.reduce((sum, p) => sum + p.totalTaxas, 0);
     const totalCustos = dados.produtosFiltrados.reduce((sum, p) => sum + p.totalCustos, 0);
     const totalLucro = totalReceita - totalCustos;
     const margemTotal = totalReceita > 0 ? (totalLucro / totalReceita) * 100 : 0;
+    const totalLucroLiquido = totalLucro - totalTaxas;
+    const margemLiquidaTotal = totalReceita > 0 ? (totalLucroLiquido / totalReceita) * 100 : 0;
 
     tfoot.innerHTML = `
         <tr style="background: #f8f9fa; font-weight: bold;">
@@ -516,9 +589,12 @@ function renderizarTabelaRelatorioVendasItem() {
             <td style="padding: 12px; text-align: center; border-top: 2px solid #ddd; color: #17a2b8;">${totalQuantidade}</td>
             <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd;"></td>
             <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: #28a745;">R$ ${totalReceita.toFixed(2)}</td>
+            <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: #dc3545;">R$ ${totalTaxas.toFixed(2)}</td>
             <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: #dc3545;">R$ ${totalCustos.toFixed(2)}</td>
             <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: ${totalLucro >= 0 ? '#28a745' : '#dc3545'};">R$ ${totalLucro.toFixed(2)}</td>
             <td style="padding: 12px; text-align: center; border-top: 2px solid #ddd; color: #6f42c1;">${margemTotal.toFixed(1)}%</td>
+            <td style="padding: 12px; text-align: right; border-top: 2px solid #ddd; color: ${totalLucroLiquido >= 0 ? '#007bff' : '#dc3545'};">R$ ${totalLucroLiquido.toFixed(2)}</td>
+            <td style="padding: 12px; text-align: center; border-top: 2px solid #ddd; color: #007bff;">${margemLiquidaTotal.toFixed(1)}%</td>
             <td style="padding: 12px; text-align: center; border-top: 2px solid #ddd;"></td>
         </tr>
     `;

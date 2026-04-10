@@ -2,6 +2,41 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../config/database');
 
+function normalizarBandeira(bandeira) {
+    if (!bandeira) return null;
+    return String(bandeira).trim().toLowerCase();
+}
+
+async function obterTaxaPagamento(connection, formaPagamento, bandeira, parcelas) {
+    if (formaPagamento === 'dinheiro') {
+        return 0;
+    }
+
+    const forma = String(formaPagamento || '').toLowerCase();
+    let bandeiraNormalizada = normalizarBandeira(bandeira);
+    if (forma === 'pix' && !bandeiraNormalizada) {
+        bandeiraNormalizada = 'pix';
+    }
+    const qtdParcelas = Number.isInteger(parcelas) && parcelas > 0 ? parcelas : 1;
+
+    const [rows] = await connection.query(
+        `SELECT taxa_percentual
+         FROM taxas_maquininha
+         WHERE ativo = TRUE
+           AND forma_pagamento = ?
+           AND COALESCE(bandeira, '') = COALESCE(?, '')
+           AND parcelas = ?
+         LIMIT 1`,
+        [forma, bandeiraNormalizada, qtdParcelas]
+    );
+
+    if (rows.length === 0) {
+        return 0;
+    }
+
+    return parseFloat(rows[0].taxa_percentual) || 0;
+}
+
 // Finalizar venda
 router.post('/', async (req, res) => {
     const pool = getPool();
@@ -30,9 +65,19 @@ router.post('/', async (req, res) => {
 
         // Inserir formas de pagamento
         for (const pagamento of formas_pagamento) {
+            const valorBruto = parseFloat(pagamento.valor) || 0;
+            const formaPagamento = String(pagamento.forma || '').toLowerCase();
+            const parcelas = Number.parseInt(pagamento.parcelas, 10) > 0 ? Number.parseInt(pagamento.parcelas, 10) : 1;
+            const bandeira = formaPagamento === 'pix' ? 'pix' : normalizarBandeira(pagamento.bandeira);
+            const taxaPercentual = await obterTaxaPagamento(connection, formaPagamento, bandeira, parcelas);
+            const valorTaxa = Number((valorBruto * (taxaPercentual / 100)).toFixed(2));
+            const valorLiquido = Number((valorBruto - valorTaxa).toFixed(2));
+
             await connection.query(
-                'INSERT INTO formas_pagamento_venda (venda_id, forma_pagamento, valor) VALUES (?, ?, ?)',
-                [vendaId, pagamento.forma, pagamento.valor]
+                `INSERT INTO formas_pagamento_venda 
+                    (venda_id, forma_pagamento, valor, bandeira, parcelas, taxa_percentual, valor_taxa, valor_liquido)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [vendaId, formaPagamento, valorBruto, bandeira, parcelas, taxaPercentual, valorTaxa, valorLiquido]
             );
         }
         
@@ -299,7 +344,7 @@ router.get('/stats/formas-pagamento', async (req, res) => {
                     fp.forma_pagamento,
                     CASE
                         WHEN fp.forma_pagamento = 'dinheiro' THEN GREATEST(SUM(fp.valor) - COALESCE(MAX(v.troco), 0), 0)
-                        ELSE SUM(fp.valor)
+                        ELSE SUM(COALESCE(fp.valor_liquido, fp.valor))
                     END AS valor_liquido
                 FROM formas_pagamento_venda fp
                 INNER JOIN vendas v ON v.id = fp.venda_id
@@ -498,9 +543,19 @@ router.put('/:id', async (req, res) => {
         
         // Inserir formas de pagamento
         for (const pagamento of formas_pagamento) {
+            const valorBruto = parseFloat(pagamento.valor) || 0;
+            const formaPagamento = String(pagamento.forma || '').toLowerCase();
+            const parcelas = Number.parseInt(pagamento.parcelas, 10) > 0 ? Number.parseInt(pagamento.parcelas, 10) : 1;
+            const bandeira = formaPagamento === 'pix' ? 'pix' : normalizarBandeira(pagamento.bandeira);
+            const taxaPercentual = await obterTaxaPagamento(connection, formaPagamento, bandeira, parcelas);
+            const valorTaxa = Number((valorBruto * (taxaPercentual / 100)).toFixed(2));
+            const valorLiquido = Number((valorBruto - valorTaxa).toFixed(2));
+
             await connection.query(
-                'INSERT INTO formas_pagamento_venda (venda_id, forma_pagamento, valor) VALUES (?, ?, ?)',
-                [novaVendaId, pagamento.forma, pagamento.valor]
+                `INSERT INTO formas_pagamento_venda 
+                    (venda_id, forma_pagamento, valor, bandeira, parcelas, taxa_percentual, valor_taxa, valor_liquido)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [novaVendaId, formaPagamento, valorBruto, bandeira, parcelas, taxaPercentual, valorTaxa, valorLiquido]
             );
         }
         

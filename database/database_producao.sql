@@ -213,9 +213,45 @@ CREATE TABLE formas_pagamento_venda (
     venda_id INT NOT NULL,
     forma_pagamento ENUM('dinheiro', 'debito', 'credito', 'pix') NOT NULL,
     valor DECIMAL(10, 2) NOT NULL,
+    bandeira VARCHAR(30) NULL,
+    parcelas INT NOT NULL DEFAULT 1,
+    taxa_percentual DECIMAL(5, 2) NOT NULL DEFAULT 0,
+    valor_taxa DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    valor_liquido DECIMAL(10, 2) NOT NULL DEFAULT 0,
     FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE CASCADE,
-    INDEX idx_venda_id (venda_id)
+    INDEX idx_venda_id (venda_id),
+    INDEX idx_forma_bandeira (forma_pagamento, bandeira),
+    INDEX idx_valor_liquido (valor_liquido)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de taxas da maquininha por bandeira/parcela
+CREATE TABLE taxas_maquininha (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    forma_pagamento ENUM('debito', 'credito', 'pix') NOT NULL,
+    bandeira VARCHAR(30) NULL,
+    parcelas INT NOT NULL DEFAULT 1,
+    taxa_percentual DECIMAL(5, 2) NOT NULL,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_taxa_forma_bandeira_parcelas (forma_pagamento, bandeira, parcelas),
+    INDEX idx_taxa_ativa (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Taxas iniciais (ajuste conforme contrato da operadora)
+INSERT INTO taxas_maquininha (forma_pagamento, bandeira, parcelas, taxa_percentual, ativo) VALUES
+('debito', 'visa', 1, 0.00, TRUE),
+('debito', 'master', 1, 0.00, TRUE),
+('debito', 'elo', 1, 0.00, TRUE),
+('debito', 'amex', 1, 0.00, TRUE),
+('credito', 'visa', 1, 0.00, TRUE),
+('credito', 'master', 1, 0.00, TRUE),
+('credito', 'elo', 1, 0.00, TRUE),
+('credito', 'amex', 1, 0.00, TRUE),
+('pix', 'pix', 1, 0.00, TRUE)
+ON DUPLICATE KEY UPDATE
+    taxa_percentual = VALUES(taxa_percentual),
+    ativo = VALUES(ativo);
 
 -- ==========================================
 -- TABELAS DE CAIXA

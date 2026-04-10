@@ -536,6 +536,11 @@ let valorPagamentoSelecionado = 0;
 function abrirModalFormaPagamento(valor) {
     valorPagamentoSelecionado = valor;
     document.getElementById('valorSelecionadoTexto').textContent = `Valor: R$ ${valor.toFixed(2)}`;
+
+    const parcelasInput = document.getElementById('parcelasCartaoPagamento');
+    if (parcelasInput && (!parcelasInput.value || parseInt(parcelasInput.value, 10) < 1)) {
+        parcelasInput.value = 1;
+    }
     
     // Desfocar o input de valor para evitar que continue capturando teclas
     const valorInput = document.getElementById('valorPagamento');
@@ -553,6 +558,39 @@ function fecharModalFormaPagamento() {
     setTimeout(() => {
         document.getElementById('valorPagamento').focus();
     }, 100);
+}
+
+function coletarDadosPagamentoPorForma(forma) {
+    if (forma === 'dinheiro') {
+        return { bandeira: null, parcelas: 1 };
+    }
+
+    if (forma === 'pix') {
+        return { bandeira: 'pix', parcelas: 1 };
+    }
+
+    const bandeiraSelect = document.getElementById('bandeiraCartaoPagamento');
+    const parcelasInput = document.getElementById('parcelasCartaoPagamento');
+
+    const bandeira = String(bandeiraSelect?.value || 'visa').trim().toLowerCase();
+    if (!bandeira) {
+        mostrarNotificacao('Informe uma bandeira valida!', 'error');
+        return null;
+    }
+
+    let parcelas = 1;
+    if (forma === 'credito') {
+        parcelas = parseInt(parcelasInput?.value || '1', 10);
+        if (isNaN(parcelas) || parcelas < 1 || parcelas > 12) {
+            mostrarNotificacao('Quantidade de parcelas invalida! Use de 1 a 12.', 'error');
+            return null;
+        }
+    }
+
+    return {
+        bandeira,
+        parcelas
+    };
 }
 
 function selecionarFormaPagamentoComValor(forma) {
@@ -575,9 +613,19 @@ function selecionarFormaPagamentoComValor(forma) {
             return;
         }
     }
+
+    const dadosPagamento = coletarDadosPagamentoPorForma(forma);
+    if (!dadosPagamento) {
+        return;
+    }
     
     // Adicionar pagamento
-    pagamentos.push({ forma, valor });
+    pagamentos.push({
+        forma,
+        valor,
+        bandeira: dadosPagamento.bandeira,
+        parcelas: dadosPagamento.parcelas
+    });
     
     // Fechar modal de forma de pagamento
     fecharModalFormaPagamento();
@@ -633,9 +681,19 @@ function adicionarPagamento() {
             return;
         }
     }
+
+    const dadosPagamento = coletarDadosPagamentoPorForma(forma);
+    if (!dadosPagamento) {
+        return;
+    }
     
     // Adicionar pagamento
-    pagamentos.push({ forma, valor });
+    pagamentos.push({
+        forma,
+        valor,
+        bandeira: dadosPagamento.bandeira,
+        parcelas: dadosPagamento.parcelas
+    });
     
     // Limpar input e focar
     if (valorInput.resetarValor) {
@@ -813,6 +871,8 @@ function atualizarPagamentos() {
                     <span style="font-size: 18px; margin-right: 8px;">${icones[p.forma]}</span>
                     <strong>${nomes[p.forma]}</strong>
                     <span style="color: #666; margin-left: 10px;">R$ ${p.valor.toFixed(2)}</span>
+                    ${p.bandeira ? `<span style="color: #444; margin-left: 10px; font-size: 12px;">Bandeira: ${String(p.bandeira).toUpperCase()}</span>` : ''}
+                    ${p.forma === 'credito' ? `<span style="color: #444; margin-left: 10px; font-size: 12px;">${p.parcelas || 1}x</span>` : ''}
                 </div>
                 <button onclick="removerPagamento(${i})" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                     ✕ Remover
@@ -1294,7 +1354,9 @@ async function renderizarVendas(vendas) {
                     };
                     formasPagamentoHtml = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">';
                     detalhes.formas_pagamento.forEach(fp => {
-                        formasPagamentoHtml += `<span style="margin-right: 15px; font-size: 13px;">${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}</span>`;
+                        const bandeira = fp.bandeira ? ` (${String(fp.bandeira).toUpperCase()})` : '';
+                        const parcelas = (fp.forma_pagamento === 'credito' && fp.parcelas) ? ` ${fp.parcelas}x` : '';
+                        formasPagamentoHtml += `<span style="margin-right: 15px; font-size: 13px;">${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}${bandeira}${parcelas}: R$ ${parseFloat(fp.valor).toFixed(2)}</span>`;
                     });
                     formasPagamentoHtml += '</div>';
                 }
@@ -1365,6 +1427,22 @@ document.addEventListener('keydown', function(e) {
     const modalFormaPagamento = document.getElementById('formaPagamentoModal');
     
     if (modalFormaPagamento && modalFormaPagamento.classList.contains('active')) {
+        const parcelasInput = document.getElementById('parcelasCartaoPagamento');
+
+        if ((e.key === '+' || e.key === '=') && parcelasInput) {
+            e.preventDefault();
+            const atual = parseInt(parcelasInput.value || '1', 10);
+            parcelasInput.value = Math.min(12, Math.max(1, atual + 1));
+            return;
+        }
+
+        if ((e.key === '-' || e.key === '_') && parcelasInput) {
+            e.preventDefault();
+            const atual = parseInt(parcelasInput.value || '1', 10);
+            parcelasInput.value = Math.min(12, Math.max(1, atual - 1));
+            return;
+        }
+
         if (e.key === '1') {
             e.preventDefault();
             selecionarFormaPagamentoComValor('dinheiro');
@@ -1561,7 +1639,9 @@ async function editarVenda(vendaId) {
         if (dados.formas_pagamento && dados.formas_pagamento.length > 0) {
             pagamentos = dados.formas_pagamento.map(fp => ({
                 forma: fp.forma_pagamento,
-                valor: parseFloat(fp.valor)
+                valor: parseFloat(fp.valor),
+                bandeira: fp.bandeira || null,
+                parcelas: fp.parcelas || 1
             }));
         }
         

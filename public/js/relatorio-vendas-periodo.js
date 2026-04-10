@@ -166,6 +166,10 @@ async function gerarRelatorioVendas() {
         const valorTotal = vendas.reduce((sum, v) => sum + parseFloat(v.total), 0);
         const ticketMedio = valorTotal / totalVendas;
         const totalItens = vendas.reduce((sum, v) => sum + parseInt(v.quantidade_itens), 0);
+        const totalTrocoPeriodo = vendas.reduce((sum, v) => sum + (parseFloat(v.troco) || 0), 0);
+        const totalTaxasPeriodo = formasPagamento.reduce((sum, fp) => sum + (parseFloat(fp.valor_taxa) || 0), 0);
+        const totalBrutoRecebidoPeriodo = formasPagamento.reduce((sum, fp) => sum + (parseFloat(fp.valor) || 0), 0);
+        const totalLiquidoRecebidoPeriodo = totalBrutoRecebidoPeriodo - totalTaxasPeriodo - totalTrocoPeriodo;
         
         // Agrupar vendas por dia
         const vendasPorDia = {};
@@ -216,6 +220,14 @@ async function gerarRelatorioVendas() {
                     <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
                         <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Total de Itens</div>
                         <div style="font-size: 36px; font-weight: bold;">${totalItens}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%); color: #7a1c1c; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Taxas Maquininha</div>
+                        <div style="font-size: 32px; font-weight: bold;">R$ ${totalTaxasPeriodo.toFixed(2)}</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); color: #0b4f2f; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Receita Líquida</div>
+                        <div style="font-size: 32px; font-weight: bold;">R$ ${totalLiquidoRecebidoPeriodo.toFixed(2)}</div>
                     </div>
                 </div>
                 
@@ -305,7 +317,7 @@ function exportarRelatorioCSV() {
     const { vendas, periodo } = window.dadosRelatorioAtual;
     
     // Cabeçalho do CSV
-    let csv = 'Venda ID,Data/Hora,Produto,Código,Quantidade,Preço Unit.,Custo Unit.,Subtotal,Custo Total,Lucro,Margem %,Total Venda,Forma Pagamento\n';
+    let csv = 'Venda ID,Data/Hora,Produto,Código,Quantidade,Preço Unit.,Custo Unit.,Subtotal,Custo Total,Lucro Bruto,Margem Bruta %,Lucro Líquido,Margem Líquida %,Total Venda,Taxa Venda,Líquido Venda,Forma Pagamento\n';
     
     // Dados das vendas
     vendas.forEach(({ venda, itens, formas_pagamento }) => {
@@ -323,6 +335,11 @@ function exportarRelatorioCSV() {
         const pagamentosTexto = formas_pagamento && formas_pagamento.length > 0
             ? formas_pagamento.map(fp => `${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}`).join('; ')
             : '';
+
+        const totalTaxaVenda = (formas_pagamento || []).reduce((sum, fp) => sum + (parseFloat(fp.valor_taxa) || 0), 0);
+        const totalBrutoVenda = (formas_pagamento || []).reduce((sum, fp) => sum + (parseFloat(fp.valor) || 0), 0);
+        const trocoVenda = parseFloat(venda.troco) || 0;
+        const totalLiquidoVenda = totalBrutoVenda - totalTaxaVenda - trocoVenda;
         
         itens.forEach((item, index) => {
             const precoUnit = parseFloat(item.preco_unitario);
@@ -332,6 +349,12 @@ function exportarRelatorioCSV() {
             const custoTotal = custoUnit * quantidade;
             const lucro = subtotal - custoTotal;
             const margem = subtotal > 0 ? ((lucro / subtotal) * 100).toFixed(1) : '0.0';
+            const totalVendaBruta = parseFloat(venda.total) || 0;
+            const taxaProporcionalItem = totalVendaBruta > 0
+                ? (totalTaxaVenda * (subtotal / totalVendaBruta))
+                : 0;
+            const lucroLiquido = lucro - taxaProporcionalItem;
+            const margemLiquida = subtotal > 0 ? ((lucroLiquido / subtotal) * 100).toFixed(1) : '0.0';
             
             // Escapar aspas duplas no CSV
             const nomeProduto = item.nome_produto.replace(/"/g, '""');
@@ -347,7 +370,11 @@ function exportarRelatorioCSV() {
             csv += `${custoTotal.toFixed(2)},`;
             csv += `${lucro.toFixed(2)},`;
             csv += `${margem},`;
+            csv += `${lucroLiquido.toFixed(2)},`;
+            csv += `${margemLiquida},`;
             csv += index === 0 ? `${parseFloat(venda.total).toFixed(2)},` : ','; // Total venda apenas na primeira linha
+            csv += index === 0 ? `${totalTaxaVenda.toFixed(2)},` : ',';
+            csv += index === 0 ? `${totalLiquidoVenda.toFixed(2)},` : ',';
             csv += index === 0 ? `"${pagamentosTexto}"` : ''; // Pagamento apenas na primeira linha
             csv += '\n';
         });
@@ -368,10 +395,15 @@ function exportarRelatorioCSV() {
     
     const totalLucro = totalGeralVendas - totalCustos;
     const margemPercentual = totalGeralVendas > 0 ? ((totalLucro / totalGeralVendas) * 100).toFixed(1) : '0.0';
+    const totalTaxas = vendas.reduce((sum, { formas_pagamento }) => {
+        return sum + (formas_pagamento || []).reduce((acc, fp) => acc + (parseFloat(fp.valor_taxa) || 0), 0);
+    }, 0);
+    const totalLucroLiquido = totalLucro - totalTaxas;
+    const margemLiquidaPercentual = totalGeralVendas > 0 ? ((totalLucroLiquido / totalGeralVendas) * 100).toFixed(1) : '0.0';
     
     // Linha de totais
     csv += '\n';
-    csv += `TOTAIS,${quantidadeVendas} venda(s),,${totalItensVendidos},,,,${totalGeralVendas.toFixed(2)},${totalCustos.toFixed(2)},${totalLucro.toFixed(2)},${margemPercentual}%,,\n`;
+    csv += `TOTAIS,${quantidadeVendas} venda(s),,${totalItensVendidos},,,,${totalGeralVendas.toFixed(2)},${totalCustos.toFixed(2)},${totalLucro.toFixed(2)},${margemPercentual}%,${totalLucroLiquido.toFixed(2)},${margemLiquidaPercentual}%,,,\n`;
     
     // Criar arquivo e download
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -436,9 +468,15 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
                 totalCustos += custoPorItem;
             });
         });
+
+        const totalTaxasPeriodo = vendasOrdenadas.reduce((sum, { formas_pagamento }) => {
+            return sum + (formas_pagamento || []).reduce((acc, fp) => acc + (parseFloat(fp.valor_taxa) || 0), 0);
+        }, 0);
         
         const totalLucro = totalGeralVendas - totalCustos;
         const margemPercentual = totalGeralVendas > 0 ? ((totalLucro / totalGeralVendas) * 100).toFixed(1) : '0.0';
+        const totalLucroLiquido = totalLucro - totalTaxasPeriodo;
+        const margemLiquidaPercentual = totalGeralVendas > 0 ? ((totalLucroLiquido / totalGeralVendas) * 100).toFixed(1) : '0.0';
         
         // Mapear nomes das formas de pagamento
         const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
@@ -458,8 +496,10 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
                             <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Unit.</th>
                             <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Subtotal</th>
                             <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Total</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Lucro</th>
-                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Margem %</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Lucro Bruto</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Margem Bruta %</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Lucro Líquido</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Margem Líquida %</th>
                             <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Total Venda</th>
                             <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Pagamento</th>
                         </tr>
@@ -477,10 +517,24 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
                             
                             // Criar string de formas de pagamento
                             let pagamentosTexto = '';
+                            const totalBrutoVenda = (formas_pagamento || []).reduce((sum, fp) => sum + (parseFloat(fp.valor) || 0), 0);
+                            const totalTaxaVenda = (formas_pagamento || []).reduce((sum, fp) => sum + (parseFloat(fp.valor_taxa) || 0), 0);
+                            const trocoVenda = parseFloat(venda.troco) || 0;
+                            const totalLiquidoVenda = totalBrutoVenda - totalTaxaVenda - trocoVenda;
                             if (formas_pagamento && formas_pagamento.length > 0) {
-                                pagamentosTexto = formas_pagamento.map(fp => 
-                                    `${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}`
-                                ).join('<br>');
+                                pagamentosTexto = formas_pagamento.map(fp => {
+                                    const bruto = parseFloat(fp.valor) || 0;
+                                    const taxa = parseFloat(fp.valor_taxa) || 0;
+                                    const liquidoBase = fp.forma_pagamento === 'dinheiro'
+                                        ? bruto
+                                        : (parseFloat(fp.valor_liquido) || bruto - taxa);
+                                    const bandeira = fp.bandeira ? ` (${String(fp.bandeira).toUpperCase()})` : '';
+                                    const parcelas = fp.forma_pagamento === 'credito' ? ` ${fp.parcelas || 1}x` : '';
+
+                                    return `${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}${bandeira}${parcelas}: R$ ${bruto.toFixed(2)}<br>` +
+                                           `<span style="font-size:11px;color:#dc3545;">Taxa: R$ ${taxa.toFixed(2)}</span> | ` +
+                                           `<span style="font-size:11px;color:#28a745;">Líquido: R$ ${liquidoBase.toFixed(2)}</span>`;
+                                }).join('<br><br>');
                             }
                             
                             // Renderizar cada item da venda como uma linha
@@ -493,6 +547,12 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
                                 const custoTotal = custoUnit * quantidade;
                                 const lucro = subtotal - custoTotal;
                                 const margem = subtotal > 0 ? ((lucro / subtotal) * 100).toFixed(1) : '0.0';
+                                const totalVendaBruta = parseFloat(venda.total) || 0;
+                                const taxaProporcionalItem = totalVendaBruta > 0
+                                    ? (totalTaxaVenda * (subtotal / totalVendaBruta))
+                                    : 0;
+                                const lucroLiquido = lucro - taxaProporcionalItem;
+                                const margemLiquida = subtotal > 0 ? ((lucroLiquido / subtotal) * 100).toFixed(1) : '0.0';
                                 
                                 // Cores para margem
                                 let margemCor = '#28a745'; // Verde (boa margem)
@@ -535,10 +595,18 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
                                     <td style="padding: 12px; text-align: center; font-weight: bold; color: ${margemCor}; font-size: 13px;">
                                         ${margem}%
                                     </td>
+                                    <td style="padding: 12px; text-align: right; font-weight: bold; color: ${lucroLiquido >= 0 ? '#007bff' : '#dc3545'};">
+                                        R$ ${lucroLiquido.toFixed(2)}
+                                    </td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${parseFloat(margemLiquida) >= 0 ? '#007bff' : '#dc3545'}; font-size: 13px;">
+                                        ${margemLiquida}%
+                                    </td>
                                     ${index === 0 ? `
                                         <td rowspan="${itens.length}" style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745; background: #f8f9fa; border-left: 1px solid #ddd; vertical-align: top;">
                                             R$ ${parseFloat(venda.total).toFixed(2)}
                                             ${parseFloat(venda.troco) > 0 ? `<br><span style="font-size: 11px; color: #999; font-weight: normal;">Troco: R$ ${parseFloat(venda.troco).toFixed(2)}</span>` : ''}
+                                            <br><span style="font-size: 11px; color: #dc3545; font-weight: normal;">Taxas: R$ ${totalTaxaVenda.toFixed(2)}</span>
+                                            <br><span style="font-size: 11px; color: #0d6efd; font-weight: normal;">Líquido: R$ ${totalLiquidoVenda.toFixed(2)}</span>
                                         </td>
                                         <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; font-size: 12px; border-left: 1px solid #ddd; vertical-align: top;">
                                             ${pagamentosTexto}
@@ -575,6 +643,12 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
                             <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd; font-size: 18px;">
                                 ${margemPercentual}%
                             </td>
+                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 18px; color: #e6f0ff;">
+                                R$ ${totalLucroLiquido.toFixed(2)}
+                            </td>
+                            <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd; font-size: 18px; color: #e6f0ff;">
+                                ${margemLiquidaPercentual}%
+                            </td>
                             <td colspan="2" style="padding: 15px; border-top: 3px solid #ddd;">
                                 <!-- Espaço -->
                             </td>
@@ -590,10 +664,16 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
                                 <strong style="color: #dc3545;">Custos</strong>
                             </td>
                             <td style="padding: 12px; text-align: right;">
-                                <strong style="color: #007bff;">Lucro Líquido</strong>
+                                <strong style="color: #007bff;">Lucro Bruto</strong>
                             </td>
                             <td style="padding: 12px; text-align: center;">
                                 <strong style="color: #6f42c1;">Margem</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: right;">
+                                <strong style="color: #007bff;">Lucro Líquido</strong>
+                            </td>
+                            <td style="padding: 12px; text-align: center;">
+                                <strong style="color: #0056b3;">Margem Líquida</strong>
                             </td>
                             <td colspan="2" style="padding: 12px;">
                             </td>

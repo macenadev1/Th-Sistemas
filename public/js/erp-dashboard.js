@@ -1678,6 +1678,15 @@ async function verDetalhesVendaERP(id) {
         if (!response.ok) throw new Error('Erro ao carregar detalhes');
         
         const dados = await response.json();
+        const totalTaxas = (dados.formas_pagamento || []).reduce((sum, fp) => {
+            return sum + (parseFloat(fp.valor_taxa) || 0);
+        }, 0);
+        const totalLiquido = (dados.formas_pagamento || []).reduce((sum, fp) => {
+            if (fp.forma_pagamento === 'dinheiro') {
+                return sum + (parseFloat(fp.valor) || 0);
+            }
+            return sum + (parseFloat(fp.valor_liquido) || parseFloat(fp.valor) || 0);
+        }, 0);
         
         // Criar modal simples para mostrar detalhes
         let detalhesHTML = `
@@ -1706,12 +1715,32 @@ async function verDetalhesVendaERP(id) {
                         ${dados.formas_pagamento.map(fp => {
                             const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
                             const nomes = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'PIX' };
+                            const valorBruto = parseFloat(fp.valor) || 0;
+                            const valorTaxa = parseFloat(fp.valor_taxa) || 0;
+                            const valorLiquido = fp.forma_pagamento === 'dinheiro'
+                                ? valorBruto
+                                : (parseFloat(fp.valor_liquido) || valorBruto);
+                            const bandeira = fp.bandeira ? ` | Bandeira: ${String(fp.bandeira).toUpperCase()}` : '';
+                            const parcelas = fp.forma_pagamento === 'credito' ? ` | Parcelas: ${fp.parcelas || 1}x` : '';
                             return `
                                 <div style="padding: 10px; background: #f8f9fa; margin-bottom: 5px; border-radius: 4px;">
-                                    ${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}: <strong>R$ ${parseFloat(fp.valor).toFixed(2)}</strong>
+                                    <div><strong>${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}</strong>${bandeira}${parcelas}</div>
+                                    <div style="margin-top: 4px; color: #444; font-size: 14px;">Bruto: <strong>R$ ${valorBruto.toFixed(2)}</strong></div>
+                                    <div style="margin-top: 2px; color: #dc3545; font-size: 14px;">Taxa: <strong>R$ ${valorTaxa.toFixed(2)}</strong> (${(parseFloat(fp.taxa_percentual) || 0).toFixed(2)}%)</div>
+                                    <div style="margin-top: 2px; color: #28a745; font-size: 14px;">Líquido: <strong>R$ ${valorLiquido.toFixed(2)}</strong></div>
                                 </div>
                             `;
                         }).join('')}
+                    </div>
+                    <div style="padding: 10px; border-top: 2px solid #ddd; margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; color: #dc3545; margin-bottom: 4px;">
+                            <span><strong>Total de Taxas</strong></span>
+                            <strong>R$ ${totalTaxas.toFixed(2)}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: #28a745;">
+                            <span><strong>Total Líquido Recebido</strong></span>
+                            <strong>R$ ${totalLiquido.toFixed(2)}</strong>
+                        </div>
                     </div>
                 ` : ''}
             </div>

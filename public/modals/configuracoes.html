@@ -60,6 +60,43 @@
                     Use com cuidado para evitar vender produtos que não estão disponíveis fisicamente.
                 </p>
             </div>
+
+            <!-- Configurações de Taxas da Maquininha -->
+            <h3 style="color: #333; margin: 30px 0 15px 0; border-bottom: 2px solid #ddd; padding-bottom: 10px;">💳 Taxas da Maquininha</h3>
+
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff; margin-bottom: 15px;">
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr auto; gap: 10px; align-items: end;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: bold; font-size: 14px;">Forma</label>
+                        <select id="taxaFormaPagamento" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                            <option value="debito">Débito</option>
+                            <option value="credito">Crédito</option>
+                            <option value="pix">PIX</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: bold; font-size: 14px;">Bandeira</label>
+                        <input id="taxaBandeira" type="text" value="visa" placeholder="visa/master/elo/amex" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: bold; font-size: 14px;">Parcelas</label>
+                        <input id="taxaParcelas" type="number" min="1" max="12" value="1" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: bold; font-size: 14px;">Taxa (%)</label>
+                        <input id="taxaPercentual" type="number" min="0" max="100" step="0.01" value="0" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                    </div>
+                    <button id="btnSalvarTaxaMaquininha" type="button" class="btn btn-success" onclick="salvarTaxaMaquininha()" style="padding: 10px 14px; font-size: 14px; height: 40px;">+ Salvar</button>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button id="btnCancelarEdicaoTaxa" type="button" class="btn btn-secondary" onclick="cancelarEdicaoTaxa()" style="display: none; padding: 8px 12px; font-size: 13px; background: #6c757d; border-color: #6c757d;">Cancelar Edicao</button>
+                </div>
+                <small style="display: block; color: #555; margin-top: 8px;">PIX usa bandeira técnica "pix" e parcelas fixas em 1.</small>
+            </div>
+
+            <div id="listaTaxasMaquininha" style="max-height: 220px; overflow-y: auto; border: 1px solid #e6e6e6; border-radius: 8px; background: #fff; padding: 10px;">
+                <p style="text-align: center; color: #777; margin: 15px 0;">Carregando taxas...</p>
+            </div>
             
             <div id="configCupomDetalhes">
             
