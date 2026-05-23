@@ -388,6 +388,7 @@ function renderizarContas(contas) {
                                 font-size: 12px; 
                                 font-weight: bold;
                             ">${statusTexto}</span>
+                            ${conta.recorrente ? `<span style="background: #9c27b0; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">🔄 Recorrente</span>` : ''}
                         </div>
                         <div style="font-size: 14px; color: #666; line-height: 1.6;">
                             ${conta.fornecedor_nome ? `<div>🏢 Fornecedor: ${conta.fornecedor_nome}</div>` : ''}
@@ -496,9 +497,81 @@ function abrirCadastroContaPagar() {
         const mes = String(dataVencimento.getMonth() + 1).padStart(2, '0');
         const dia = String(dataVencimento.getDate()).padStart(2, '0');
         document.getElementById('dataVencimentoContaPagar').value = `${ano}-${mes}-${dia}`;
+
+        // Resetar seção de recorrência
+        document.getElementById('recorrenteContaPagar').checked = false;
+        document.getElementById('secaoRecorrencia').style.display = 'none';
+        document.getElementById('wrapDataVencimento').style.display = '';
+        document.getElementById('dataVencimentoContaPagar').required = true;
+        document.getElementById('previewRecorrencia').style.display = 'none';
         
         document.getElementById('descricaoContaPagar').focus();
     });
+}
+
+function toggleRecorrenciaForm() {
+    const recorrente = document.getElementById('recorrenteContaPagar').checked;
+    const secao = document.getElementById('secaoRecorrencia');
+    const wrapData = document.getElementById('wrapDataVencimento');
+    const inputData = document.getElementById('dataVencimentoContaPagar');
+
+    secao.style.display = recorrente ? 'block' : 'none';
+    wrapData.style.display = recorrente ? 'none' : '';
+    inputData.required = !recorrente;
+
+    if (recorrente) {
+        // Pré-preencher datas de início/fim com o mês atual
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
+        const diaAtual = String(hoje.getDate()).padStart(2, '0');
+        const inicio = document.getElementById('dataInicioRecorrencia');
+        if (!inicio.value) inicio.value = `${anoAtual}-${mesAtual}-${diaAtual}`;
+        atualizarPreviewRecorrencia();
+    } else {
+        document.getElementById('previewRecorrencia').style.display = 'none';
+    }
+}
+
+function atualizarPreviewRecorrencia() {
+    const inicio = document.getElementById('dataInicioRecorrencia').value;
+    const fim = document.getElementById('dataFimRecorrencia').value;
+    const frequencia = document.getElementById('frequenciaRecorrencia').value;
+    const preview = document.getElementById('previewRecorrencia');
+
+    if (!inicio || !fim) { preview.style.display = 'none'; return; }
+
+    const mapeamento = { mensal: 1, bimestral: 2, trimestral: 3, semestral: 6, anual: 12 };
+    const meses = mapeamento[frequencia];
+    const dataInicio = new Date(inicio + 'T00:00:00');
+    const dataFimDate = new Date(fim + 'T00:00:00');
+    const diaBase = dataInicio.getDate();
+
+    if (dataFimDate < dataInicio) {
+        preview.style.display = 'block';
+        preview.innerHTML = '⚠️ A data de fim deve ser posterior à data de início.';
+        return;
+    }
+
+    const datas = [];
+    let anoAtual = dataInicio.getFullYear();
+    let mesAtual = dataInicio.getMonth();
+
+    while (true) {
+        const ultimoDia = new Date(anoAtual, mesAtual + 1, 0).getDate();
+        const dia = Math.min(diaBase, ultimoDia);
+        const candidata = new Date(anoAtual, mesAtual, dia);
+        if (candidata > dataFimDate) break;
+        datas.push(candidata.toLocaleDateString('pt-BR'));
+        mesAtual += meses;
+        if (mesAtual >= 12) {
+            anoAtual += Math.floor(mesAtual / 12);
+            mesAtual = mesAtual % 12;
+        }
+    }
+
+    preview.style.display = 'block';
+    preview.innerHTML = `🔄 Serão criadas <strong>${datas.length}</strong> instância(s): ${datas.join(', ')}`;
 }
 
 // ==================== VERIFICAÇÃO DE SALDO DISPONÍVEL ====================
@@ -612,25 +685,52 @@ async function salvarContaPagar(event) {
     const inputValor = document.getElementById('valorContaPagar');
     const valor = inputValor.getValorDecimal ? inputValor.getValorDecimal() : parseFloat(inputValor.value.replace(',', '.')) || 0;
 
+    const recorrente = document.getElementById('recorrenteContaPagar').checked;
+
     const dados = {
         descricao: document.getElementById('descricaoContaPagar').value.trim(),
-        categoria_financeira_id: document.getElementById('categoriaContaPagar').value || null,
+        categoria_id: document.getElementById('categoriaContaPagar').value || null,
         fornecedor_id: document.getElementById('fornecedorContaPagar').value || null,
         valor: valor,
-        data_vencimento: document.getElementById('dataVencimentoContaPagar').value,
+        data_vencimento: recorrente ? null : document.getElementById('dataVencimentoContaPagar').value,
         origem_pagamento: document.getElementById('origemPagamentoContaPagar').value,
-        mes_referencia: document.getElementById('mesReferenciaContaPagar').value + '-01', // Adiciona dia 01
-        observacoes: document.getElementById('observacoesContaPagar').value.trim() || null
+        mes_referencia: document.getElementById('mesReferenciaContaPagar').value
+            ? document.getElementById('mesReferenciaContaPagar').value + '-01'
+            : null,
+        observacoes: document.getElementById('observacoesContaPagar').value.trim() || null,
+        recorrente: recorrente,
+        frequencia_recorrencia: recorrente ? document.getElementById('frequenciaRecorrencia').value : null,
+        data_inicio_recorrencia: recorrente ? document.getElementById('dataInicioRecorrencia').value : null,
+        data_fim_recorrencia: recorrente ? document.getElementById('dataFimRecorrencia').value : null
     };
 
-    if (!dados.descricao || dados.valor <= 0 || !dados.data_vencimento) {
-        mostrarNotificacao('⚠️ Preencha os campos obrigatórios (descrição, valor e data de vencimento)', 'error');
+    if (!dados.descricao || dados.valor <= 0) {
+        mostrarNotificacao('⚠️ Preencha descrição e valor', 'error');
         return;
     }
 
-    if (!dados.origem_pagamento || !dados.mes_referencia) {
-        mostrarNotificacao('⚠️ Selecione a origem do pagamento e o mês de referência', 'error');
-        return;
+    if (recorrente) {
+        if (!dados.data_inicio_recorrencia || !dados.data_fim_recorrencia) {
+            mostrarNotificacao('⚠️ Informe a data de início e fim da recorrência', 'error');
+            return;
+        }
+        if (dados.data_fim_recorrencia < dados.data_inicio_recorrencia) {
+            mostrarNotificacao('⚠️ A data de fim deve ser posterior à data de início', 'error');
+            return;
+        }
+        if (!dados.origem_pagamento) {
+            mostrarNotificacao('⚠️ Selecione a origem do pagamento para a série recorrente', 'error');
+            return;
+        }
+    } else {
+        if (!dados.data_vencimento) {
+            mostrarNotificacao('⚠️ Informe a data de vencimento', 'error');
+            return;
+        }
+        if (!dados.origem_pagamento || !dados.mes_referencia) {
+            mostrarNotificacao('⚠️ Selecione a origem do pagamento e o mês de referência', 'error');
+            return;
+        }
     }
 
     try {
@@ -646,7 +746,10 @@ async function salvarContaPagar(event) {
             throw new Error(result.error || 'Erro ao cadastrar conta');
         }
 
-        mostrarNotificacao(`✓ Conta "${dados.descricao}" cadastrada!`, 'success');
+        const msg = result.total_instancias
+            ? `✓ ${result.total_instancias} conta(s) recorrente(s) de "${dados.descricao}" cadastradas!`
+            : `✓ Conta "${dados.descricao}" cadastrada!`;
+        mostrarNotificacao(msg, 'success');
         
         fecharModal('cadastroContaPagarModal');
         

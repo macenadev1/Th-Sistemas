@@ -236,22 +236,141 @@ router.post('/', async (req, res) => {
             mes_referencia
         } = req.body;
         
-        if (!descricao || !valor || !data_vencimento) {
+        // ---- CONTA RECORRENTE ----
+        const recorrente = req.body.recorrente || false;
+
+        if (!descricao || !valor) {
             return res.status(400).json({ 
                 success: false, 
-                error: 'Descrição, valor e data de vencimento são obrigatórios' 
+                error: 'Descrição e valor são obrigatórios' 
             });
         }
-        
-        // Determinar status baseado na data de vencimento
+
+        if (!recorrente && !data_vencimento) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Data de vencimento é obrigatória para contas não recorrentes' 
+            });
+        }
+
+        // Determinar status baseado na data de vencimento (só para conta simples)
         const hoje = new Date();
-        const vencimento = new Date(data_vencimento);
+        hoje.setHours(0, 0, 0, 0);
+        const vencimento = data_vencimento ? new Date(data_vencimento + 'T00:00:00') : null;
         let status = 'pendente';
-        
-        if (vencimento < hoje) {
+
+        if (vencimento && vencimento < hoje) {
             status = 'vencido';
         }
-        
+
+        if (recorrente) {
+            const {
+                frequencia_recorrencia,
+                data_inicio_recorrencia,
+                data_fim_recorrencia
+            } = req.body;
+
+            if (!frequencia_recorrencia || !data_inicio_recorrencia || !data_fim_recorrencia) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Para contas recorrentes, informe frequência, data de início e data de fim'
+                });
+            }
+
+            const mapeamentoFrequencia = { mensal: 1, bimestral: 2, trimestral: 3, semestral: 6, anual: 12 };
+            const meses = mapeamentoFrequencia[frequencia_recorrencia];
+            if (!meses) {
+                return res.status(400).json({ success: false, error: 'Frequência de recorrência inválida' });
+            }
+
+            // Gerar todas as datas de vencimento da série
+            // Usa o dia-base original e clipa ao último dia do mês para evitar overflow
+            const datas = [];
+            const dataInicio = new Date(data_inicio_recorrencia + 'T00:00:00');
+            const dataFim = new Date(data_fim_recorrencia + 'T00:00:00');
+            const diaBase = dataInicio.getDate();
+
+            let anoAtual = dataInicio.getFullYear();
+            let mesAtual = dataInicio.getMonth(); // 0-indexed
+
+            while (true) {
+                const ultimoDia = new Date(anoAtual, mesAtual + 1, 0).getDate();
+                const dia = Math.min(diaBase, ultimoDia);
+                const dataVencCandidata = new Date(anoAtual, mesAtual, dia);
+                if (dataVencCandidata > dataFim) break;
+                datas.push(dataVencCandidata);
+                mesAtual += meses;
+                if (mesAtual >= 12) {
+                    anoAtual += Math.floor(mesAtual / 12);
+                    mesAtual = mesAtual % 12;
+                }
+            }
+
+            if (datas.length === 0) {
+                return res.status(400).json({ success: false, error: 'O período informado não gera nenhuma instância' });
+            }
+
+            const connection = await pool.getConnection();
+            await connection.beginTransaction();
+            try {
+                let contaPaiId = null;
+                const idsGerados = [];
+                const hojeTs = new Date();
+                hojeTs.setHours(0, 0, 0, 0);
+
+                for (let i = 0; i < datas.length; i++) {
+                    const dataVenc = datas[i];
+                    const statusConta = dataVenc < hojeTs ? 'vencido' : 'pendente';
+                    const dataVencStr = `${dataVenc.getFullYear()}-${String(dataVenc.getMonth() + 1).padStart(2, '0')}-${String(dataVenc.getDate()).padStart(2, '0')}`;
+                    const mesRefStr = `${dataVenc.getFullYear()}-${String(dataVenc.getMonth() + 1).padStart(2, '0')}-01`;
+
+                    const [result] = await connection.query(`
+                        INSERT INTO contas_pagar (
+                            descricao, categoria_id, fornecedor_id, valor,
+                            data_vencimento, status, observacoes,
+                            origem_pagamento, mes_referencia,
+                            recorrente, frequencia_recorrencia,
+                            data_inicio_recorrencia, data_fim_recorrencia,
+                            conta_pai_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                    `, [
+                        descricao,
+                        categoria_id || null,
+                        fornecedor_id || null,
+                        valor,
+                        dataVencStr,
+                        statusConta,
+                        observacoes || null,
+                        origem_pagamento || null,
+                        mesRefStr,
+                        frequencia_recorrencia,
+                        data_inicio_recorrencia,
+                        data_fim_recorrencia,
+                        i === 0 ? null : contaPaiId
+                    ]);
+
+                    if (i === 0) contaPaiId = result.insertId;
+                    idsGerados.push(result.insertId);
+                }
+
+                await connection.commit();
+                res.json({
+                    success: true,
+                    message: `${datas.length} conta(s) recorrente(s) cadastrada(s) com sucesso!`,
+                    id: contaPaiId,
+                    total_instancias: datas.length,
+                    ids: idsGerados
+                });
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
+            }
+            return;
+        }
+
+        // ---- CONTA SIMPLES (fluxo original) ----
         const [result] = await pool.query(`
             INSERT INTO contas_pagar (
                 descricao, 
@@ -947,6 +1066,18 @@ router.delete('/:id', async (req, res) => {
             return res.status(400).json({ 
                 success: false, 
                 error: 'Não é possível excluir uma conta já paga' 
+            });
+        }
+
+        // Verificar se é conta mãe de uma série recorrente
+        const [filhos] = await pool.query(
+            'SELECT COUNT(*) AS total FROM contas_pagar WHERE conta_pai_id = ?',
+            [req.params.id]
+        );
+        if (filhos[0].total > 0) {
+            return res.status(400).json({
+                success: false,
+                error: `Esta conta é a origem de uma série recorrente com ${filhos[0].total} instância(s) vinculada(s). Exclua as instâncias filhas primeiro ou cancele a série pelo menu de edição.`
             });
         }
         

@@ -237,12 +237,18 @@ CREATE TABLE contas_pagar (
     origem_pagamento ENUM('reposicao', 'lucro') NULL COMMENT 'Origem do dinheiro: reposicao (custos) ou lucro (operacional)',
     mes_referencia DATE NULL COMMENT 'Mês de referência da despesa (permite futuro, mas dedução sempre do mês atual)',
     observacoes TEXT,
+    recorrente TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Indica se a conta pertence a uma série recorrente',
+    frequencia_recorrencia ENUM('mensal','bimestral','trimestral','semestral','anual') NULL COMMENT 'Frequência de repetição da série',
+    data_inicio_recorrencia DATE NULL COMMENT 'Data de início da série recorrente',
+    data_fim_recorrencia DATE NULL COMMENT 'Data de fim da série recorrente',
+    conta_pai_id INT NULL COMMENT 'ID da conta pai (primeira da série). NULL = é a própria conta pai.',
     usuario_id INT NULL,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (categoria_id) REFERENCES categorias_financeiras(id) ON DELETE SET NULL,
     FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (conta_pai_id) REFERENCES contas_pagar(id) ON DELETE SET NULL,
     INDEX idx_status (status),
     INDEX idx_data_vencimento (data_vencimento),
     INDEX idx_data_pagamento (data_pagamento),
@@ -251,7 +257,9 @@ CREATE TABLE contas_pagar (
     INDEX idx_status_vencimento (status, data_vencimento),
     INDEX idx_origem_pagamento (origem_pagamento),
     INDEX idx_mes_referencia (mes_referencia),
-    INDEX idx_valor_estornado (valor_estornado)
+    INDEX idx_valor_estornado (valor_estornado),
+    INDEX idx_recorrente (recorrente),
+    INDEX idx_conta_pai_id (conta_pai_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabela de saldos iniciais mensais
