@@ -2,7 +2,7 @@
 -- DATABASE PRODUÇÃO - BomboniereERP
 -- ==========================================
 -- Versão limpa sem dados de teste
--- Última atualização: 28/03/2026
+-- Última atualização: 23/05/2026
 -- ==========================================
 
 -- Criar banco de dados
@@ -178,6 +178,11 @@ CREATE TABLE vendas (
     troco DECIMAL(10, 2) NOT NULL,
     quantidade_itens INT NOT NULL,
     desconto DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    subtotal_bruto DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    desconto_manual_total_tipo ENUM('valor', 'percentual') NULL,
+    desconto_manual_total_valor DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    desconto_manual_total_aplicado DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    desconto_manual_itens_aplicado DECIMAL(10, 2) NOT NULL DEFAULT 0,
     cancelado BOOLEAN DEFAULT FALSE,
     data_cancelamento TIMESTAMP NULL,
     motivo_cancelamento TEXT NULL,
@@ -200,6 +205,10 @@ CREATE TABLE itens_venda (
     quantidade INT NOT NULL,
     preco_unitario DECIMAL(10, 2) NOT NULL,
     preco_custo_unitario DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    subtotal_bruto DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    desconto_manual_tipo ENUM('valor', 'percentual') NULL,
+    desconto_manual_valor DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    desconto_manual_aplicado DECIMAL(10, 2) NOT NULL DEFAULT 0,
     subtotal DECIMAL(10, 2) NOT NULL,
     FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE CASCADE,
     FOREIGN KEY (produto_id) REFERENCES produtos(id),

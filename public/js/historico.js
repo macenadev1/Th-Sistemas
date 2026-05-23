@@ -3,6 +3,26 @@
 // Variável global para armazenar histórico completo
 let historicoCompleto = [];
 
+function extrairListaVendasResposta(payload) {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (payload && payload.success === false) {
+        throw new Error(payload.message || 'Erro ao carregar vendas');
+    }
+
+    if (payload && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+
+    if (payload && Array.isArray(payload.vendas)) {
+        return payload.vendas;
+    }
+
+    return [];
+}
+
 // Carregar histórico de fechamentos da API
 async function carregarHistoricoFechamentos() {
     try {
@@ -352,7 +372,8 @@ async function verDetalhesFechamento(id) {
                 // Buscar todas as vendas
                 const vendasResponse = await fetch('http://localhost:3000/api/vendas');
                 if (vendasResponse.ok) {
-                    const todasVendas = await vendasResponse.json();
+                    const vendasPayload = await vendasResponse.json();
+                    const todasVendas = extrairListaVendasResposta(vendasPayload);
                     
                     // Filtrar vendas do período do fechamento
                     const dataAberturaCaixa = new Date(fechamento.dataHoraAbertura.replace(' ', 'T'));
@@ -374,15 +395,19 @@ async function verDetalhesFechamento(id) {
                         if (detalhesResponse.ok) {
                             const detalhes = await detalhesResponse.json();
                             if (detalhes.formas_pagamento && detalhes.formas_pagamento.length > 0) {
+                                let dinheiroRecebidoVenda = 0;
                                 detalhes.formas_pagamento.forEach(fp => {
                                     const valor = parseFloat(fp.valor);
                                     if (fp.forma_pagamento === 'dinheiro') {
-                                        totalDinheiro += valor;
+                                        dinheiroRecebidoVenda += valor;
                                     } else {
                                         // débito, crédito e pix vão para maquininha
                                         totalMaquininha += valor;
                                     }
                                 });
+
+                                const trocoVenda = parseFloat(detalhes.venda?.troco || 0) || 0;
+                                totalDinheiro += Math.max(0, dinheiroRecebidoVenda - trocoVenda);
                             }
                         }
                     }

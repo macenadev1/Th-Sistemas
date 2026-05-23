@@ -12,6 +12,26 @@ let caixaData = {
     movimentacoes: []
 };
 
+function extrairListaVendasResposta(payload) {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (payload && payload.success === false) {
+        throw new Error(payload.message || 'Erro ao carregar vendas');
+    }
+
+    if (payload && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+
+    if (payload && Array.isArray(payload.vendas)) {
+        return payload.vendas;
+    }
+
+    return [];
+}
+
 // Carregar estado do caixa do servidor
 async function carregarEstadoCaixa() {
     try {
@@ -175,6 +195,41 @@ function atualizarStatusCaixa() {
         if (btnReforcoCaixa) btnReforcoCaixa.disabled = true;
         if (btnSangria) btnSangria.disabled = true;
         if (btnFecharCaixa) btnFecharCaixa.disabled = true;
+    }
+}
+
+function arredondarMoeda(valor) {
+    return Math.round((Number(valor) + Number.EPSILON) * 100) / 100;
+}
+
+async function reconciliarTotalVendasFechamento() {
+    try {
+        const response = await fetch(`${API_URL}/vendas`);
+        if (!response.ok) {
+            throw new Error('Erro ao buscar vendas para reconciliacao');
+        }
+
+        const payload = await response.json();
+        const todasVendas = extrairListaVendasResposta(payload);
+        const dataAbertura = new Date(caixaData.dataHoraAbertura);
+
+        const totalVendasPeriodo = arredondarMoeda(
+            todasVendas
+                .filter((venda) => {
+                    const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
+                    return dataVenda >= dataAbertura;
+                })
+                .reduce((soma, venda) => soma + (parseFloat(venda.total) || 0), 0)
+        );
+
+        const totalAnterior = arredondarMoeda(caixaData.totalVendas || 0);
+        if (Math.abs(totalVendasPeriodo - totalAnterior) > 0.009) {
+            console.warn(`⚠️ Divergencia em totalVendas. Caixa: R$ ${totalAnterior.toFixed(2)} | Vendas: R$ ${totalVendasPeriodo.toFixed(2)}. Reconciliando.`);
+            caixaData.totalVendas = totalVendasPeriodo;
+            await salvarEstadoCaixa();
+        }
+    } catch (error) {
+        console.error('❌ Erro ao reconciliar total de vendas no fechamento:', error);
     }
 }
 
@@ -369,6 +424,8 @@ function confirmarSangria(event) {
 }
 
 async function abrirModalFechamentoCaixa() {
+    await reconciliarTotalVendasFechamento();
+
     const saldoEsperado = caixaData.valorAbertura + caixaData.totalVendas + caixaData.totalReforcos - caixaData.totalSangrias;
     
     document.getElementById('fechValorAbertura').textContent = `R$ ${caixaData.valorAbertura.toFixed(2)}`;
@@ -437,7 +494,8 @@ async function carregarFormasPagamentoCaixa() {
         const response = await fetch(`${API_URL}/vendas`);
         if (!response.ok) throw new Error('Erro ao buscar vendas');
         
-        const todasVendas = await response.json();
+        const payload = await response.json();
+        const todasVendas = extrairListaVendasResposta(payload);
         
         // Filtrar vendas do período do caixa aberto (após a abertura)
         const dataAbertura = new Date(caixaData.dataHoraAbertura);
@@ -457,15 +515,19 @@ async function carregarFormasPagamentoCaixa() {
             if (detalhesResponse.ok) {
                 const detalhes = await detalhesResponse.json();
                 if (detalhes.formas_pagamento && detalhes.formas_pagamento.length > 0) {
+                    let dinheiroRecebidoVenda = 0;
                     detalhes.formas_pagamento.forEach(fp => {
                         const valor = parseFloat(fp.valor);
                         if (fp.forma_pagamento === 'dinheiro') {
-                            totalDinheiro += valor;
+                            dinheiroRecebidoVenda += valor;
                         } else {
                             // débito, crédito e pix vão para maquininha
                             totalMaquininha += valor;
                         }
                     });
+
+                    const trocoVenda = parseFloat(detalhes.venda?.troco || 0) || 0;
+                    totalDinheiro += Math.max(0, dinheiroRecebidoVenda - trocoVenda);
                 }
             }
         }

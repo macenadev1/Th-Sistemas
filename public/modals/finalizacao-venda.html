@@ -9,6 +9,14 @@
                 <span class="total-label">Subtotal:</span>
                 <span class="total-value" id="subtotalVenda" style="font-size: 20px; color: #666;">R$ 0,00</span>
             </div>
+            <div class="total-row">
+                <span class="total-label">Desc. Manual Itens:</span>
+                <span class="total-value" id="descontoItensAplicado" style="font-size: 18px; color: #dc3545;">- R$ 0,00</span>
+            </div>
+            <div class="total-row">
+                <span class="total-label">Desc. Manual Total:</span>
+                <span class="total-value" id="descontoTotalAplicado" style="font-size: 18px; color: #dc3545;">- R$ 0,00</span>
+            </div>
             
             <div class="total-row">
                 <span class="total-label">TOTAL A PAGAR:</span>
@@ -21,6 +29,31 @@
             <div class="total-row">
                 <span class="total-label">Falta Pagar:</span>
                 <span class="total-value" id="faltaPagar" style="font-size: 20px; color: #dc3545;">R$ 0,00</span>
+            </div>
+        </div>
+
+        <div style="background: #fff8e1; border: 1px solid #ffe082; padding: 14px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="font-size: 16px; font-weight: 700; color: #8a6d3b; margin-bottom: 10px;">Desconto Manual</div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; align-items: center; margin-bottom: 8px;">
+                <select id="descontoItemAlvo" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px;"></select>
+                <select id="descontoItemTipo" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    <option value="valor">R$</option>
+                    <option value="percentual">%</option>
+                </select>
+                <input id="descontoItemValor" type="number" step="0.01" min="0" placeholder="Valor" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                <button type="button" onclick="aplicarDescontoManualItem()" class="btn btn-success" style="padding: 10px 12px;">Aplicar Item</button>
+                <button type="button" onclick="limparDescontoManualItem()" class="btn btn-danger" style="padding: 10px 12px;">Limpar</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; align-items: center;">
+                <select id="descontoTotalTipo" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    <option value="valor">R$</option>
+                    <option value="percentual">%</option>
+                </select>
+                <input id="descontoTotalValor" type="number" step="0.01" min="0" placeholder="Valor" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                <button type="button" onclick="aplicarDescontoManualTotal()" class="btn btn-success" style="padding: 10px 12px;">Aplicar Total</button>
+                <button type="button" onclick="limparDescontoManualTotal()" class="btn btn-danger" style="padding: 10px 12px;">Limpar</button>
             </div>
         </div>
 

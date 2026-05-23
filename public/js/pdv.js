@@ -5,6 +5,19 @@ let pagamentos = []; // Array para armazenar os pagamentos
 let processandoVenda = false; // Flag para evitar vendas duplicadas
 let monitorConexaoInterval = null;
 let ultimoStatusConexao = null;
+const TOLERANCIA_FECHAMENTO = 0.01;
+
+let descontoManual = {
+    item: {
+        indice: null,
+        tipo: 'valor',
+        valor: 0
+    },
+    total: {
+        tipo: 'valor',
+        valor: 0
+    }
+};
 
 // Carregar histórico de fechamentos da API
 async function carregarHistoricoFechamentos() {
@@ -79,6 +92,277 @@ function obterSubtotalItem(item) {
 
 function calcularTotalCarrinho() {
     return carrinho.reduce((sum, item) => sum + obterSubtotalItem(item), 0);
+}
+
+function arredondarMoeda(valor) {
+    return Math.round((Number(valor) + Number.EPSILON) * 100) / 100;
+}
+
+function clamp(valor, minimo, maximo) {
+    return Math.min(Math.max(valor, minimo), maximo);
+}
+
+function extrairListaVendasResposta(payload) {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (payload && payload.success === false) {
+        throw new Error(payload.message || 'Erro ao carregar vendas');
+    }
+
+    if (payload && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+
+    if (payload && Array.isArray(payload.vendas)) {
+        return payload.vendas;
+    }
+
+    return [];
+}
+
+function obterResumoVendaAtual() {
+    const subtotalBruto = arredondarMoeda(calcularTotalCarrinho());
+
+    let descontoItemAplicado = 0;
+    let subtotalItemAlvo = 0;
+    const indiceItem = descontoManual.item.indice;
+
+    if (indiceItem !== null && indiceItem >= 0 && indiceItem < carrinho.length) {
+        subtotalItemAlvo = arredondarMoeda(obterSubtotalItem(carrinho[indiceItem]));
+
+        if (descontoManual.item.tipo === 'percentual') {
+            const percentual = clamp(Number(descontoManual.item.valor) || 0, 0, 100);
+            descontoItemAplicado = arredondarMoeda(subtotalItemAlvo * (percentual / 100));
+        } else {
+            const valor = Math.max(0, Number(descontoManual.item.valor) || 0);
+            descontoItemAplicado = arredondarMoeda(Math.min(valor, subtotalItemAlvo));
+        }
+
+        descontoItemAplicado = Math.min(descontoItemAplicado, subtotalItemAlvo);
+    }
+
+    const subtotalAposDescontoItem = arredondarMoeda(Math.max(0, subtotalBruto - descontoItemAplicado));
+
+    let descontoTotalAplicado = 0;
+    if (descontoManual.total.tipo === 'percentual') {
+        const percentualTotal = clamp(Number(descontoManual.total.valor) || 0, 0, 100);
+        descontoTotalAplicado = arredondarMoeda(subtotalAposDescontoItem * (percentualTotal / 100));
+    } else {
+        const valorTotal = Math.max(0, Number(descontoManual.total.valor) || 0);
+        descontoTotalAplicado = arredondarMoeda(Math.min(valorTotal, subtotalAposDescontoItem));
+    }
+
+    descontoTotalAplicado = Math.min(descontoTotalAplicado, subtotalAposDescontoItem);
+    const descontoGeral = arredondarMoeda(descontoItemAplicado + descontoTotalAplicado);
+    const totalFinal = arredondarMoeda(Math.max(0, subtotalBruto - descontoGeral));
+
+    return {
+        subtotalBruto,
+        subtotalItemAlvo,
+        descontoItemAplicado,
+        descontoTotalAplicado,
+        descontoGeral,
+        totalFinal
+    };
+}
+
+function resetarDescontosManuais() {
+    descontoManual = {
+        item: {
+            indice: null,
+            tipo: 'valor',
+            valor: 0
+        },
+        total: {
+            tipo: 'valor',
+            valor: 0
+        }
+    };
+
+    const selectItem = document.getElementById('descontoItemAlvo');
+    if (selectItem) {
+        selectItem.value = '';
+    }
+
+    const tipoItem = document.getElementById('descontoItemTipo');
+    if (tipoItem) {
+        tipoItem.value = 'valor';
+    }
+
+    const valorItem = document.getElementById('descontoItemValor');
+    if (valorItem) {
+        valorItem.value = '';
+    }
+
+    const tipoTotal = document.getElementById('descontoTotalTipo');
+    if (tipoTotal) {
+        tipoTotal.value = 'valor';
+    }
+
+    const valorTotal = document.getElementById('descontoTotalValor');
+    if (valorTotal) {
+        valorTotal.value = '';
+    }
+}
+
+function atualizarResumoDescontoManual() {
+    const resumo = obterResumoVendaAtual();
+    const subtotalVenda = document.getElementById('subtotalVenda');
+    const descontoItens = document.getElementById('descontoItensAplicado');
+    const descontoTotal = document.getElementById('descontoTotalAplicado');
+    const totalFinal = document.getElementById('totalFinal');
+
+    if (subtotalVenda) {
+        subtotalVenda.textContent = `R$ ${resumo.subtotalBruto.toFixed(2)}`;
+    }
+
+    if (descontoItens) {
+        descontoItens.textContent = `- R$ ${resumo.descontoItemAplicado.toFixed(2)}`;
+    }
+
+    if (descontoTotal) {
+        descontoTotal.textContent = `- R$ ${resumo.descontoTotalAplicado.toFixed(2)}`;
+    }
+
+    if (totalFinal) {
+        totalFinal.textContent = `R$ ${resumo.totalFinal.toFixed(2)}`;
+    }
+}
+
+function popularItensDescontoManual() {
+    const select = document.getElementById('descontoItemAlvo');
+    if (!select) {
+        return;
+    }
+
+    const opcoes = ['<option value="">Selecione um item</option>'];
+    carrinho.forEach((item, index) => {
+        const subtotal = arredondarMoeda(obterSubtotalItem(item));
+        opcoes.push(`<option value="${index}">${item.nome} (${item.quantidade}x) - R$ ${subtotal.toFixed(2)}</option>`);
+    });
+
+    select.innerHTML = opcoes.join('');
+
+    if (descontoManual.item.indice !== null && descontoManual.item.indice < carrinho.length) {
+        select.value = String(descontoManual.item.indice);
+    } else {
+        descontoManual.item.indice = null;
+        select.value = '';
+    }
+}
+
+function aplicarDescontoManualItem() {
+    const selectItem = document.getElementById('descontoItemAlvo');
+    const tipoItem = document.getElementById('descontoItemTipo');
+    const valorItem = document.getElementById('descontoItemValor');
+
+    if (!selectItem || !tipoItem || !valorItem) {
+        return;
+    }
+
+    if (selectItem.value === '') {
+        mostrarNotificacao('Selecione um item para aplicar desconto.', 'error');
+        return;
+    }
+
+    const indiceSelecionado = Number(selectItem.value);
+    const valorInformado = Math.max(0, Number(valorItem.value) || 0);
+    const tipoSelecionado = tipoItem.value;
+
+    descontoManual.item.indice = indiceSelecionado;
+    descontoManual.item.tipo = tipoSelecionado;
+    descontoManual.item.valor = tipoSelecionado === 'percentual'
+        ? clamp(valorInformado, 0, 100)
+        : valorInformado;
+
+    valorItem.value = descontoManual.item.valor;
+    atualizarPagamentos();
+    mostrarNotificacao('Desconto no item aplicado.', 'success');
+}
+
+function limparDescontoManualItem() {
+    descontoManual.item.indice = null;
+    descontoManual.item.tipo = 'valor';
+    descontoManual.item.valor = 0;
+
+    const selectItem = document.getElementById('descontoItemAlvo');
+    if (selectItem) {
+        selectItem.value = '';
+    }
+
+    const tipoItem = document.getElementById('descontoItemTipo');
+    if (tipoItem) {
+        tipoItem.value = 'valor';
+    }
+
+    const valorItem = document.getElementById('descontoItemValor');
+    if (valorItem) {
+        valorItem.value = '';
+    }
+
+    atualizarPagamentos();
+}
+
+function aplicarDescontoManualTotal() {
+    const tipoTotal = document.getElementById('descontoTotalTipo');
+    const valorTotal = document.getElementById('descontoTotalValor');
+
+    if (!tipoTotal || !valorTotal) {
+        return;
+    }
+
+    const valorInformado = Math.max(0, Number(valorTotal.value) || 0);
+    descontoManual.total.tipo = tipoTotal.value;
+    descontoManual.total.valor = tipoTotal.value === 'percentual'
+        ? clamp(valorInformado, 0, 100)
+        : valorInformado;
+
+    valorTotal.value = descontoManual.total.valor;
+    atualizarPagamentos();
+    mostrarNotificacao('Desconto no total aplicado.', 'success');
+}
+
+function limparDescontoManualTotal() {
+    descontoManual.total.tipo = 'valor';
+    descontoManual.total.valor = 0;
+
+    const tipoTotal = document.getElementById('descontoTotalTipo');
+    if (tipoTotal) {
+        tipoTotal.value = 'valor';
+    }
+
+    const valorTotal = document.getElementById('descontoTotalValor');
+    if (valorTotal) {
+        valorTotal.value = '';
+    }
+
+    atualizarPagamentos();
+}
+
+function montarItensVendaComDescontoManual() {
+    const resumo = obterResumoVendaAtual();
+
+    return carrinho.map((item, index) => {
+        const subtotalBrutoItem = arredondarMoeda(obterSubtotalItem(item));
+        const itemSelecionado = descontoManual.item.indice === index;
+        const descontoItemAplicado = itemSelecionado ? resumo.descontoItemAplicado : 0;
+        const subtotalLiquidoItem = arredondarMoeda(Math.max(0, subtotalBrutoItem - descontoItemAplicado));
+        const precoUnitarioLiquido = item.quantidade > 0
+            ? arredondarMoeda(subtotalLiquidoItem / Number(item.quantidade))
+            : 0;
+
+        return {
+            ...item,
+            preco: precoUnitarioLiquido,
+            subtotal: subtotalLiquidoItem,
+            subtotal_bruto: subtotalBrutoItem,
+            desconto_manual_tipo: itemSelecionado ? descontoManual.item.tipo : null,
+            desconto_manual_valor: itemSelecionado ? Number(descontoManual.item.valor) || 0 : 0,
+            desconto_manual_aplicado: descontoItemAplicado
+        };
+    });
 }
 
 // Configuração do input de busca
@@ -255,6 +539,7 @@ async function adicionarProduto(codigo) {
             });
         }
 
+        resetarDescontosManuais();
         atualizarCarrinho();
         
         if (quantidadeDesejada > 1) {
@@ -380,6 +665,7 @@ function removerItemCarrinho(index) {
     
     const item = carrinho[index];
     carrinho.splice(index, 1);
+    resetarDescontosManuais();
     atualizarCarrinho();
     mostrarNotificacao(`✓ ${item.nome} removido do carrinho!`, 'info');
 }
@@ -483,6 +769,7 @@ async function aumentarQuantidadeItem(index) {
     
     item.quantidade++;
     await recalcularPromocaoItem(item);
+    resetarDescontosManuais();
     atualizarCarrinho();
     mostrarNotificacao(`✓ Quantidade aumentada para ${item.quantidade}`, 'success');
 }
@@ -499,6 +786,7 @@ async function diminuirQuantidadeItem(index) {
     
     item.quantidade--;
     await recalcularPromocaoItem(item);
+    resetarDescontosManuais();
     atualizarCarrinho();
     mostrarNotificacao(`✓ Quantidade diminuída para ${item.quantidade}`, 'info');
 }
@@ -543,6 +831,7 @@ async function alterarQuantidadeItem(index, novaQuantidade) {
     
     item.quantidade = qtd;
     await recalcularPromocaoItem(item);
+    resetarDescontosManuais();
     atualizarCarrinho();
     mostrarNotificacao(`✓ Quantidade alterada para ${qtd}`, 'success');
 }
@@ -558,16 +847,14 @@ function finalizarVenda() {
         return;
     }
     
-    const total = calcularTotalCarrinho();
-    
-    // Atualizar valores (sem desconto manual)
-    document.getElementById('subtotalVenda').textContent = `R$ ${total.toFixed(2)}`;
-    document.getElementById('totalFinal').textContent = `R$ ${total.toFixed(2)}`;
+    const resumo = obterResumoVendaAtual();
+    popularItensDescontoManual();
+    atualizarResumoDescontoManual();
     
     // Se já tem pagamentos, mostra o que já foi pago
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     if (pagamentos.length > 0) {
-        const faltante = total - totalPago;
+        const faltante = resumo.totalFinal - totalPago;
         mostrarNotificacao(`Pagamentos anteriores mantidos! Falta: R$ ${faltante.toFixed(2)}`, 'info');
     }
     
@@ -625,12 +912,13 @@ function selecionarFormaPagamentoComValor(forma) {
         return;
     }
     
-    const total = calcularTotalCarrinho();
+    const resumo = obterResumoVendaAtual();
+    const total = resumo.totalFinal;
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     
     // Aceitar diferença de até 0.01 devido a arredondamento
-    if (valor > faltante + 0.01) {
+    if (valor > faltante + TOLERANCIA_FECHAMENTO) {
         // Se pagou a mais em dinheiro, permite (gera troco)
         if (forma !== 'dinheiro') {
             mostrarNotificacao(`Valor maior que o restante (R$ ${faltante.toFixed(2)})!`, 'error');
@@ -660,7 +948,7 @@ function selecionarFormaPagamentoComValor(forma) {
     const diferencaFinal = total - novoTotalPago;
     
     // Usar tolerância de 0.01 para compensar erros de arredondamento
-    if (diferencaFinal <= 0.01) {
+    if (diferencaFinal <= TOLERANCIA_FECHAMENTO) {
         // Pagamento completo, mostrar modal de confirmação
         setTimeout(() => {
             mostrarModalConfirmacaoVenda();
@@ -683,12 +971,13 @@ function adicionarPagamento() {
         return;
     }
     
-    const total = calcularTotalCarrinho();
+    const resumo = obterResumoVendaAtual();
+    const total = resumo.totalFinal;
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     
     // Aceitar diferença de até 0.01 devido a arredondamento
-    if (valor > faltante + 0.01) {
+    if (valor > faltante + TOLERANCIA_FECHAMENTO) {
         // Se pagou a mais em dinheiro, permite (gera troco)
         if (forma !== 'dinheiro') {
             mostrarNotificacao(`Valor maior que o restante (R$ ${faltante.toFixed(2)})!`, 'error');
@@ -712,7 +1001,7 @@ function adicionarPagamento() {
 }
 
 function mostrarModalConfirmacaoVenda() {
-    const total = calcularTotalCarrinho();
+    const total = obterResumoVendaAtual().totalFinal;
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const troco = Math.max(0, totalPago - total);
     const temDinheiro = pagamentos.some(p => p.forma === 'dinheiro');
@@ -801,10 +1090,15 @@ function removerPagamento(index) {
 }
 
 function atualizarPagamentos() {
-    const total = calcularTotalCarrinho();
+    const resumo = obterResumoVendaAtual();
+    const total = resumo.totalFinal;
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     const troco = totalPago - total;
+    const temDinheiro = pagamentos.some(p => p.forma === 'dinheiro');
+    const trocoSemDinheiro = troco > TOLERANCIA_FECHAMENTO && !temDinheiro;
+
+    atualizarResumoDescontoManual();
         
     // Atualizar totais
     document.getElementById('totalPago').textContent = `R$ ${totalPago.toFixed(2)}`;
@@ -812,7 +1106,7 @@ function atualizarPagamentos() {
     
     // Mudar cor do "Falta Pagar" e adicionar mensagem quando completo
     const faltaPagarDiv = document.getElementById('faltaPagar').parentElement;
-    if (faltante <= 0) {
+    if (faltante <= TOLERANCIA_FECHAMENTO) {
         document.getElementById('faltaPagar').style.color = '#28a745';
         document.getElementById('faltaPagar').textContent = '✓ PAGO';
         faltaPagarDiv.style.background = '#d4edda';
@@ -825,8 +1119,7 @@ function atualizarPagamentos() {
     }
     
     // Mostrar troco se necessário
-    const temDinheiro = pagamentos.some(p => p.forma === 'dinheiro');
-    if (temDinheiro && troco > 0) {
+    if (temDinheiro && troco > TOLERANCIA_FECHAMENTO) {
         document.getElementById('trocoSection').style.display = 'block';
         document.getElementById('troco').textContent = `R$ ${troco.toFixed(2)}`;
     } else {
@@ -835,10 +1128,10 @@ function atualizarPagamentos() {
     
     // Habilitar botão confirmar se pagamento completo
     const btnConfirmar = document.getElementById('btnConfirmarVenda');
-    btnConfirmar.disabled = totalPago < total;
+    btnConfirmar.disabled = totalPago + TOLERANCIA_FECHAMENTO < total || trocoSemDinheiro;
     
     // Mudar aparência do botão quando pagamento estiver completo
-    if (totalPago >= total) {
+    if (totalPago + TOLERANCIA_FECHAMENTO >= total && !trocoSemDinheiro) {
         btnConfirmar.style.background = '#28a745';
         btnConfirmar.style.borderColor = '#28a745';
         btnConfirmar.style.animation = 'pulse 1.5s infinite';
@@ -848,6 +1141,14 @@ function atualizarPagamentos() {
         btnConfirmar.style.borderColor = '#6c757d';
         btnConfirmar.style.animation = 'none';
         btnConfirmar.innerHTML = '✓ CONFIRMAR VENDA [Enter]';
+    }
+
+    if (trocoSemDinheiro) {
+        document.getElementById('faltaPagar').style.color = '#dc3545';
+        document.getElementById('faltaPagar').textContent = 'Ajuste forma pagto';
+        faltaPagarDiv.style.background = '#f8d7da';
+        faltaPagarDiv.style.padding = '10px';
+        faltaPagarDiv.style.borderRadius = '8px';
     }
     
     // Renderizar lista de pagamentos
@@ -903,11 +1204,11 @@ function inicializarInputPagamento() {
                 e.preventDefault();
                 
                 // Verificar se o pagamento já está completo
-                const total = calcularTotalCarrinho();
+                const total = obterResumoVendaAtual().totalFinal;
                 const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
                 
                 // Se pagamento já está completo e não tem valor digitado, confirma a venda
-                if (totalPago >= total && valorCentavos === 0) {
+                if (totalPago + TOLERANCIA_FECHAMENTO >= total && valorCentavos === 0) {
                     mostrarModalConfirmacaoVenda();
                     return;
                 }
@@ -916,7 +1217,7 @@ function inicializarInputPagamento() {
                 
                 if (!valor || valor <= 0) {
                     // Se não digitou valor mas pagamento está completo, mostra confirmação
-                    if (totalPago >= total) {
+                    if (totalPago + TOLERANCIA_FECHAMENTO >= total) {
                         mostrarModalConfirmacaoVenda();
                         return;
                     }
@@ -1003,19 +1304,27 @@ async function confirmarVenda(opcoes = {}) {
             return;
         }
 
-        const subtotal = calcularTotalCarrinho();
-        const total = subtotal;
+        const resumo = obterResumoVendaAtual();
+        const subtotal = resumo.subtotalBruto;
+        const total = resumo.totalFinal;
+        const itensVenda = montarItensVendaComDescontoManual();
         const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
         const diferenca = total - totalPago;
+        const troco = Math.max(0, totalPago - total);
+        const temDinheiro = pagamentos.some((p) => p.forma === 'dinheiro');
         
-        // Usar tolerância de 0.01 para erros de arredondamento
-        if (diferenca > 0.01) {
+        if (diferenca > TOLERANCIA_FECHAMENTO) {
             mostrarNotificacao('Pagamento insuficiente!', 'error');
             return;
         }
         
         if (pagamentos.length === 0) {
             mostrarNotificacao('Adicione pelo menos uma forma de pagamento!', 'error');
+            return;
+        }
+
+        if (troco > TOLERANCIA_FECHAMENTO && !temDinheiro) {
+            mostrarNotificacao('Troco so e permitido quando houver pagamento em dinheiro.', 'error');
             return;
         }
 
@@ -1027,25 +1336,31 @@ async function confirmarVenda(opcoes = {}) {
             }
         }
 
-        const troco = Math.max(0, totalPago - total);
-
         console.log('📤 Enviando venda para API...');
         
         const response = await fetch(`${API_URL}/vendas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                itens: carrinho,
+                itens: itensVenda,
                 subtotal: subtotal,
-                desconto: 0,
+                desconto: resumo.descontoGeral,
                 total: total,
                 valor_pago: totalPago,
                 troco: troco,
+                desconto_manual_total_tipo: resumo.descontoTotalAplicado > 0 ? descontoManual.total.tipo : null,
+                desconto_manual_total_valor: resumo.descontoTotalAplicado > 0 ? Number(descontoManual.total.valor) || 0 : 0,
+                desconto_manual_total_aplicado: resumo.descontoTotalAplicado,
+                desconto_manual_itens_aplicado: resumo.descontoItemAplicado,
                 formas_pagamento: pagamentos
             })
         });
 
         const result = await response.json();
+
+        if (!response.ok || result.success === false) {
+            throw new Error(result.message || result.error || 'Erro ao finalizar venda');
+        }
         
         console.log('✅ Venda processada com sucesso:', result.vendaId);
 
@@ -1066,9 +1381,9 @@ async function confirmarVenda(opcoes = {}) {
         // Guardar dados da venda para o cupom
         const dadosVenda = {
             numeroVenda: result.vendaId || '0000',
-            itens: [...carrinho],
+            itens: itensVenda,
             subtotal: subtotal,
-            desconto: 0,
+            desconto: resumo.descontoGeral,
             total: total,
             formasPagamento: [...pagamentos],
             troco: troco,
@@ -1077,6 +1392,7 @@ async function confirmarVenda(opcoes = {}) {
         
         carrinho = [];
         pagamentos = [];
+        resetarDescontosManuais();
         atualizarCarrinho();
         fecharModal();
         
@@ -1114,7 +1430,7 @@ function mostrarCupom(dados) {
                     :
                     `<span>${item.quantidade} x R$ ${item.preco.toFixed(2)}</span>`
                 }
-                <span>R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
+                <span>R$ ${(Number.isFinite(Number(item.subtotal)) ? Number(item.subtotal) : (item.preco * item.quantidade)).toFixed(2)}</span>
             </div>
         </div>
     `;
@@ -1224,6 +1540,7 @@ function cancelarVenda() {
     if (confirm('Deseja realmente cancelar esta venda? Os pagamentos também serão cancelados.')) {
         carrinho = [];
         pagamentos = []; // Limpar pagamentos ao cancelar venda
+        resetarDescontosManuais();
         atualizarCarrinho();
         mostrarNotificacao('Venda e pagamentos cancelados!', 'info');
         searchInput.focus();
@@ -1254,7 +1571,8 @@ async function abrirHistorico() {
         
         // ✅ API /vendas retorna apenas vendas VÁLIDAS (não canceladas) por padrão
         // Para incluir canceladas (auditoria): adicionar ?incluir_canceladas=true
-        vendasCompletas = await response.json();
+        const payload = await response.json();
+        vendasCompletas = extrairListaVendasResposta(payload);
         
         console.log(`📊 Histórico: ${vendasCompletas.length} vendas válidas carregadas`);
         
@@ -1619,17 +1937,40 @@ async function editarVenda(vendaId) {
         // Limpar carrinho atual
         carrinho = [];
         pagamentos = [];
+        resetarDescontosManuais();
         
         // Carregar itens no carrinho
+        let primeiroIndiceComDescontoItem = null;
         for (const item of dados.itens) {
+            const subtotalBruto = Number.parseFloat(item.subtotal_bruto);
             carrinho.push({
                 codigo: item.codigo_barras,
                 nome: item.nome_produto,
                 preco: parseFloat(item.preco_unitario),
                 quantidade: parseInt(item.quantidade),
+                subtotal_exato: Number.isFinite(subtotalBruto) ? subtotalBruto : undefined,
                 preco_original: null,
                 desconto_percentual: 0
             });
+
+            if (primeiroIndiceComDescontoItem === null && Number(item.desconto_manual_aplicado) > 0) {
+                primeiroIndiceComDescontoItem = carrinho.length - 1;
+                descontoManual.item.indice = primeiroIndiceComDescontoItem;
+                descontoManual.item.tipo = item.desconto_manual_tipo || 'valor';
+                descontoManual.item.valor = Number(item.desconto_manual_valor) || 0;
+            }
+        }
+
+        if (dados.venda && Number(dados.venda.desconto_manual_total_aplicado) > 0) {
+            descontoManual.total.tipo = dados.venda.desconto_manual_total_tipo || 'valor';
+            descontoManual.total.valor = Number(dados.venda.desconto_manual_total_valor) || 0;
+        }
+
+        if (primeiroIndiceComDescontoItem !== null) {
+            const quantidadeItensComDesconto = dados.itens.filter((item) => Number(item.desconto_manual_aplicado) > 0).length;
+            if (quantidadeItensComDesconto > 1) {
+                mostrarNotificacao('Venda possui desconto manual em mais de um item; apenas o primeiro foi carregado para ajuste.', 'info');
+            }
         }
         
         // Carregar formas de pagamento

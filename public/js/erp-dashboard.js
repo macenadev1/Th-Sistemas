@@ -1,6 +1,26 @@
 ﻿// ==================== ERP DASHBOARD ====================
 // Gerenciamento do dashboard e estatísticas
 
+function extrairListaVendasResposta(payload) {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (payload && payload.success === false) {
+        throw new Error(payload.message || 'Erro ao carregar vendas');
+    }
+
+    if (payload && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+
+    if (payload && Array.isArray(payload.vendas)) {
+        return payload.vendas;
+    }
+
+    return [];
+}
+
 /**
  * Navegação entre seções do ERP
  */
@@ -73,7 +93,8 @@ async function carregarDashboard() {
             fetch(`${API_URL}/caixa/status`)
         ]);
 
-        const vendas = vendasResponse.ok ? await vendasResponse.json() : [];
+        const vendasPayload = vendasResponse.ok ? await vendasResponse.json() : [];
+        const vendas = extrairListaVendasResposta(vendasPayload);
         const produtos = produtosResponse.ok ? await produtosResponse.json() : [];
         const caixa = caixaResponse.ok ? await caixaResponse.json() : null;
 
@@ -97,7 +118,8 @@ async function carregarEstatisticasGerais({ vendas = null, produtos = null, caix
         // Vendas de hoje - API retorna apenas vendas NÃO CANCELADAS por padrão
         if (!vendas) {
             const vendasResponse = await fetch(`${API_URL}/vendas`);
-            vendas = vendasResponse.ok ? await vendasResponse.json() : [];
+            const vendasPayload = vendasResponse.ok ? await vendasResponse.json() : [];
+            vendas = extrairListaVendasResposta(vendasPayload);
         }
 
         const hoje = new Date().toLocaleDateString('pt-BR');
@@ -178,7 +200,8 @@ async function carregarVendasRecentes(vendas = null) {
             if (!response.ok) return;
             
             // API já retorna apenas vendas não canceladas por padrão
-            vendas = await response.json();
+            const vendasPayload = await response.json();
+            vendas = extrairListaVendasResposta(vendasPayload);
         }
         const vendasRecentes = vendas.slice(0, 5);
         
@@ -310,7 +333,8 @@ async function carregarGraficoEvolucaoVendas(vendas = null) {
             const response = await fetch(`${API_URL}/vendas`);
             if (!response.ok) throw new Error('Erro ao carregar vendas');
 
-            vendas = await response.json();
+            const vendasPayload = await response.json();
+            vendas = extrairListaVendasResposta(vendasPayload);
         }
         const hoje = new Date();
         const dataInicial = new Date();
@@ -1503,7 +1527,8 @@ async function carregarVendasSection() {
         const response = await fetch(`${API_URL}/vendas`);
         if (!response.ok) throw new Error('Erro ao carregar vendas');
         
-        const vendas = await response.json();
+        const vendasPayload = await response.json();
+        const vendas = extrairListaVendasResposta(vendasPayload);
         
         content.innerHTML = `
             <div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">

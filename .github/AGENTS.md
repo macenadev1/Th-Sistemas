@@ -46,8 +46,31 @@ Nao usar para:
 Prompt exemplo:
 - Revise esta alteracao com foco em risco de estoque e pagamento multiplo.
 
+### PDV Planejador de Execucao
+Arquivo: .github/agents/pdv-planejador-execucao.agent.md
+
+Use para:
+- Entender necessidade de negocio e mapear causa/problema tecnico.
+- Encontrar ponto exato de alteracao (arquivos, funcoes, rotas e SQL).
+- Gerar handoff objetivo para o agente executor implementar com seguranca.
+
+Nao usar para:
+- Implementar codigo diretamente.
+
+Prompt exemplo:
+- Analise o erro de fechamento de caixa e gere handoff completo para execucao segura.
+
 ## Fluxo recomendado
-1. Implementar com o agente PDV Bomboniere.
-2. Refinar experiencia com o agente PDV Design UX.
-3. Revisar com o agente PDV Revisor Operacional.
-4. Corrigir achados criticos antes de publicar.
+1. Planejar com o agente PDV Planejador de Execucao.
+2. Implementar com o agente PDV Bomboniere.
+3. Refinar experiencia com o agente PDV Design UX.
+4. Revisar com o agente PDV Revisor Operacional.
+5. Corrigir achados criticos antes de publicar.
+
+## Handoff Planejador para Executor
+Template pronto:
+- .github/AGENT-HANDOFF-PLANEJADOR-EXECUTOR.md
+
+Use quando quiser separar diagnostico/planejamento da execucao.
+O planejador define contexto, arquivos-alvo, riscos, plano tecnico, criterios de aceite e testes.
+O executor recebe esse handoff e implementa apenas o escopo aprovado.

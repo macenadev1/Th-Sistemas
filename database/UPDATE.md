@@ -2,6 +2,32 @@
 
 ## 📋 Histórico de Atualizações
 
+### ✅ Atualização 013: Desconto Manual no PDV (23/05/2026)
+**Descrição:** Adiciona suporte para persistência de desconto manual no PDV em dois níveis (item e total), mantendo compatibilidade com o campo legado `desconto` da venda.
+
+**Alterações:**
+- `vendas` - Campo `subtotal_bruto DECIMAL(10,2)`
+- `vendas` - Campo `desconto_manual_total_tipo ENUM('valor','percentual')`
+- `vendas` - Campo `desconto_manual_total_valor DECIMAL(10,2)`
+- `vendas` - Campo `desconto_manual_total_aplicado DECIMAL(10,2)`
+- `vendas` - Campo `desconto_manual_itens_aplicado DECIMAL(10,2)`
+- `itens_venda` - Campo `subtotal_bruto DECIMAL(10,2)`
+- `itens_venda` - Campo `desconto_manual_tipo ENUM('valor','percentual')`
+- `itens_venda` - Campo `desconto_manual_valor DECIMAL(10,2)`
+- `itens_venda` - Campo `desconto_manual_aplicado DECIMAL(10,2)`
+
+**Como aplicar:**
+```bash
+mysql -u root -p BomboniereERP < database/013_desconto_manual_pdv.sql
+```
+
+**Benefícios:**
+- ✅ Registra desconto manual por item e no total da compra
+- ✅ Mantém histórico de subtotal bruto e subtotal líquido
+- ✅ Compatível com promoções/descontos já existentes em produto
+
+---
+
 ### ✅ Atualização 011: Salário Proporcional por Admissão (27/03/2026)
 **Descrição:** Ajusta a folha para calcular salário proporcional quando o funcionário é admitido durante o mês da competência.
 

@@ -2,6 +2,177 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../config/database');
 
+const TOLERANCIA_FECHAMENTO = 0.01;
+
+function toNumero(valor, fallback = 0) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : fallback;
+}
+
+function arredondarMoeda(valor) {
+    return Math.round((toNumero(valor) + Number.EPSILON) * 100) / 100;
+}
+
+function clamp(valor, minimo, maximo) {
+    return Math.min(Math.max(valor, minimo), maximo);
+}
+
+function ehErroValidacaoVenda(error) {
+    const mensagem = String(error?.message || '');
+    const errosValidacao = [
+        'Subtotal da venda divergente da soma dos itens',
+        'Total da venda divergente dos descontos aplicados',
+        'Pagamento insuficiente para finalizar venda',
+        'Nenhuma forma de pagamento informada',
+        'Forma de pagamento invalida',
+        'Valor pago divergente da soma das formas de pagamento',
+        'Troco divergente do total e dos pagamentos informados',
+        'Troco somente e permitido quando houver pagamento em dinheiro',
+        'Troco nao pode ser maior que o valor recebido em dinheiro',
+        'Carrinho vazio',
+        'Caixa fechado! Não é possível editar vendas com o caixa fechado.',
+        'Venda não encontrada ou já cancelada'
+    ];
+
+    return errosValidacao.some((texto) => mensagem.includes(texto));
+}
+
+function normalizarVendaComDescontoManual(payload) {
+    const itens = Array.isArray(payload.itens) ? payload.itens : [];
+    const itensNormalizados = itens.map((item) => {
+        const quantidade = toNumero(item.quantidade, 0);
+        const precoUnitario = toNumero(item.preco, 0);
+        const subtotalBruto = arredondarMoeda(
+            item.subtotal_bruto !== undefined ? item.subtotal_bruto : (precoUnitario * quantidade)
+        );
+        const descontoItemAplicado = arredondarMoeda(toNumero(item.desconto_manual_aplicado, 0));
+        const subtotalLiquido = arredondarMoeda(
+            item.subtotal !== undefined
+                ? item.subtotal
+                : (subtotalBruto - descontoItemAplicado)
+        );
+
+        return {
+            ...item,
+            quantidade,
+            preco: precoUnitario,
+            subtotal_bruto: subtotalBruto,
+            desconto_manual_tipo: item.desconto_manual_tipo || null,
+            desconto_manual_valor: arredondarMoeda(toNumero(item.desconto_manual_valor, 0)),
+            desconto_manual_aplicado: clamp(descontoItemAplicado, 0, subtotalBruto),
+            subtotal: clamp(subtotalLiquido, 0, subtotalBruto)
+        };
+    });
+
+    const subtotalItensBruto = arredondarMoeda(
+        itensNormalizados.reduce((soma, item) => soma + item.subtotal_bruto, 0)
+    );
+
+    const descontoItensAplicado = arredondarMoeda(
+        itensNormalizados.reduce((soma, item) => soma + item.desconto_manual_aplicado, 0)
+    );
+
+    const subtotalAposDescontoItens = arredondarMoeda(
+        Math.max(0, subtotalItensBruto - descontoItensAplicado)
+    );
+
+    let descontoManualTotalAplicado = arredondarMoeda(
+        toNumero(payload.desconto_manual_total_aplicado, 0)
+    );
+
+    if (!payload.desconto_manual_total_aplicado && payload.desconto !== undefined) {
+        const descontoLegado = arredondarMoeda(toNumero(payload.desconto, 0));
+        descontoManualTotalAplicado = arredondarMoeda(
+            Math.max(0, descontoLegado - descontoItensAplicado)
+        );
+    }
+
+    descontoManualTotalAplicado = clamp(descontoManualTotalAplicado, 0, subtotalAposDescontoItens);
+
+    const descontoTotalAplicado = arredondarMoeda(descontoItensAplicado + descontoManualTotalAplicado);
+
+    const subtotalBrutoInformado = payload.subtotal !== undefined
+        ? arredondarMoeda(toNumero(payload.subtotal, subtotalItensBruto))
+        : subtotalItensBruto;
+
+    if (Math.abs(subtotalBrutoInformado - subtotalItensBruto) > TOLERANCIA_FECHAMENTO) {
+        throw new Error('Subtotal da venda divergente da soma dos itens');
+    }
+
+    const subtotalBrutoValidado = subtotalItensBruto;
+    const totalCalculado = arredondarMoeda(Math.max(0, subtotalBrutoValidado - descontoTotalAplicado));
+
+    const totalInformado = arredondarMoeda(toNumero(payload.total, totalCalculado));
+    if (Math.abs(totalCalculado - totalInformado) > TOLERANCIA_FECHAMENTO) {
+        throw new Error('Total da venda divergente dos descontos aplicados');
+    }
+
+    const valorPago = arredondarMoeda(toNumero(payload.valor_pago, 0));
+    if (valorPago + TOLERANCIA_FECHAMENTO < totalInformado) {
+        throw new Error('Pagamento insuficiente para finalizar venda');
+    }
+
+    return {
+        itens: itensNormalizados,
+        subtotalBruto: subtotalBrutoValidado,
+        total: totalInformado,
+        descontoTotalAplicado,
+        descontoItensAplicado,
+        descontoManualTotalTipo: payload.desconto_manual_total_tipo || null,
+        descontoManualTotalValor: arredondarMoeda(toNumero(payload.desconto_manual_total_valor, 0)),
+        descontoManualTotalAplicado,
+        valorPago,
+        troco: arredondarMoeda(toNumero(payload.troco, 0))
+    };
+}
+
+function validarPagamentosVenda(formasPagamentoPayload, total, valorPago, trocoInformado) {
+    if (!Array.isArray(formasPagamentoPayload) || formasPagamentoPayload.length === 0) {
+        throw new Error('Nenhuma forma de pagamento informada');
+    }
+
+    const formasPagamento = formasPagamentoPayload.map((pagamento) => ({
+        forma: String(pagamento.forma || '').trim().toLowerCase(),
+        valor: arredondarMoeda(toNumero(pagamento.valor, 0))
+    }));
+
+    if (formasPagamento.some((pagamento) => !pagamento.forma || pagamento.valor <= 0)) {
+        throw new Error('Forma de pagamento invalida');
+    }
+
+    const somaPagamentos = arredondarMoeda(
+        formasPagamento.reduce((soma, pagamento) => soma + pagamento.valor, 0)
+    );
+
+    if (Math.abs(somaPagamentos - valorPago) > TOLERANCIA_FECHAMENTO) {
+        throw new Error('Valor pago divergente da soma das formas de pagamento');
+    }
+
+    const trocoCalculado = arredondarMoeda(Math.max(0, valorPago - total));
+    if (Math.abs(arredondarMoeda(trocoInformado) - trocoCalculado) > TOLERANCIA_FECHAMENTO) {
+        throw new Error('Troco divergente do total e dos pagamentos informados');
+    }
+
+    const totalDinheiro = arredondarMoeda(
+        formasPagamento
+            .filter((pagamento) => pagamento.forma === 'dinheiro')
+            .reduce((soma, pagamento) => soma + pagamento.valor, 0)
+    );
+
+    if (trocoCalculado > TOLERANCIA_FECHAMENTO && totalDinheiro <= TOLERANCIA_FECHAMENTO) {
+        throw new Error('Troco somente e permitido quando houver pagamento em dinheiro');
+    }
+
+    if (trocoCalculado > TOLERANCIA_FECHAMENTO && totalDinheiro + TOLERANCIA_FECHAMENTO < trocoCalculado) {
+        throw new Error('Troco nao pode ser maior que o valor recebido em dinheiro');
+    }
+
+    return {
+        formasPagamento,
+        trocoCalculado
+    };
+}
+
 // Finalizar venda
 router.post('/', async (req, res) => {
     const pool = getPool();
@@ -10,26 +181,54 @@ router.post('/', async (req, res) => {
     try {
         await connection.beginTransaction();
         
-        const { itens, subtotal, desconto, total, valor_pago, troco, formas_pagamento } = req.body;
+        const { formas_pagamento } = req.body;
+        const vendaNormalizada = normalizarVendaComDescontoManual(req.body);
+        const {
+            itens,
+            subtotalBruto,
+            descontoTotalAplicado,
+            total,
+            valorPago,
+            troco: trocoInformado,
+            descontoManualTotalTipo,
+            descontoManualTotalValor,
+            descontoManualTotalAplicado,
+            descontoItensAplicado
+        } = vendaNormalizada;
+
+        const pagamentoNormalizado = validarPagamentosVenda(formas_pagamento, total, valorPago, trocoInformado);
+        const formasPagamento = pagamentoNormalizado.formasPagamento;
+        const troco = pagamentoNormalizado.trocoCalculado;
         
         if (!itens || itens.length === 0) {
             throw new Error('Carrinho vazio');
         }
 
-        if (!formas_pagamento || formas_pagamento.length === 0) {
-            throw new Error('Nenhuma forma de pagamento informada');
-        }
-        
         // Inserir venda
         const [vendaResult] = await connection.query(
-            'INSERT INTO vendas (total, valor_pago, troco, quantidade_itens, desconto) VALUES (?, ?, ?, ?, ?)',
-            [total, valor_pago, troco, itens.reduce((sum, item) => sum + item.quantidade, 0), desconto || 0]
+            `INSERT INTO vendas (
+                total, valor_pago, troco, quantidade_itens, desconto, subtotal_bruto,
+                desconto_manual_total_tipo, desconto_manual_total_valor,
+                desconto_manual_total_aplicado, desconto_manual_itens_aplicado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                total,
+                valorPago,
+                troco,
+                itens.reduce((sum, item) => sum + item.quantidade, 0),
+                descontoTotalAplicado,
+                subtotalBruto,
+                descontoManualTotalTipo,
+                descontoManualTotalValor,
+                descontoManualTotalAplicado,
+                descontoItensAplicado
+            ]
         );
         
         const vendaId = vendaResult.insertId;
 
         // Inserir formas de pagamento
-        for (const pagamento of formas_pagamento) {
+        for (const pagamento of formasPagamento) {
             await connection.query(
                 'INSERT INTO formas_pagamento_venda (venda_id, forma_pagamento, valor) VALUES (?, ?, ?)',
                 [vendaId, pagamento.forma, pagamento.valor]
@@ -53,8 +252,25 @@ router.post('/', async (req, res) => {
             
             // Inserir item da venda (COM CUSTO para análise histórica)
             await connection.query(
-                'INSERT INTO itens_venda (venda_id, produto_id, codigo_barras, nome_produto, quantidade, preco_unitario, preco_custo_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [vendaId, produtoId, item.codigo, item.nome, item.quantidade, item.preco, precoCusto, item.preco * item.quantidade]
+                `INSERT INTO itens_venda (
+                    venda_id, produto_id, codigo_barras, nome_produto, quantidade,
+                    preco_unitario, preco_custo_unitario, subtotal_bruto,
+                    desconto_manual_tipo, desconto_manual_valor, desconto_manual_aplicado, subtotal
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    vendaId,
+                    produtoId,
+                    item.codigo,
+                    item.nome,
+                    item.quantidade,
+                    item.preco,
+                    precoCusto,
+                    item.subtotal_bruto,
+                    item.desconto_manual_tipo,
+                    item.desconto_manual_valor,
+                    item.desconto_manual_aplicado,
+                    item.subtotal
+                ]
             );
             
             // Atualizar estoque
@@ -77,7 +293,7 @@ router.post('/', async (req, res) => {
                         preco: item.preco
                     })),
                     total: total,
-                    formasPagamento: formas_pagamento.map(fp => ({
+                    formasPagamento: formasPagamento.map(fp => ({
                         forma: fp.forma,
                         valor: fp.valor
                     })),
@@ -88,15 +304,17 @@ router.post('/', async (req, res) => {
             }
         }
         
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
+            data: { vendaId },
             vendaId: vendaId,
             message: 'Venda finalizada com sucesso!' 
         });
     } catch (error) {
         await connection.rollback();
         console.error('Erro ao finalizar venda:', error);
-        res.status(500).json({ error: error.message || 'Erro ao finalizar venda' });
+        const statusCode = ehErroValidacaoVenda(error) ? 400 : 500;
+        res.status(statusCode).json({ success: false, message: error.message || 'Erro ao finalizar venda' });
     } finally {
         connection.release();
     }
@@ -116,10 +334,15 @@ router.get('/', async (req, res) => {
             `SELECT * FROM vendas ${whereClause} ORDER BY data_venda DESC LIMIT 1000`
         );
         
-        res.json(rows);
+        res.json({
+            success: true,
+            data: rows,
+            vendas: rows,
+            message: 'Vendas listadas com sucesso'
+        });
     } catch (error) {
         console.error('Erro ao listar vendas:', error);
-        res.status(500).json({ error: 'Erro ao listar vendas' });
+        res.status(500).json({ success: false, message: 'Erro ao listar vendas' });
     }
 });
 
@@ -157,7 +380,14 @@ router.get('/relatorio', async (req, res) => {
         );
 
         if (vendas.length === 0) {
-            return res.json({ success: true, vendas: [], itens: [], formas_pagamento: [] });
+            return res.json({
+                success: true,
+                data: { vendas: [], itens: [], formas_pagamento: [] },
+                vendas: [],
+                itens: [],
+                formas_pagamento: [],
+                message: 'Relatorio gerado com sucesso'
+            });
         }
 
         const vendaIds = vendas.map(venda => venda.id);
@@ -175,9 +405,15 @@ router.get('/relatorio', async (req, res) => {
 
         res.json({
             success: true,
+            data: {
+                vendas,
+                itens,
+                formas_pagamento: formasPagamento
+            },
             vendas,
             itens,
-            formas_pagamento: formasPagamento
+            formas_pagamento: formasPagamento,
+            message: 'Relatorio gerado com sucesso'
         });
     } catch (error) {
         console.error('Erro ao gerar relatorio de vendas:', error);
@@ -199,7 +435,7 @@ router.get('/:id', async (req, res) => {
         );
         
         if (venda.length === 0) {
-            return res.status(404).json({ error: 'Venda não encontrada' });
+            return res.status(404).json({ success: false, message: 'Venda não encontrada' });
         }
         
         // Avisar se a venda está cancelada
@@ -217,14 +453,21 @@ router.get('/:id', async (req, res) => {
             [req.params.id]
         );
         
-        res.json({
+        const detalhes = {
             venda: venda[0],
             itens: itens,
             formas_pagamento: formasPagamento
+        };
+
+        res.json({
+            success: true,
+            data: detalhes,
+            ...detalhes,
+            message: 'Detalhes da venda carregados com sucesso'
         });
     } catch (error) {
         console.error('Erro ao buscar venda:', error);
-        res.status(500).json({ error: 'Erro ao buscar venda' });
+        res.status(500).json({ success: false, message: 'Erro ao buscar venda' });
     }
 });
 
@@ -245,15 +488,22 @@ router.get('/stats/resumo', async (req, res) => {
             'SELECT COUNT(*) as total FROM produtos WHERE estoque < 10 AND ativo = TRUE'
         );
         
-        res.json({
+        const resumo = {
             vendas_hoje: totalVendas[0].total || 0,
             valor_vendas_hoje: totalVendas[0].valor_total || 0,
             total_produtos: totalProdutos[0].total || 0,
             produtos_baixo_estoque: produtosBaixoEstoque[0].total || 0
+        };
+
+        res.json({
+            success: true,
+            data: resumo,
+            ...resumo,
+            message: 'Estatisticas carregadas com sucesso'
         });
     } catch (error) {
         console.error('Erro ao buscar estatísticas:', error);
-        res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+        res.status(500).json({ success: false, message: 'Erro ao buscar estatísticas' });
     }
 });
 
@@ -316,10 +566,12 @@ router.get('/stats/formas-pagamento', async (req, res) => {
         res.json({
             success: true,
             data: rows,
+            formas_pagamento: rows,
             periodo_aplicado: dataInicial && dataFinal ? 'intervalo_personalizado' : (data ? 'data_especifica' : periodo),
             data_aplicada: data || null,
             data_inicial_aplicada: dataInicial || null,
-            data_final_aplicada: dataFinal || null
+            data_final_aplicada: dataFinal || null,
+            message: 'Estatisticas de formas de pagamento carregadas com sucesso'
         });
     } catch (error) {
         console.error('Erro ao buscar estatísticas de formas de pagamento:', error);
@@ -404,6 +656,12 @@ router.delete('/:id', async (req, res) => {
         
         res.json({ 
             success: true, 
+            data: {
+                venda_id: vendaId,
+                valor: vendaData.total,
+                itens_revertidos: itens.length,
+                caixa_atualizado: caixaAberto.length > 0
+            },
             message: 'Venda cancelada com sucesso',
             dados: {
                 venda_id: vendaId,
@@ -417,6 +675,7 @@ router.delete('/:id', async (req, res) => {
         console.error('❌ Erro ao cancelar venda:', error);
         res.status(500).json({ 
             success: false,
+            message: error.message || 'Erro ao cancelar venda',
             error: error.message || 'Erro ao cancelar venda' 
         });
     } finally {
@@ -433,7 +692,24 @@ router.put('/:id', async (req, res) => {
         await connection.beginTransaction();
         
         const vendaId = req.params.id;
-        const { itens, subtotal, desconto, total, valor_pago, troco, formas_pagamento, motivo_edicao } = req.body;
+        const { formas_pagamento, motivo_edicao } = req.body;
+        const vendaNormalizada = normalizarVendaComDescontoManual(req.body);
+        const {
+            itens,
+            subtotalBruto,
+            descontoTotalAplicado,
+            total,
+            valorPago,
+            troco: trocoInformado,
+            descontoManualTotalTipo,
+            descontoManualTotalValor,
+            descontoManualTotalAplicado,
+            descontoItensAplicado
+        } = vendaNormalizada;
+
+        const pagamentoNormalizado = validarPagamentosVenda(formas_pagamento, total, valorPago, trocoInformado);
+        const formasPagamento = pagamentoNormalizado.formasPagamento;
+        const troco = pagamentoNormalizado.trocoCalculado;
         
         // Buscar venda original
         const [vendaOriginal] = await connection.query(
@@ -451,7 +727,7 @@ router.put('/:id', async (req, res) => {
         if (caixaAberto.length === 0) {
             throw new Error('Caixa fechado! Não é possível editar vendas com o caixa fechado.');
         }
-        
+
         const vendaOriginalData = vendaOriginal[0];
         
         // 1. CANCELAR VENDA ORIGINAL (reverter estoque)
@@ -490,14 +766,29 @@ router.put('/:id', async (req, res) => {
         
         // 2. CRIAR NOVA VENDA
         const [novaVendaResult] = await connection.query(
-            'INSERT INTO vendas (total, valor_pago, troco, quantidade_itens, desconto) VALUES (?, ?, ?, ?, ?)',
-            [total, valor_pago, troco, itens.reduce((sum, item) => sum + item.quantidade, 0), desconto || 0]
+            `INSERT INTO vendas (
+                total, valor_pago, troco, quantidade_itens, desconto, subtotal_bruto,
+                desconto_manual_total_tipo, desconto_manual_total_valor,
+                desconto_manual_total_aplicado, desconto_manual_itens_aplicado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                total,
+                valorPago,
+                troco,
+                itens.reduce((sum, item) => sum + item.quantidade, 0),
+                descontoTotalAplicado,
+                subtotalBruto,
+                descontoManualTotalTipo,
+                descontoManualTotalValor,
+                descontoManualTotalAplicado,
+                descontoItensAplicado
+            ]
         );
         
         const novaVendaId = novaVendaResult.insertId;
         
         // Inserir formas de pagamento
-        for (const pagamento of formas_pagamento) {
+        for (const pagamento of formasPagamento) {
             await connection.query(
                 'INSERT INTO formas_pagamento_venda (venda_id, forma_pagamento, valor) VALUES (?, ?, ?)',
                 [novaVendaId, pagamento.forma, pagamento.valor]
@@ -519,8 +810,25 @@ router.put('/:id', async (req, res) => {
             const precoCusto = produtoRows[0].preco_custo || 0;
             
             await connection.query(
-                'INSERT INTO itens_venda (venda_id, produto_id, codigo_barras, nome_produto, quantidade, preco_unitario, preco_custo_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [novaVendaId, produtoId, item.codigo, item.nome, item.quantidade, item.preco, precoCusto, item.preco * item.quantidade]
+                `INSERT INTO itens_venda (
+                    venda_id, produto_id, codigo_barras, nome_produto, quantidade,
+                    preco_unitario, preco_custo_unitario, subtotal_bruto,
+                    desconto_manual_tipo, desconto_manual_valor, desconto_manual_aplicado, subtotal
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    novaVendaId,
+                    produtoId,
+                    item.codigo,
+                    item.nome,
+                    item.quantidade,
+                    item.preco,
+                    precoCusto,
+                    item.subtotal_bruto,
+                    item.desconto_manual_tipo,
+                    item.desconto_manual_valor,
+                    item.desconto_manual_aplicado,
+                    item.subtotal
+                ]
             );
             
             // Atualizar estoque
@@ -542,6 +850,10 @@ router.put('/:id', async (req, res) => {
         
         res.json({ 
             success: true, 
+            data: {
+                venda_original_id: vendaId,
+                nova_venda_id: novaVendaId
+            },
             message: 'Venda editada com sucesso!',
             dados: {
                 venda_original_id: vendaId,
@@ -551,9 +863,10 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         await connection.rollback();
         console.error('❌ Erro ao editar venda:', error);
-        res.status(500).json({ 
+        const statusCode = ehErroValidacaoVenda(error) ? 400 : 500;
+        res.status(statusCode).json({ 
             success: false,
-            error: error.message || 'Erro ao editar venda' 
+            message: error.message || 'Erro ao editar venda' 
         });
     } finally {
         connection.release();
