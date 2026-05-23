@@ -10,8 +10,8 @@
     <div class="container">
         <div class="header">
             <div>
-                <h1 style="font-size: 36px; font-weight: 700;">🛒 PDV Bomboniere Dois Primos</h1>
-                <div style="display: flex; gap: 15px; align-items: center; margin-top: 8px;">
+                <h1 style="font-size: 31px; font-weight: 700;">🛒 PDV Bomboniere Dois Primos</h1>
+                <div style="display: flex; gap: 12px; align-items: center; margin-top: 6px;">
                     <span id="statusBadge" class="status-badge offline">● Conectando...</span>
                     <span id="caixaStatus" class="status-badge" style="background: #dc3545;">🔒 Caixa Fechado</span>
                 </div>
@@ -70,18 +70,18 @@
                 <div class="search-section">
                     <!-- Campo de Quantidade -->
                     <div style="margin-bottom: 15px;">
-                        <label class="search-label" style="font-size: 18px; font-weight: 700; color: #333; margin-bottom: 10px;">📦 Quantidade:</label>
+                        <label class="search-label" style="font-size: 14px; font-weight: 600; color: #4b5563; margin-bottom: 8px;">📦 Quantidade:</label>
                         <input 
                             type="number" 
                             id="quantidadeInput" 
                             min="1"
                             value="1"
                             placeholder="1"
-                            style="font-size: 28px; padding: 15px; border: 4px solid #28a745; border-radius: 10px; width: 150px; text-align: center; font-weight: bold;">
-                        <span style="margin-left: 15px; font-size: 16px; color: #666;">Use <kbd style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 14px;">+</kbd> e <kbd style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 14px;">-</kbd> para ajustar</span>
+                            style="font-size: 24px; padding: 12px; border: 3px solid #28a745; border-radius: 10px; width: 130px; text-align: center; font-weight: 700;">
+                        <span style="margin-left: 12px; font-size: 12px; color: #6b7280;">Use <kbd style="background: #28a745; color: white; padding: 3px 7px; border-radius: 4px; font-size: 12px;">+</kbd> e <kbd style="background: #28a745; color: white; padding: 3px 7px; border-radius: 4px; font-size: 12px;">-</kbd> para ajustar</span>
                     </div>
                     
-                    <label class="search-label" style="font-size: 20px; font-weight: 700; color: #333; margin-bottom: 15px;">🔍 Código de Barras:</label>
+                    <label class="search-label" style="font-size: 14px; font-weight: 600; color: #4b5563; margin-bottom: 8px;">🔍 Código de Barras:</label>
                     <div class="search-box" style="display: flex; gap: 10px;">
                         <input 
                             type="text" 
@@ -89,14 +89,14 @@
                             placeholder="Escaneie o produto..."
                             autofocus
                             autocomplete="off"
-                            style="font-size: 24px; padding: 20px; border: 4px solid #667eea; flex: 1;">
+                            style="font-size: 22px; padding: 16px; border: 3px solid #667eea; flex: 1;">
                         <button onclick="abrirBuscaPorNome()" style="
                             background: #17a2b8;
                             color: white;
                             border: none;
-                            padding: 15px 25px;
+                            padding: 12px 20px;
                             border-radius: 10px;
-                            font-size: 18px;
+                            font-size: 16px;
                             font-weight: bold;
                             cursor: pointer;
                             white-space: nowrap;
@@ -111,7 +111,7 @@
                     <div id="cartItems">
                         <div class="empty-cart">
                             <div class="empty-cart-icon" style="font-size: 80px;">🛒</div>
-                            <p style="font-size: 20px; color: #666; font-weight: 500;">Nenhum item</p>
+                            <p class="empty-cart-main">Nenhum item</p>
                         </div>
                     </div>
                 </div>
@@ -134,19 +134,19 @@
                 </div>
 
                 <div class="actions-section">
-                    <button class="btn btn-success" onclick="finalizarVenda()" tabindex="-1" style="font-size: 20px; padding: 20px; font-weight: 800;">
+                    <button class="btn btn-success" onclick="finalizarVenda()" style="font-size: 20px; padding: 20px; font-weight: 800;">
                         ✓ FINALIZAR VENDA <span style="background: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 4px; margin-left: 10px; font-size: 14px;">F2</span>
                     </button>
-                    <button class="btn btn-danger" onclick="cancelarVenda()" tabindex="-1" style="font-size: 18px; padding: 18px; font-weight: 700;">
+                    <button class="btn btn-danger" onclick="cancelarVenda()" style="font-size: 17px; padding: 16px; font-weight: 700;">
                         ✕ CANCELAR VENDA <span style="background: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 4px; margin-left: 10px; font-size: 14px;">F3</span>
                     </button>
-                    <button class="btn btn-primary" onclick="abrirCadastro()" tabindex="-1" style="font-size: 16px; padding: 16px;">
+                    <button class="btn btn-primary" onclick="abrirCadastro()" style="font-size: 14px; padding: 14px;">
                         + CADASTRAR PRODUTO <span style="background: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 4px; margin-left: 10px; font-size: 14px;">F4</span>
                     </button>
-                    <button class="btn btn-info" onclick="abrirHistorico()" tabindex="-1" style="background: #17a2b8; border-color: #17a2b8; font-size: 16px; padding: 16px;">
+                    <button class="btn btn-info" onclick="abrirHistorico()" style="background: #17a2b8; border-color: #17a2b8; font-size: 14px; padding: 14px;">
                         📊 HISTÓRICO <span style="background: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 4px; margin-left: 10px; font-size: 14px;">F5</span>
                     </button>
-                    <button class="btn btn-warning" onclick="abrirGerenciarProdutos()" tabindex="-1" style="background: #ffc107; border-color: #ffc107; color: #000; font-size: 16px; padding: 16px;">
+                    <button class="btn btn-warning" onclick="abrirGerenciarProdutos()" style="background: #ffc107; border-color: #ffc107; color: #000; font-size: 14px; padding: 14px;">
                         📦 PRODUTOS <span style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px; margin-left: 10px; font-size: 14px;">F6</span>
                     </button>
                 </div>

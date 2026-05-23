@@ -18,6 +18,20 @@ Nao usar para:
 Prompt exemplo:
 - Corrigir inconsistencia no fechamento de caixa mantendo fluxo de modal aninhada.
 
+### PDV Design UX
+Arquivo: .github/agents/pdv-design-ux.agent.md
+
+Use para:
+- Melhorar UX/UI do PDV e ERP com foco em clareza para cliente final e velocidade para operador.
+- Reorganizar hierarquia visual de valores (subtotal, total, saldo a pagar, troco) e fluxo de pagamento.
+- Aplicar boas praticas de mercado (consistencia, feedback, prevencao de erro, acessibilidade e responsividade).
+
+Nao usar para:
+- Revisao puramente tecnica de backend sem impacto de UX.
+
+Prompt exemplo:
+- Ajustar o fluxo de pagamento para destacar total a pagar, saldo restante e troco sem prejudicar atalhos de teclado.
+
 ### PDV Revisor Operacional
 Arquivo: .github/agents/pdv-revisor-operacional.agent.md
 
@@ -34,5 +48,6 @@ Prompt exemplo:
 
 ## Fluxo recomendado
 1. Implementar com o agente PDV Bomboniere.
-2. Revisar com o agente PDV Revisor Operacional.
-3. Corrigir achados criticos antes de publicar.
+2. Refinar experiencia com o agente PDV Design UX.
+3. Revisar com o agente PDV Revisor Operacional.
+4. Corrigir achados criticos antes de publicar.

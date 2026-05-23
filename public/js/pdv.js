@@ -1,8 +1,10 @@
-const API_URL = 'http://localhost:3000/api';
+﻿const API_URL = 'http://localhost:3000/api';
 let carrinho = [];
 let serverOnline = false;
 let pagamentos = []; // Array para armazenar os pagamentos
 let processandoVenda = false; // Flag para evitar vendas duplicadas
+let monitorConexaoInterval = null;
+let ultimoStatusConexao = null;
 
 // Carregar histórico de fechamentos da API
 async function carregarHistoricoFechamentos() {
@@ -19,7 +21,7 @@ async function carregarHistoricoFechamentos() {
 // Verificar conexão com servidor
 async function verificarConexao() {
     try {
-        const response = await fetch(`${API_URL}/health`);
+        const response = await fetch(`${API_URL}/health`, { cache: 'no-store' });
         serverOnline = response.ok;
         
         const badge = document.getElementById('statusBadge');
@@ -36,6 +38,47 @@ async function verificarConexao() {
         badge.className = 'status-badge offline';
         badge.textContent = '● Servidor Offline';
     }
+
+    if (ultimoStatusConexao !== null && ultimoStatusConexao !== serverOnline) {
+        const tipo = serverOnline ? 'success' : 'error';
+        const mensagem = serverOnline ? 'Conexao com servidor restabelecida.' : 'Servidor offline! Verifique a conexao.';
+        mostrarNotificacao(mensagem, tipo);
+    }
+
+    ultimoStatusConexao = serverOnline;
+    return serverOnline;
+}
+
+function iniciarMonitoramentoConexao() {
+    if (monitorConexaoInterval) {
+        clearInterval(monitorConexaoInterval);
+    }
+
+    monitorConexaoInterval = setInterval(() => {
+        verificarConexao();
+    }, 10000);
+
+    window.addEventListener('online', () => verificarConexao());
+    window.addEventListener('offline', () => verificarConexao());
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            verificarConexao();
+        }
+    });
+}
+
+function obterSubtotalItem(item) {
+    const subtotalExato = Number(item.subtotal_exato);
+    if (Number.isFinite(subtotalExato)) {
+        return subtotalExato;
+    }
+
+    return Number(item.preco) * Number(item.quantidade);
+}
+
+function calcularTotalCarrinho() {
+    return carrinho.reduce((sum, item) => sum + obterSubtotalItem(item), 0);
 }
 
 // Configuração do input de busca
@@ -94,8 +137,11 @@ async function adicionarProduto(codigo) {
     }
 
     if (!serverOnline) {
-        mostrarNotificacao('Servidor offline! Verifique a conexão.', 'error');
-        return;
+        await verificarConexao();
+        if (!serverOnline) {
+            mostrarNotificacao('Servidor offline! Verifique a conexao.', 'error');
+            return;
+        }
     }
 
     // Obter quantidade do input
@@ -235,8 +281,8 @@ function atualizarCarrinho() {
         cartItemsDiv.innerHTML = `
             <div class="empty-cart">
                 <div class="empty-cart-icon">🛒</div>
-                <p>Nenhum item adicionado ainda</p>
-                <p style="font-size: 14px; margin-top: 10px;">Use o leitor de código de barras ou digite o código</p>
+                <p class="empty-cart-main">Nenhum item adicionado ainda</p>
+                <p class="empty-cart-sub">Use o leitor de código de barras ou digite o código</p>
             </div>
         `;
     } else {
@@ -250,16 +296,18 @@ function atualizarCarrinho() {
                     <div class="item-name">${item.nome}</div>
                     <div class="item-details">
                         ${temDesconto ? 
-                            `<span style="text-decoration: line-through; color: #999; margin-right: 8px;">R$ ${precoOriginal.toFixed(2)}</span>
-                             <span style="color: #28a745; font-weight: bold;">R$ ${item.preco.toFixed(2)}</span>
+                            `<div class="item-details-muted">Preco unitario</div>
+                             <span style="text-decoration: line-through; color: #9ca3af; margin-right: 8px;">R$ ${precoOriginal.toFixed(2)}</span>
+                             <span class="item-details-price" style="color: #16a34a; font-weight: 700;">R$ ${item.preco.toFixed(2)}</span>
                              <span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">-${item.desconto_percentual}%</span>`
                             :
-                            `R$ ${item.preco.toFixed(2)} cada`
+                            `<div class="item-details-muted">Preco unitario</div>
+                             <span class="item-details-price">R$ ${item.preco.toFixed(2)} cada</span>`
                         }
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 5px; background: #f8f9fa; padding: 5px; border-radius: 6px;">
+                <div class="item-actions">
+                    <div class="qty-controls">
                         <button onclick="diminuirQuantidadeItem(${index})" style="
                             background: #6c757d;
                             color: white;
@@ -294,7 +342,7 @@ function atualizarCarrinho() {
                             font-weight: bold;
                         " title="Aumentar quantidade">+</button>
                     </div>
-                    <div class="item-price" style="min-width: 80px;">R$ ${(item.subtotal_exato || (item.preco * item.quantidade)).toFixed(2)}</div>
+                    <div class="item-price">R$ ${obterSubtotalItem(item).toFixed(2)}</div>
                     <button onclick="removerItemCarrinho(${index})" style="
                         background: #dc3545;
                         color: white;
@@ -315,7 +363,7 @@ function atualizarCarrinho() {
     }
 
     const totalQuantidade = carrinho.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValor = carrinho.reduce((sum, item) => sum + (item.subtotal_exato || (item.preco * item.quantidade)), 0);
+    const totalValor = calcularTotalCarrinho();
 
     totalItemsSpan.textContent = totalQuantidade;
     subtotalSpan.textContent = `R$ ${totalValor.toFixed(2)}`;
@@ -334,6 +382,20 @@ function removerItemCarrinho(index) {
     carrinho.splice(index, 1);
     atualizarCarrinho();
     mostrarNotificacao(`✓ ${item.nome} removido do carrinho!`, 'info');
+}
+
+function removerUltimoItemComConfirmacao() {
+    if (carrinho.length === 0) {
+        return;
+    }
+
+    const item = carrinho[carrinho.length - 1];
+    const confirmou = confirm(`Remover o ultimo item (${item.nome}) do carrinho?`);
+    if (!confirmou) {
+        return;
+    }
+
+    removerItemCarrinho(carrinho.length - 1);
 }
 
 // Função auxiliar para recalcular promoção ao alterar quantidade
@@ -496,7 +558,7 @@ function finalizarVenda() {
         return;
     }
     
-    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    const total = calcularTotalCarrinho();
     
     // Atualizar valores (sem desconto manual)
     document.getElementById('subtotalVenda').textContent = `R$ ${total.toFixed(2)}`;
@@ -563,7 +625,7 @@ function selecionarFormaPagamentoComValor(forma) {
         return;
     }
     
-    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    const total = calcularTotalCarrinho();
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     
@@ -621,7 +683,7 @@ function adicionarPagamento() {
         return;
     }
     
-    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    const total = calcularTotalCarrinho();
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     
@@ -650,7 +712,7 @@ function adicionarPagamento() {
 }
 
 function mostrarModalConfirmacaoVenda() {
-    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    const total = calcularTotalCarrinho();
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const troco = Math.max(0, totalPago - total);
     const temDinheiro = pagamentos.some(p => p.forma === 'dinheiro');
@@ -739,7 +801,7 @@ function removerPagamento(index) {
 }
 
 function atualizarPagamentos() {
-    const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    const total = calcularTotalCarrinho();
     const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
     const faltante = total - totalPago;
     const troco = totalPago - total;
@@ -841,7 +903,7 @@ function inicializarInputPagamento() {
                 e.preventDefault();
                 
                 // Verificar se o pagamento já está completo
-                const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+                const total = calcularTotalCarrinho();
                 const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
                 
                 // Se pagamento já está completo e não tem valor digitado, confirma a venda
@@ -941,7 +1003,7 @@ async function confirmarVenda(opcoes = {}) {
             return;
         }
 
-        const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+        const subtotal = calcularTotalCarrinho();
         const total = subtotal;
         const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
         const diferenca = total - totalPago;
@@ -958,8 +1020,11 @@ async function confirmarVenda(opcoes = {}) {
         }
 
         if (!serverOnline) {
-            mostrarNotificacao('Servidor offline! Não foi possível finalizar.', 'error');
-            return;
+            await verificarConexao();
+            if (!serverOnline) {
+                mostrarNotificacao('Servidor offline! Não foi possível finalizar.', 'error');
+                return;
+            }
         }
 
         const troco = Math.max(0, totalPago - total);
@@ -1171,8 +1236,11 @@ let vendasCompletas = [];
 
 async function abrirHistorico() {
     if (!serverOnline) {
-        mostrarNotificacao('Servidor offline!', 'error');
-        return;
+        await verificarConexao();
+        if (!serverOnline) {
+            mostrarNotificacao('Servidor offline!', 'error');
+            return;
+        }
     }
 
     abrirModal('historicoModal');
@@ -1445,9 +1513,16 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Delete') {
         // Só funciona se não houver modal aberto
         const modalAberto = document.querySelector('.modal.active');
-        if (!modalAberto && carrinho.length > 0) {
+        const elementoFocado = document.activeElement;
+        const focoEmCampo = elementoFocado && (
+            elementoFocado.tagName === 'INPUT' ||
+            elementoFocado.tagName === 'TEXTAREA' ||
+            elementoFocado.isContentEditable
+        );
+
+        if (!modalAberto && !focoEmCampo && carrinho.length > 0) {
             e.preventDefault();
-            removerItemCarrinho(carrinho.length - 1);
+            removerUltimoItemComConfirmacao();
             return;
         }
     }
@@ -1648,7 +1723,8 @@ async function confirmarExclusaoVenda(vendaId) {
 }
 
 // Inicialização
-verificarConexao(); // Verifica apenas uma vez no carregamento
+verificarConexao();
+iniciarMonitoramentoConexao();
 atualizarCarrinho();
 searchInput.focus();
 
@@ -1797,3 +1873,5 @@ document.addEventListener('modalsLoaded', () => {
         });
     }
 });
+
+
