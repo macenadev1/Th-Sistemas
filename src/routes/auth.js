@@ -6,7 +6,7 @@ const crypto = require('crypto');
 
 // Constantes
 const SALT_ROUNDS = 10;
-const SESSION_DURATION = 30 * 60 * 1000; // 30 minutos
+const SESSION_DURATION = 12 * 60 * 60 * 1000; // 12 horas
 const REMEMBER_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 // Gerar token aleatório
@@ -19,7 +19,7 @@ async function requireAuth(req, res, next) {
     try {
         const token = req.headers.authorization?.replace('Bearer ', '') || 
                      req.query.token || 
-                     req.body.token;
+                     req.body?.token;
 
         if (!token) {
             return res.status(401).json({ 
@@ -31,17 +31,23 @@ async function requireAuth(req, res, next) {
 
         const pool = getPool();
         
-        // Verificar sessão
+        // Verificar sessão e expiração no próprio MySQL para evitar problemas de timezone entre app e banco.
         const [sessoes] = await pool.query(
             `SELECT s.*, u.nome, u.email, u.role, u.ativo 
              FROM sessoes s 
              JOIN usuarios u ON s.usuario_id = u.id 
-             WHERE (s.token = ? OR s.remember_token = ?) 
+             WHERE (
+                (s.token = ? AND s.expira_em > NOW())
+                OR
+                (s.remember_token = ? AND s.remember_expira_em > NOW())
+             )
              AND u.ativo = TRUE`,
             [token, token]
         );
 
         if (sessoes.length === 0) {
+            // Limpeza oportunista de possíveis sessões expiradas com este token.
+            await pool.query('DELETE FROM sessoes WHERE token = ? OR remember_token = ?', [token, token]);
             return res.status(401).json({ 
                 success: false, 
                 message: 'Sessão inválida ou expirada',
@@ -50,30 +56,13 @@ async function requireAuth(req, res, next) {
         }
 
         const sessao = sessoes[0];
-        const agora = new Date();
-
-        // Verificar expiração
         const isRememberToken = sessao.remember_token === token;
-        const expiraEm = isRememberToken ? 
-            new Date(sessao.remember_expira_em) : 
-            new Date(sessao.expira_em);
-
-        if (agora > expiraEm) {
-            // Sessão expirada - deletar
-            await pool.query('DELETE FROM sessoes WHERE id = ?', [sessao.id]);
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Sessão expirada',
-                requiresLogin: true 
-            });
-        }
 
         // Renovar sessão normal (não remember)
         if (!isRememberToken) {
-            const novaExpiracao = new Date(Date.now() + SESSION_DURATION);
             await pool.query(
-                'UPDATE sessoes SET expira_em = ? WHERE id = ?',
-                [novaExpiracao, sessao.id]
+                'UPDATE sessoes SET expira_em = DATE_ADD(NOW(), INTERVAL 12 HOUR) WHERE id = ?',
+                [sessao.id]
             );
         }
 
@@ -148,14 +137,11 @@ router.post('/login', async (req, res) => {
         // Criar sessão
         const sessionId = crypto.randomUUID();
         const token = generateToken();
-        const expiraEm = new Date(Date.now() + SESSION_DURATION);
         
         let rememberToken = null;
-        let rememberExpiraEm = null;
 
         if (rememberMe) {
             rememberToken = generateToken();
-            rememberExpiraEm = new Date(Date.now() + REMEMBER_DURATION);
         }
 
         const ipAddress = req.ip || req.connection.remoteAddress;
@@ -164,8 +150,9 @@ router.post('/login', async (req, res) => {
         await pool.query(
             `INSERT INTO sessoes 
             (id, usuario_id, token, remember_token, ip_address, user_agent, expira_em, remember_expira_em) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [sessionId, usuario.id, token, rememberToken, ipAddress, userAgent, expiraEm, rememberExpiraEm]
+            VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 12 HOUR),
+                CASE WHEN ? IS NULL THEN NULL ELSE DATE_ADD(NOW(), INTERVAL 30 DAY) END)`,
+            [sessionId, usuario.id, token, rememberToken, ipAddress, userAgent, rememberToken]
         );
 
         res.json({
@@ -235,11 +222,9 @@ router.post('/refresh', requireAuth, async (req, res) => {
         
         // Gerar novo token
         const novoToken = generateToken();
-        const novaExpiracao = new Date(Date.now() + SESSION_DURATION);
-
         await pool.query(
-            'UPDATE sessoes SET token = ?, expira_em = ? WHERE token = ?',
-            [novoToken, novaExpiracao, token]
+            'UPDATE sessoes SET token = ?, expira_em = DATE_ADD(NOW(), INTERVAL 12 HOUR) WHERE token = ? OR remember_token = ?',
+            [novoToken, token, token]
         );
 
         res.json({
