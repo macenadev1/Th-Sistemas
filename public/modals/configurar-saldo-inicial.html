@@ -21,14 +21,17 @@
                     style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
             </div>
             
-            <!-- Informação sobre Reposição Automática -->
-            <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <strong style="color: #1976d2;">ℹ️ Sobre Reposição:</strong>
-                <p style="margin: 8px 0 0 0; color: #555; font-size: 14px;">
-                    O saldo de <strong>Reposição</strong> é calculado <strong>automaticamente</strong> 
-                    a partir do custo dos produtos vendidos no mês.
-                    Não precisa configurar manualmente!
-                </p>
+            <div class="form-group">
+                <label style="font-weight: bold; color: #333;">📦 Saldo Inicial - Reposição (R$):</label>
+                <input 
+                    type="text" 
+                    id="saldoReposicaoConfig" 
+                    required 
+                    placeholder="0,00"
+                    style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; text-align: right; font-weight: bold;">
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    💡 Valor reservado para reposição de estoque no mês
+                </small>
             </div>
             
             <div class="form-group">

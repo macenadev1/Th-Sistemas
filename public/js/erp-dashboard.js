@@ -2174,9 +2174,15 @@ async function abrirModalConfigurarSaldoInicial() {
         mesInput.value = mesAtual;
     }
     
+    const saldoReposicaoInput = document.getElementById('saldoReposicaoConfig');
     const saldoLucroInput = document.getElementById('saldoLucroConfig');
     const observacoesInput = document.getElementById('observacoesConfig');
     
+    // Aplicar formatação de moeda no input de reposição
+    if (saldoReposicaoInput && !saldoReposicaoInput.getValorDecimal) {
+        aplicarFormatacaoMoeda(saldoReposicaoInput);
+    }
+
     // Aplicar formatação de moeda no input de lucro
     if (saldoLucroInput && !saldoLucroInput.getValorDecimal) {
         aplicarFormatacaoMoeda(saldoLucroInput);
@@ -2194,6 +2200,12 @@ async function abrirModalConfigurarSaldoInicial() {
                 
                 if (saldoExistente) {
                     // Preencher campos com valores existentes
+                    if (saldoReposicaoInput && saldoReposicaoInput.setValorDecimal) {
+                        saldoReposicaoInput.setValorDecimal(parseFloat(saldoExistente.saldo_reposicao) || 0);
+                    } else if (saldoReposicaoInput) {
+                        saldoReposicaoInput.value = (parseFloat(saldoExistente.saldo_reposicao) || 0).toFixed(2).replace('.', ',');
+                    }
+
                     if (saldoLucroInput && saldoLucroInput.setValorDecimal) {
                         saldoLucroInput.setValorDecimal(parseFloat(saldoExistente.saldo_lucro) || 0);
                     } else if (saldoLucroInput) {
@@ -2205,6 +2217,13 @@ async function abrirModalConfigurarSaldoInicial() {
                     }
                 } else {
                     // Limpar campos se não houver saldo configurado
+                    if (saldoReposicaoInput) {
+                        if (saldoReposicaoInput.resetarValor) {
+                            saldoReposicaoInput.resetarValor();
+                        } else {
+                            saldoReposicaoInput.value = '0,00';
+                        }
+                    }
                     if (saldoLucroInput) {
                         if (saldoLucroInput.resetarValor) {
                             saldoLucroInput.resetarValor();
@@ -2219,6 +2238,13 @@ async function abrirModalConfigurarSaldoInicial() {
     } catch (error) {
         console.error('Erro ao buscar saldo inicial:', error);
         // Em caso de erro, inicializar com zero
+        if (saldoReposicaoInput) {
+            if (saldoReposicaoInput.resetarValor) {
+                saldoReposicaoInput.resetarValor();
+            } else {
+                saldoReposicaoInput.value = '0,00';
+            }
+        }
         if (saldoLucroInput) {
             if (saldoLucroInput.resetarValor) {
                 saldoLucroInput.resetarValor();
@@ -2230,8 +2256,8 @@ async function abrirModalConfigurarSaldoInicial() {
     }
     
     abrirModal('configurarSaldoInicialModal', () => {
-        if (saldoLucroInput) {
-            saldoLucroInput.focus();
+        if (saldoReposicaoInput) {
+            saldoReposicaoInput.focus();
         }
     });
 }
@@ -2387,12 +2413,22 @@ async function salvarConfiguracaoSaldoInicial(event) {
     event.preventDefault();
     
     const mesReferencia = document.getElementById('mesReferenciaConfig').value;
+    const saldoReposicaoInput = document.getElementById('saldoReposicaoConfig');
     const saldoLucroInput = document.getElementById('saldoLucroConfig');
     const observacoes = document.getElementById('observacoesConfig').value.trim();
+
+    const saldoReposicao = saldoReposicaoInput.getValorDecimal
+        ? saldoReposicaoInput.getValorDecimal()
+        : parseFloat(saldoReposicaoInput.value.replace(',', '.')) || 0;
     
     const saldoLucro = saldoLucroInput.getValorDecimal 
         ? saldoLucroInput.getValorDecimal() 
         : parseFloat(saldoLucroInput.value.replace(',', '.')) || 0;
+
+    if (saldoReposicao < 0) {
+        mostrarNotificacao('⚠️ O saldo de reposição não pode ser negativo', 'error');
+        return;
+    }
     
     if (saldoLucro < 0) {
         mostrarNotificacao('⚠️ O saldo de lucro não pode ser negativo', 'error');
@@ -2408,7 +2444,7 @@ async function salvarConfiguracaoSaldoInicial(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 mes_ano: mesAnoFormatado,
-                saldo_reposicao: 0, // Não usado mais, calculado automaticamente
+                saldo_reposicao: saldoReposicao,
                 saldo_lucro: saldoLucro,
                 observacoes: observacoes || null
             })
@@ -2420,7 +2456,7 @@ async function salvarConfiguracaoSaldoInicial(event) {
             throw new Error(result.error || 'Erro ao salvar configuração');
         }
         
-        mostrarNotificacao('✅ Saldo inicial de lucro configurado com sucesso!', 'success');
+        mostrarNotificacao('✅ Saldos iniciais de reposição e lucro configurados com sucesso!', 'success');
         
         fecharModal('configurarSaldoInicialModal');
         
