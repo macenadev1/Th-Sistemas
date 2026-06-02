@@ -492,6 +492,42 @@
                 </div>
                 <div id="configuracoes-content">
                     <button onclick="abrirConfiguracoes()" class="btn btn-primary">Abrir Configurações</button>
+                    <div id="gestaoUsuariosCard" style="margin-top: 20px; padding: 20px; border: 1px solid #e3e6ea; border-radius: 8px; background: #fff; max-width: 720px;">
+                        <h3 style="margin: 0 0 8px 0; color: #333;">🔐 Criar Login de Usuário</h3>
+                        <p style="margin: 0 0 16px 0; color: #666; font-size: 14px;">Disponível apenas para administradores.</p>
+
+                        <form id="formCriarUsuarioERP" style="display: grid; gap: 12px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                                <div>
+                                    <label for="novoUsuarioNome" style="display: block; margin-bottom: 6px; font-weight: 600;">Nome</label>
+                                    <input id="novoUsuarioNome" type="text" required maxlength="255" placeholder="Nome do usuário" style="width: 100%; padding: 10px; border: 1px solid #d8dde3; border-radius: 6px;">
+                                </div>
+                                <div>
+                                    <label for="novoUsuarioEmail" style="display: block; margin-bottom: 6px; font-weight: 600;">Email</label>
+                                    <input id="novoUsuarioEmail" type="email" required maxlength="255" placeholder="usuario@empresa.com" style="width: 100%; padding: 10px; border: 1px solid #d8dde3; border-radius: 6px;">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                                <div>
+                                    <label for="novoUsuarioSenha" style="display: block; margin-bottom: 6px; font-weight: 600;">Senha</label>
+                                    <input id="novoUsuarioSenha" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" style="width: 100%; padding: 10px; border: 1px solid #d8dde3; border-radius: 6px;">
+                                </div>
+                                <div>
+                                    <label for="novoUsuarioRole" style="display: block; margin-bottom: 6px; font-weight: 600;">Perfil</label>
+                                    <select id="novoUsuarioRole" style="width: 100%; padding: 10px; border: 1px solid #d8dde3; border-radius: 6px;">
+                                        <option value="operador">Operador</option>
+                                        <option value="admin">Administrador</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px;">
+                                <button id="btnCriarUsuarioERP" type="submit" class="btn btn-success">Criar Login</button>
+                                <small style="color: #777;">A senha será armazenada com hash seguro (bcrypt).</small>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </section>
         </div>

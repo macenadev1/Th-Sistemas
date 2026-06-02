@@ -1875,10 +1875,93 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ ERP Dashboard carregado');
     verificarConexaoERP(); // Verifica apenas uma vez no carregamento
     carregarDashboard();
+    inicializarGestaoUsuariosERP();
     
     // Inicializar controle financeiro após os modais carregarem
     document.addEventListener('modalsLoaded', inicializarControleFinanceiro);
 });
+
+function inicializarGestaoUsuariosERP() {
+    const card = document.getElementById('gestaoUsuariosCard');
+    const form = document.getElementById('formCriarUsuarioERP');
+    const usuario = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+
+    if (!card || !form) {
+        return;
+    }
+
+    if (!usuario || usuario.role !== 'admin') {
+        card.innerHTML = '<p style="margin: 0; color: #666;">Apenas administradores podem criar novos logins.</p>';
+        return;
+    }
+
+    if (form.dataset.bound === 'true') {
+        return;
+    }
+
+    form.dataset.bound = 'true';
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const nomeInput = document.getElementById('novoUsuarioNome');
+        const emailInput = document.getElementById('novoUsuarioEmail');
+        const senhaInput = document.getElementById('novoUsuarioSenha');
+        const roleInput = document.getElementById('novoUsuarioRole');
+        const btn = document.getElementById('btnCriarUsuarioERP');
+
+        const nome = nomeInput ? nomeInput.value.trim() : '';
+        const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+        const senha = senhaInput ? senhaInput.value : '';
+        const role = roleInput ? roleInput.value : 'operador';
+
+        if (!nome || !email || !senha) {
+            mostrarNotificacao('Preencha nome, email e senha', 'error');
+            return;
+        }
+
+        if (senha.length < 6) {
+            mostrarNotificacao('A senha deve ter pelo menos 6 caracteres', 'error');
+            return;
+        }
+
+        const btnTextoOriginal = btn ? btn.textContent : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Criando...';
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/auth/usuarios`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ nome, email, senha, role })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Erro ao criar usuário');
+            }
+
+            mostrarNotificacao(`✅ Login criado para ${data.data.nome}`, 'success');
+            form.reset();
+            if (roleInput) {
+                roleInput.value = 'operador';
+            }
+        } catch (error) {
+            console.error('Erro ao criar login de usuário:', error);
+            mostrarNotificacao(`❌ ${error.message}`, 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = btnTextoOriginal || 'Criar Login';
+            }
+        }
+    });
+}
 
 // ==================== CONTROLE FINANCEIRO - SALDOS ====================
 

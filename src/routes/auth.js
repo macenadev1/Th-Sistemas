@@ -259,6 +259,77 @@ router.post('/refresh', requireAuth, async (req, res) => {
     }
 });
 
+// POST /api/auth/usuarios - Criar usuário (apenas admin)
+router.post('/usuarios', requireAuth, requireAdmin, async (req, res) => {
+    const pool = getPool();
+
+    try {
+        const { nome, email, senha, role } = req.body;
+
+        if (!nome || !email || !senha) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nome, email e senha são obrigatórios'
+            });
+        }
+
+        const emailNormalizado = String(email).trim().toLowerCase();
+        const nomeNormalizado = String(nome).trim();
+        const roleNormalizado = role === 'admin' ? 'admin' : 'operador';
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailNormalizado)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email inválido'
+            });
+        }
+
+        if (String(senha).length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'A senha deve ter pelo menos 6 caracteres'
+            });
+        }
+
+        const [existente] = await pool.query(
+            'SELECT id FROM usuarios WHERE email = ?',
+            [emailNormalizado]
+        );
+
+        if (existente.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Já existe um usuário com este email'
+            });
+        }
+
+        const senhaHash = await bcrypt.hash(String(senha), SALT_ROUNDS);
+
+        const [result] = await pool.query(
+            'INSERT INTO usuarios (nome, email, senha_hash, role, ativo) VALUES (?, ?, ?, ?, TRUE)',
+            [nomeNormalizado, emailNormalizado, senhaHash, roleNormalizado]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Usuário criado com sucesso',
+            data: {
+                id: result.insertId,
+                nome: nomeNormalizado,
+                email: emailNormalizado,
+                role: roleNormalizado
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao criar usuário:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao criar usuário'
+        });
+    }
+});
+
 // Limpar sessões expiradas (executar periodicamente)
 async function limparSessoesExpiradas() {
     try {
