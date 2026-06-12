@@ -1,4 +1,10 @@
-﻿// ==================== RELATORIO DE VENDAS POR PERIODO ====================
+﻿// --- Estado de paginação do detalhamento de vendas ---
+let _vendasRelatorioCompleto = [];
+let _totaisRelatorioGlobal = {};
+let _paginaAtualRelatorio = 1;
+const ITENS_POR_PAGINA_RELATORIO = 20;
+
+// ==================== RELATORIO DE VENDAS POR PERIODO ====================
 function abrirRelatorioVendasPeriodo() {
     abrirModal('relatorioVendasPeriodoModal', () => {
         // Setar período padrão: últimos 30 dias
@@ -408,201 +414,45 @@ function abrirHistorico() {
  */
 async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFinal) {
     const container = document.getElementById('listaVendasDetalhada');
-    
+
     try {
         const vendasOrdenadas = vendasComItens
             .slice()
             .sort((a, b) => new Date(b.venda.data_venda) - new Date(a.venda.data_venda));
-        
-        // Salvar dados do relatório para exportação
+
+        // Salvar dados do relatório para exportação (sem paginação — exporta tudo)
         window.dadosRelatorioAtual = {
             vendas: vendasOrdenadas,
-            periodo: {
-                dataInicial: dataInicial,
-                dataFinal: dataFinal
-            }
+            periodo: { dataInicial, dataFinal }
         };
-        
-        // Calcular totais gerais - VENDAS + CUSTOS + LUCROS
+
+        // Calcular totais gerais GLOBAIS (todos os dados, não apenas a página)
         const totalGeralVendas = vendasOrdenadas.reduce((sum, { venda }) => sum + parseFloat(venda.total), 0);
         const totalItensVendidos = vendasOrdenadas.reduce((sum, { venda }) => sum + parseInt(venda.quantidade_itens), 0);
         const quantidadeVendas = vendasOrdenadas.length;
-        
-        // Calcular custo total e lucro total
+
         let totalCustos = 0;
         vendasOrdenadas.forEach(({ itens }) => {
             itens.forEach(item => {
-                const custoPorItem = (parseFloat(item.preco_custo_unitario) || 0) * parseInt(item.quantidade);
-                totalCustos += custoPorItem;
+                totalCustos += (parseFloat(item.preco_custo_unitario) || 0) * parseInt(item.quantidade);
             });
         });
-        
+
         const totalLucro = totalGeralVendas - totalCustos;
-        const margemPercentual = totalGeralVendas > 0 ? ((totalLucro / totalGeralVendas) * 100).toFixed(1) : '0.0';
-        
-        // Mapear nomes das formas de pagamento
-        const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
-        const nomes = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'PIX' };
-        
-        // Renderizar todas as vendas em uma única tabela
-        container.innerHTML = `
-            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                    <thead>
-                        <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Venda</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Data/Hora</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Produto</th>
-                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Qtd</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Preço Unit.</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Unit.</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Subtotal</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Total</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Lucro</th>
-                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Margem %</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Total Venda</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Pagamento</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${vendasOrdenadas.map(({ venda, itens, formas_pagamento }) => {
-                            const data = new Date(venda.data_venda.replace(' ', 'T'));
-                            const dataFormatada = data.toLocaleString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            });
-                            
-                            // Criar string de formas de pagamento
-                            let pagamentosTexto = '';
-                            if (formas_pagamento && formas_pagamento.length > 0) {
-                                pagamentosTexto = formas_pagamento.map(fp => 
-                                    `${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}`
-                                ).join('<br>');
-                            }
-                            
-                            // Renderizar cada item da venda como uma linha
-                            return itens.map((item, index) => {
-                                // Calcular lucratividade do item
-                                const precoUnit = parseFloat(item.preco_unitario);
-                                const custoUnit = parseFloat(item.preco_custo_unitario) || 0;
-                                const quantidade = parseInt(item.quantidade);
-                                const subtotal = parseFloat(item.subtotal);
-                                const custoTotal = custoUnit * quantidade;
-                                const lucro = subtotal - custoTotal;
-                                const margem = subtotal > 0 ? ((lucro / subtotal) * 100).toFixed(1) : '0.0';
-                                
-                                // Cores para margem
-                                let margemCor = '#28a745'; // Verde (boa margem)
-                                if (parseFloat(margem) < 10) margemCor = '#dc3545'; // Vermelho (margem baixa)
-                                else if (parseFloat(margem) < 30) margemCor = '#ffc107'; // Amarelo (margem média)
-                                
-                                return `
-                                <tr style="border-bottom: 1px solid #eee; ${index === 0 ? 'border-top: 2px solid #007bff;' : ''}">
-                                    ${index === 0 ? `
-                                        <td rowspan="${itens.length}" style="padding: 12px; font-weight: bold; background: #f8f9fa; color: #007bff; border-right: 1px solid #ddd; vertical-align: top;">
-                                            🧾 #${venda.id}<br>
-                                            <span style="font-size: 11px; color: #666; font-weight: normal;">${venda.quantidade_itens} item(ns)</span>
-                                        </td>
-                                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; border-right: 1px solid #ddd; vertical-align: top; white-space: nowrap;">
-                                            ${dataFormatada}
-                                        </td>
-                                    ` : ''}
-                                    <td style="padding: 12px;">
-                                        <strong>${item.nome_produto}</strong><br>
-                                        <span style="font-size: 11px; color: #999;">Cód: ${item.codigo_barras}</span>
-                                    </td>
-                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: #007bff;">
-                                        ${quantidade}
-                                    </td>
-                                    <td style="padding: 12px; text-align: right; color: #666;">
-                                        R$ ${precoUnit.toFixed(2)}
-                                    </td>
-                                    <td style="padding: 12px; text-align: right; color: #999; font-size: 13px;">
-                                        R$ ${custoUnit.toFixed(2)}
-                                    </td>
-                                    <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">
-                                        R$ ${subtotal.toFixed(2)}
-                                    </td>
-                                    <td style="padding: 12px; text-align: right; color: #dc3545; font-size: 13px;">
-                                        R$ ${custoTotal.toFixed(2)}
-                                    </td>
-                                    <td style="padding: 12px; text-align: right; font-weight: bold; color: ${lucro >= 0 ? '#28a745' : '#dc3545'};">
-                                        R$ ${lucro.toFixed(2)}
-                                    </td>
-                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${margemCor}; font-size: 13px;">
-                                        ${margem}%
-                                    </td>
-                                    ${index === 0 ? `
-                                        <td rowspan="${itens.length}" style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745; background: #f8f9fa; border-left: 1px solid #ddd; vertical-align: top;">
-                                            R$ ${parseFloat(venda.total).toFixed(2)}
-                                            ${parseFloat(venda.troco) > 0 ? `<br><span style="font-size: 11px; color: #999; font-weight: normal;">Troco: R$ ${parseFloat(venda.troco).toFixed(2)}</span>` : ''}
-                                        </td>
-                                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; font-size: 12px; border-left: 1px solid #ddd; vertical-align: top;">
-                                            ${pagamentosTexto}
-                                        </td>
-                                    ` : ''}
-                                </tr>
-                            `;
-                            }).join('');
-                        }).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; font-weight: bold; font-size: 16px;">
-                            <td colspan="2" style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">
-                                📊 TOTAL GERAL
-                            </td>
-                            <td style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">
-                                ${quantidadeVendas} venda(s)
-                            </td>
-                            <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd;">
-                                ${totalItensVendidos}
-                            </td>
-                            <td colspan="2" style="padding: 15px; text-align: right; border-top: 3px solid #ddd;">
-                                <!-- Espaço -->
-                            </td>
-                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 20px;">
-                                R$ ${totalGeralVendas.toFixed(2)}
-                            </td>
-                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 16px; color: #ffe6e6;">
-                                R$ ${totalCustos.toFixed(2)}
-                            </td>
-                            <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 18px;">
-                                R$ ${totalLucro.toFixed(2)}
-                            </td>
-                            <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd; font-size: 18px;">
-                                ${margemPercentual}%
-                            </td>
-                            <td colspan="2" style="padding: 15px; border-top: 3px solid #ddd;">
-                                <!-- Espaço -->
-                            </td>
-                        </tr>
-                        <tr style="background: #f8f9fa; font-size: 14px; color: #333;">
-                            <td colspan="6" style="padding: 12px; text-align: right; font-weight: bold;">
-                                💰 Resumo Financeiro:
-                            </td>
-                            <td style="padding: 12px; text-align: right;">
-                                <strong style="color: #28a745;">Receita</strong>
-                            </td>
-                            <td style="padding: 12px; text-align: right;">
-                                <strong style="color: #dc3545;">Custos</strong>
-                            </td>
-                            <td style="padding: 12px; text-align: right;">
-                                <strong style="color: #007bff;">Lucro Líquido</strong>
-                            </td>
-                            <td style="padding: 12px; text-align: center;">
-                                <strong style="color: #6f42c1;">Margem</strong>
-                            </td>
-                            <td colspan="2" style="padding: 12px;">
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        `;
-        
+        const margemPercentual = totalGeralVendas > 0
+            ? ((totalLucro / totalGeralVendas) * 100).toFixed(1)
+            : '0.0';
+
+        // Armazenar estado de paginação
+        _vendasRelatorioCompleto = vendasOrdenadas;
+        _paginaAtualRelatorio = 1;
+        _totaisRelatorioGlobal = {
+            totalGeralVendas, totalItensVendidos, quantidadeVendas,
+            totalCustos, totalLucro, margemPercentual
+        };
+
+        renderizarPaginaDetalhamentoRelatorio();
+
     } catch (error) {
         console.error('Erro ao carregar itens:', error);
         container.innerHTML = `
@@ -611,6 +461,181 @@ async function carregarItensVendasRelatorio(vendasComItens, dataInicial, dataFin
             </div>
         `;
     }
+}
+
+/**
+ * Renderiza apenas a fatia de vendas da página atual no detalhamento
+ */
+function renderizarPaginaDetalhamentoRelatorio() {
+    const container = document.getElementById('listaVendasDetalhada');
+    if (!container) return;
+
+    const vendasOrdenadas = _vendasRelatorioCompleto;
+    const { totalGeralVendas, totalItensVendidos, quantidadeVendas,
+            totalCustos, totalLucro, margemPercentual } = _totaisRelatorioGlobal;
+
+    const totalPaginas = Math.ceil(vendasOrdenadas.length / ITENS_POR_PAGINA_RELATORIO);
+    const inicio = (_paginaAtualRelatorio - 1) * ITENS_POR_PAGINA_RELATORIO;
+    const fim = Math.min(inicio + ITENS_POR_PAGINA_RELATORIO, vendasOrdenadas.length);
+    const vendasPagina = vendasOrdenadas.slice(inicio, fim);
+
+    const icones = { dinheiro: '💵', debito: '💳', credito: '💳', pix: '📱' };
+    const nomes  = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'PIX' };
+
+    const btnEstilo = (ativo) => `padding: 6px 14px; border: 1px solid #007bff; border-radius: 6px;
+        background: ${ativo ? '#007bff' : '#e9ecef'}; color: ${ativo ? 'white' : '#999'};
+        cursor: ${ativo ? 'pointer' : 'not-allowed'}; font-size: 13px;`;
+
+    const controlesHtml = totalPaginas > 1 ? `
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 10px 16px; background: #f0f4ff; border-radius: 8px; font-size: 14px;">
+            <span style="color: #555;">
+                Mostrando vendas <strong>${inicio + 1}–${fim}</strong> de <strong>${vendasOrdenadas.length}</strong>
+                &nbsp;|&nbsp; Página <strong>${_paginaAtualRelatorio}</strong> de <strong>${totalPaginas}</strong>
+            </span>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="mudarPaginaRelatorio(-1)" ${_paginaAtualRelatorio === 1 ? 'disabled' : ''}
+                    style="${btnEstilo(_paginaAtualRelatorio > 1)}">◀ Anterior</button>
+                <button onclick="mudarPaginaRelatorio(1)" ${_paginaAtualRelatorio === totalPaginas ? 'disabled' : ''}
+                    style="${btnEstilo(_paginaAtualRelatorio < totalPaginas)}">Próxima ▶</button>
+            </div>
+        </div>
+    ` : `
+        <div style="margin-bottom: 12px; padding: 8px 16px; background: #f0f4ff; border-radius: 8px; font-size: 13px; color: #555;">
+            ${vendasOrdenadas.length} venda(s) no período
+        </div>
+    `;
+
+    const tbodyHtml = vendasPagina.map(({ venda, itens, formas_pagamento }) => {
+        const data = new Date(venda.data_venda.replace(' ', 'T'));
+        const dataFormatada = data.toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        let pagamentosTexto = '';
+        if (formas_pagamento && formas_pagamento.length > 0) {
+            pagamentosTexto = formas_pagamento.map(fp =>
+                `${icones[fp.forma_pagamento]} ${nomes[fp.forma_pagamento]}: R$ ${parseFloat(fp.valor).toFixed(2)}`
+            ).join('<br>');
+        }
+
+        return itens.map((item, index) => {
+            const precoUnit  = parseFloat(item.preco_unitario);
+            const custoUnit  = parseFloat(item.preco_custo_unitario) || 0;
+            const quantidade = parseInt(item.quantidade);
+            const subtotal   = parseFloat(item.subtotal);
+            const custoTotal = custoUnit * quantidade;
+            const lucro      = subtotal - custoTotal;
+            const margem     = subtotal > 0 ? ((lucro / subtotal) * 100).toFixed(1) : '0.0';
+
+            let margemCor = '#28a745';
+            if (parseFloat(margem) < 10) margemCor = '#dc3545';
+            else if (parseFloat(margem) < 30) margemCor = '#ffc107';
+
+            return `
+                <tr style="border-bottom: 1px solid #eee; ${index === 0 ? 'border-top: 2px solid #007bff;' : ''}">
+                    ${index === 0 ? `
+                        <td rowspan="${itens.length}" style="padding: 12px; font-weight: bold; background: #f8f9fa; color: #007bff; border-right: 1px solid #ddd; vertical-align: top;">
+                            🧾 #${venda.id}<br>
+                            <span style="font-size: 11px; color: #666; font-weight: normal;">${venda.quantidade_itens} item(ns)</span>
+                        </td>
+                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; border-right: 1px solid #ddd; vertical-align: top; white-space: nowrap;">
+                            ${dataFormatada}
+                        </td>
+                    ` : ''}
+                    <td style="padding: 12px;">
+                        <strong>${item.nome_produto}</strong><br>
+                        <span style="font-size: 11px; color: #999;">Cód: ${item.codigo_barras}</span>
+                    </td>
+                    <td style="padding: 12px; text-align: center; font-weight: bold; color: #007bff;">${quantidade}</td>
+                    <td style="padding: 12px; text-align: right; color: #666;">R$ ${precoUnit.toFixed(2)}</td>
+                    <td style="padding: 12px; text-align: right; color: #999; font-size: 13px;">R$ ${custoUnit.toFixed(2)}</td>
+                    <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">R$ ${subtotal.toFixed(2)}</td>
+                    <td style="padding: 12px; text-align: right; color: #dc3545; font-size: 13px;">R$ ${custoTotal.toFixed(2)}</td>
+                    <td style="padding: 12px; text-align: right; font-weight: bold; color: ${lucro >= 0 ? '#28a745' : '#dc3545'};">R$ ${lucro.toFixed(2)}</td>
+                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${margemCor}; font-size: 13px;">${margem}%</td>
+                    ${index === 0 ? `
+                        <td rowspan="${itens.length}" style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745; background: #f8f9fa; border-left: 1px solid #ddd; vertical-align: top;">
+                            R$ ${parseFloat(venda.total).toFixed(2)}
+                            ${parseFloat(venda.troco) > 0 ? `<br><span style="font-size: 11px; color: #999; font-weight: normal;">Troco: R$ ${parseFloat(venda.troco).toFixed(2)}</span>` : ''}
+                        </td>
+                        <td rowspan="${itens.length}" style="padding: 12px; background: #f8f9fa; font-size: 12px; border-left: 1px solid #ddd; vertical-align: top;">
+                            ${pagamentosTexto}
+                        </td>
+                    ` : ''}
+                </tr>
+            `;
+        }).join('');
+    }).join('');
+
+    container.innerHTML = `
+        ${controlesHtml}
+        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Venda</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Data/Hora</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Produto</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Qtd</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Preço Unit.</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Unit.</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Subtotal</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Custo Total</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Lucro</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Margem %</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Total Venda</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; position: sticky; top: 0;">Pagamento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tbodyHtml}
+                </tbody>
+                <tfoot>
+                    <tr style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; font-weight: bold; font-size: 16px;">
+                        <td colspan="2" style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">📊 TOTAL GERAL</td>
+                        <td style="padding: 15px; text-align: left; border-top: 3px solid #ddd;">${quantidadeVendas} venda(s)</td>
+                        <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd;">${totalItensVendidos}</td>
+                        <td colspan="2" style="padding: 15px; border-top: 3px solid #ddd;"></td>
+                        <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 20px;">R$ ${totalGeralVendas.toFixed(2)}</td>
+                        <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 16px; color: #ffe6e6;">R$ ${totalCustos.toFixed(2)}</td>
+                        <td style="padding: 15px; text-align: right; border-top: 3px solid #ddd; font-size: 18px;">R$ ${totalLucro.toFixed(2)}</td>
+                        <td style="padding: 15px; text-align: center; border-top: 3px solid #ddd; font-size: 18px;">${margemPercentual}%</td>
+                        <td colspan="2" style="padding: 15px; border-top: 3px solid #ddd;"></td>
+                    </tr>
+                    <tr style="background: #f8f9fa; font-size: 14px; color: #333;">
+                        <td colspan="6" style="padding: 12px; text-align: right; font-weight: bold;">💰 Resumo Financeiro:</td>
+                        <td style="padding: 12px; text-align: right;"><strong style="color: #28a745;">Receita</strong></td>
+                        <td style="padding: 12px; text-align: right;"><strong style="color: #dc3545;">Custos</strong></td>
+                        <td style="padding: 12px; text-align: right;"><strong style="color: #007bff;">Lucro Líquido</strong></td>
+                        <td style="padding: 12px; text-align: center;"><strong style="color: #6f42c1;">Margem</strong></td>
+                        <td colspan="2" style="padding: 12px;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        ${totalPaginas > 1 ? `
+        <div style="display: flex; justify-content: center; margin-top: 12px; gap: 8px;">
+            <button onclick="mudarPaginaRelatorio(-1)" ${_paginaAtualRelatorio === 1 ? 'disabled' : ''}
+                style="${btnEstilo(_paginaAtualRelatorio > 1)}">◀ Anterior</button>
+            <button onclick="mudarPaginaRelatorio(1)" ${_paginaAtualRelatorio === totalPaginas ? 'disabled' : ''}
+                style="${btnEstilo(_paginaAtualRelatorio < totalPaginas)}">Próxima ▶</button>
+        </div>
+        ` : ''}
+    `;
+}
+
+/**
+ * Navegar entre páginas do detalhamento de vendas
+ */
+function mudarPaginaRelatorio(delta) {
+    const totalPaginas = Math.ceil(_vendasRelatorioCompleto.length / ITENS_POR_PAGINA_RELATORIO);
+    const novaPagina = _paginaAtualRelatorio + delta;
+    if (novaPagina < 1 || novaPagina > totalPaginas) return;
+    _paginaAtualRelatorio = novaPagina;
+    renderizarPaginaDetalhamentoRelatorio();
+    const el = document.getElementById('listaVendasDetalhada');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ==================== RELATÓRIOS DE CAIXA ====================

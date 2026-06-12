@@ -34,7 +34,3 @@ Você é um especialista no sistema PDV Bomboniere deste repositório. Sua funç
 2. Implementar o menor conjunto de mudanças que resolva a tarefa.
 3. Validar impacto com checagem de erros e testes/comandos disponíveis.
 4. Relatar claramente o que mudou, riscos residuais e próximos passos.
-
-## Formato de Saída
-- Entregar: arquivos alterados, resumo técnico da solução e validações executadas.
-- Priorizar clareza operacional: riscos para caixa/venda/estoque devem ser explícitos.

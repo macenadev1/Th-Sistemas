@@ -318,11 +318,19 @@ async function carregarProdutosEstoqueBaixo(produtos = null) {
 /**
  * Carregar grafico de evolucao de vendas
  */
-async function carregarGraficoEvolucaoVendas(vendas = null) {
+// Versão ORIGINAL preservada, mas usar a versão nova abaixo
+async function carregarGraficoEvolucaoVendasOriginal(vendas = null) {
     const container = document.getElementById('graficoEvolucaoVendas');
     if (!container) return;
 
     const selectPeriodo = document.getElementById('filtroPeriodoEvolucaoVendas');
+    
+    // Se for "customizado", abrir painel
+    if (selectPeriodo?.value === 'customizado') {
+        abrirCustomizadorPeriodo();
+        return;
+    }
+
     const metaMensalInput = document.getElementById('metaMensalEvolucaoVendas');
     const dias = Math.max(1, parseInt(selectPeriodo?.value, 10) || 30);
 
@@ -352,6 +360,10 @@ async function carregarGraficoEvolucaoVendas(vendas = null) {
         const metaProporcional = calcularMetaProporcional(metaMensal, usarSemanal);
 
         atualizarLegendaGrafico(usarSemanal);
+        
+        // Ocultar ticker de período quando usando atalhos rápidos
+        const infoBar = document.getElementById('infoBarraPeriodo');
+        if (infoBar) infoBar.style.display = 'none';
 
         if (valores.every(valor => valor === 0)) {
             container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Sem vendas no periodo</p>';
@@ -365,6 +377,47 @@ async function carregarGraficoEvolucaoVendas(vendas = null) {
         container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">Erro ao carregar grafico</p>';
     }
 }
+
+/**
+ * Inicializar customizador de período
+ */
+function inicializarCustomizadorPeriodo() {
+    const select = document.getElementById('filtroPeriodoEvolucaoVendas');
+    if (!select) return;
+    
+    // Ouvir mudanças no select
+    select.addEventListener('change', (e) => {
+        if (e.target.value === 'customizado') {
+            // Mostrar o painel depois de um pequeno delay para permitir a transição
+            setTimeout(() => {
+                abrirCustomizadorPeriodo();
+            }, 100);
+        } else {
+            // Fechar painel se estava aberto
+            fecharCustomizadorPeriodo();
+            // Carregar gráfico com período selecionado
+            carregarGraficoEvolucaoVendasOriginal();
+        }
+    });
+    
+    // Restaurar seleção customizada se foi última usada
+    const estadoSalvo = localStorage.getItem('customPeriodoEstado');
+    if (estadoSalvo) {
+        // Mostrar opção de customizado no select
+        // select.value = 'customizado'; // Não forçamos isso, deixamos o usuário escolher
+    }
+    
+    // Adicionar listener no botão também
+    const btnCustomizado = document.getElementById('btnAbrirCustomizador');
+    if (btnCustomizado) {
+        btnCustomizado.addEventListener('click', abrirCustomizadorPeriodo);
+    }
+}
+
+// Inicializar quando o dashboard carregar
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(inicializarCustomizadorPeriodo, 500); // Pequeno delay para garantir que o DOM está pronto
+});
 
 function formatarDataLocalISO(data) {
     const ano = data.getFullYear();
@@ -2343,6 +2396,338 @@ async function abrirModalConfigurarSaldoInicial() {
             saldoReposicaoInput.focus();
         }
     });
+}
+
+/**
+ * ==================== CUSTOMIZADOR DE PERÍODO PARA GRÁFICO ====================
+ * Funções para permitir seleção customizada de data e agrupamento no gráfico de evolução
+ */
+
+/**
+ * Abrir painel de customização de período
+ */
+function abrirCustomizadorPeriodo() {
+    const painel = document.getElementById('painel-customizado-periodo');
+    if (!painel) return;
+    
+    // Se já está aberto, fechar
+    if (painel.style.display === 'block') {
+        fecharCustomizadorPeriodo();
+        return;
+    }
+    
+    // Restaurar valores salvos do localStorage ou usar padrões
+    const estadoSalvo = localStorage.getItem('customPeriodoEstado');
+    if (estadoSalvo) {
+        try {
+            const estado = JSON.parse(estadoSalvo);
+            document.getElementById('customPeriodoDataInicial').value = estado.dataInicial || '';
+            document.getElementById('customPeriodoDataFinal').value = estado.dataFinal || '';
+            document.getElementById('customPeriodoAgrupamento').value = estado.agrupamento || 'auto';
+        } catch (e) {
+            console.log('Erro ao restaurar estado customizado:', e);
+        }
+    } else {
+        // Valores padrão (últimos 30 dias)
+        const hoje = new Date();
+        const dataInicial = new Date(hoje);
+        dataInicial.setDate(hoje.getDate() - 29);
+        
+        const formatarData = (data) => {
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const dia = String(data.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        };
+        
+        document.getElementById('customPeriodoDataInicial').value = formatarData(dataInicial);
+        document.getElementById('customPeriodoDataFinal').value = formatarData(hoje);
+        document.getElementById('customPeriodoAgrupamento').value = 'auto';
+    }
+    
+    // Mostrar painel
+    painel.style.display = 'block';
+    document.getElementById('customPeriodoDataInicial').focus();
+}
+
+/**
+ * Fechar painel de customização de período
+ */
+function fecharCustomizadorPeriodo() {
+    const painel = document.getElementById('painel-customizado-periodo');
+    if (painel) {
+        painel.style.display = 'none';
+    }
+    
+    // Restaurar select para "Customizado"
+    const select = document.getElementById('filtroPeriodoEvolucaoVendas');
+    if (select) {
+        select.value = 'customizado';
+    }
+}
+
+/**
+ * Atalhos rápidos para períodos pré-definidos
+ */
+function setarRapidoCustomizado(dias) {
+    const hoje = new Date();
+    const dataInicial = new Date(hoje);
+    dataInicial.setDate(hoje.getDate() - (dias - 1));
+    
+    const formatarData = (data) => {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    };
+    
+    document.getElementById('customPeriodoDataInicial').value = formatarData(dataInicial);
+    document.getElementById('customPeriodoDataFinal').value = formatarData(hoje);
+    
+    // Auto-aplicar para atalhos
+    aplicarCustomizado();
+}
+
+/**
+ * Aplicar período customizado e carregar gráfico
+ */
+async function aplicarCustomizado() {
+    const dataInicial = document.getElementById('customPeriodoDataInicial').value;
+    const dataFinal = document.getElementById('customPeriodoDataFinal').value;
+    const agrupamento = document.getElementById('customPeriodoAgrupamento').value;
+    
+    // Validar datas
+    if (!dataInicial || !dataFinal) {
+        mostrarNotificacao('⚠️ Preencha as datas inicial e final', 'error');
+        return;
+    }
+    
+    const dataInicialObj = new Date(dataInicial + 'T00:00:00');
+    const dataFinalObj = new Date(dataFinal + 'T23:59:59');
+    
+    if (dataInicialObj > dataFinalObj) {
+        mostrarNotificacao('⚠️ Data inicial não pode ser maior que data final', 'error');
+        return;
+    }
+    
+    // Calcular quantidade de dias
+    const diffDias = Math.floor((dataFinalObj - dataInicialObj) / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDias > 3650) {
+        mostrarNotificacao('⚠️ Período não pode exceder 10 anos', 'error');
+        return;
+    }
+    
+    // Salvar estado no localStorage
+    const estado = {
+        dataInicial,
+        dataFinal,
+        agrupamento
+    };
+    localStorage.setItem('customPeriodoEstado', JSON.stringify(estado));
+    
+    // Fechar painel
+    fecharCustomizadorPeriodo();
+    
+    // Atualizar ticker de período
+    exibirTickerPeriodo(dataInicial, dataFinal, diffDias);
+    
+    // Carregar gráfico com período customizado
+    carregarGraficoEvolucaoVendas(null, {
+        dataInicial: dataInicialObj,
+        dataFinal: dataFinalObj,
+        quantidadeDias: diffDias,
+        agrupamento
+    });
+}
+
+/**
+ * Exibir ticker de período acima do gráfico
+ */
+function exibirTickerPeriodo(dataInicial, dataFinal, quantidadeDias) {
+    const infoBar = document.getElementById('infoBarraPeriodo');
+    if (!infoBar) return;
+    
+    const formatarData = (dateStr) => {
+        const [ano, mes, dia] = dateStr.split('-');
+        return `${dia}/${mes}/${ano}`;
+    };
+    
+    let textoQuantidade = `${quantidadeDias} dia${quantidadeDias > 1 ? 's' : ''}`;
+    if (quantidadeDias >= 30) {
+        const meses = (quantidadeDias / 30).toFixed(1);
+        textoQuantidade = `${meses} mês${meses > 1 ? 'es' : ''}`;
+    }
+    
+    const textoPeriodo = document.getElementById('textoPeriodo');
+    if (textoPeriodo) {
+        textoPeriodo.textContent = `${formatarData(dataInicial)} a ${formatarData(dataFinal)} (${textoQuantidade})`;
+    }
+    
+    infoBar.style.display = 'block';
+}
+
+/**
+ * Determinar agrupamento automático baseado na quantidade de dias
+ */
+function determinarAgrupamento(quantidadeDias, override = null) {
+    if (override && override !== 'auto') {
+        return override;
+    }
+    
+    if (quantidadeDias <= 30) return 'diario';
+    if (quantidadeDias <= 90) return 'diario';
+    if (quantidadeDias <= 180) return 'semanal';
+    return 'mensal';
+}
+
+/**
+ * Agrupar vendas por mês
+ */
+function agruparVendasMensal(vendas, dataInicial, quantidadeDias) {
+    const meses = new Map();
+    const labels = [];
+    const labelsTooltip = [];
+    
+    // Calcular intervalo de meses
+    let dataAtual = new Date(dataInicial);
+    dataAtual.setDate(1); // Ir para primeiro dia do mês
+    
+    const dataFinal = new Date(dataInicial);
+    dataFinal.setDate(dataFinal.getDate() + quantidadeDias - 1);
+    
+    while (dataAtual <= dataFinal) {
+        const chave = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}`;
+        meses.set(chave, 0);
+        
+        const nomeMes = dataAtual.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+        labels.push(nomeMes);
+        labelsTooltip.push(dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
+        
+        dataAtual.setMonth(dataAtual.getMonth() + 1);
+    }
+    
+    vendas.forEach(venda => {
+        const dataVenda = new Date(venda.data_venda.replace(' ', 'T'));
+        if (isNaN(dataVenda.getTime())) return;
+        
+        const chave = `${dataVenda.getFullYear()}-${String(dataVenda.getMonth() + 1).padStart(2, '0')}`;
+        if (meses.has(chave)) {
+            meses.set(chave, meses.get(chave) + parseFloat(venda.total || 0));
+        }
+    });
+    
+    return {
+        labels,
+        labelsTooltip,
+        valores: Array.from(meses.values())
+    };
+}
+
+/**
+ * Carregar gráfico de evolução com suporte a período customizado
+ */
+async function carregarGraficoEvolucaoVendas(vendas = null, opcoes = null) {
+    const container = document.getElementById('graficoEvolucaoVendas');
+    if (!container) return;
+
+    let dias = Math.max(1, parseInt(document.getElementById('filtroPeriodoEvolucaoVendas')?.value, 10) || 30);
+    let dataInicial = new Date();
+    let dataFinal = new Date();
+    let agrupamento = 'auto';
+    
+    dataInicial.setHours(0, 0, 0, 0);
+    dataFinal.setHours(23, 59, 59, 999);
+    
+    // Se houver opções customizadas
+    if (opcoes) {
+        if (opcoes.dataInicial) dataInicial = opcoes.dataInicial;
+        if (opcoes.dataFinal) dataFinal = opcoes.dataFinal;
+        if (opcoes.quantidadeDias) dias = opcoes.quantidadeDias;
+        if (opcoes.agrupamento) agrupamento = opcoes.agrupamento;
+    } else {
+        // Período padrão
+        dataInicial.setDate(dataFinal.getDate() - (dias - 1));
+    }
+
+    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Carregando grafico...</p>';
+
+    try {
+        if (!vendas) {
+            const response = await fetch(`${API_URL}/vendas`);
+            if (!response.ok) throw new Error('Erro ao carregar vendas');
+
+            const vendasPayload = await response.json();
+            vendas = extrairListaVendasResposta(vendasPayload);
+        }
+        
+        // Determinar tipo de agrupamento
+        const tipoAgrupamento = determinarAgrupamento(dias, agrupamento);
+        
+        let dadosGrafico;
+        if (tipoAgrupamento === 'mensal') {
+            dadosGrafico = agruparVendasMensal(vendas, dataInicial, dias);
+            atualizarLegendaGrafico(false, 'mensal');
+        } else if (tipoAgrupamento === 'semanal') {
+            dadosGrafico = agruparVendasSemanal(vendas, dataInicial, dias);
+            atualizarLegendaGrafico(true, 'semanal');
+        } else {
+            dadosGrafico = agruparVendasDiario(vendas, dataInicial, dias);
+            atualizarLegendaGrafico(false, 'diario');
+        }
+
+        const valores = dadosGrafico.valores;
+        const mediaMovel = calcularMediaMovel(valores, tipoAgrupamento === 'mensal' ? 3 : (tipoAgrupamento === 'semanal' ? 4 : 7));
+        
+        const metaMensalInput = document.getElementById('metaMensalEvolucaoVendas');
+        const metaMensal = parseFloat(metaMensalInput?.value || '0') || 0;
+        
+        let metaProporcional = 0;
+        if (metaMensal > 0) {
+            if (tipoAgrupamento === 'mensal') {
+                metaProporcional = metaMensal;
+            } else {
+                const diasNoMes = new Date(dataFinal.getFullYear(), dataFinal.getMonth() + 1, 0).getDate();
+                const metaDiaria = metaMensal / diasNoMes;
+                metaProporcional = tipoAgrupamento === 'semanal' ? metaDiaria * 7 : metaDiaria;
+            }
+        }
+
+        if (valores.every(valor => valor === 0)) {
+            container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Sem vendas no periodo</p>';
+            return;
+        }
+
+        container.innerHTML = renderizarGraficoBarrasSVG(dadosGrafico.labels, dadosGrafico.labelsTooltip, valores, mediaMovel, metaProporcional);
+        configurarTooltipGrafico(container);
+    } catch (error) {
+        console.error('Erro ao carregar grafico de vendas:', error);
+        container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">Erro ao carregar grafico</p>';
+    }
+}
+
+/**
+ * Atualizar legenda do gráfico com tipo de agrupamento
+ */
+function atualizarLegendaGrafico(usarSemanal, tipo = null) {
+    const legendaVendas = document.getElementById('legendaVendasEvolucao');
+    const legendaMedia = document.getElementById('legendaMediaEvolucao');
+
+    let nomeVendas = 'Vendas (barras)';
+    let nomeMedia = 'Media movel';
+    
+    if (tipo === 'mensal') {
+        nomeVendas = 'Vendas mensais (barras)';
+        nomeMedia = 'Media movel (3m)';
+    } else if (tipo === 'semanal' || usarSemanal) {
+        nomeVendas = 'Vendas semanais (barras)';
+        nomeMedia = 'Media movel (4s)';
+    } else {
+        nomeVendas = 'Vendas diarias (barras)';
+        nomeMedia = 'Media movel (7d)';
+    }
+
+    if (legendaVendas) legendaVendas.textContent = nomeVendas;
+    if (legendaMedia) legendaMedia.textContent = nomeMedia;
 }
 
 /**

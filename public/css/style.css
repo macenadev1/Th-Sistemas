@@ -459,6 +459,71 @@
             font-weight: 700;
         }
 
+        /* ===== PAINEL CUSTOMIZADO DE PERÍODO ===== */
+        .painel-customizado {
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                max-height: 0;
+                opacity: 0;
+            }
+            to {
+                max-height: 500px;
+                opacity: 1;
+            }
+        }
+
+        .btn-period-rapido {
+            padding: 6px 12px;
+            background: #e9ecef;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-period-rapido:hover {
+            background: #dee2e6;
+            transform: scale(1.05);
+        }
+
+        .btn-period-rapido:active {
+            transform: scale(0.98);
+        }
+
+        /* ===== BARRA DE INFORMAÇÃO DE PERÍODO ===== */
+        .info-barra-periodo {
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
+        }
+
+        /* ===== RESPONSIVIDADE PAINEL CUSTOMIZADO ===== */
+        @media (max-width: 768px) {
+            #painel-customizado-periodo {
+                padding: 12px !important;
+            }
+
+            #painel-customizado-periodo > div:first-child {
+                grid-template-columns: 1fr !important;
+            }
+
+            .btn-period-rapido {
+                font-size: 11px;
+                padding: 5px 10px;
+            }
+        }
+
         @media (max-width: 1366px) {
             .main-content {
                 grid-template-columns: 1.55fr 0.95fr;

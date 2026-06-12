@@ -192,13 +192,55 @@
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                             <input id="metaMensalEvolucaoVendas" type="number" min="0" step="0.01" placeholder="Meta mensal (R$)" oninput="carregarGraficoEvolucaoVendas()" style="padding: 6px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px; max-width: 170px;">
                             <select id="filtroPeriodoEvolucaoVendas" onchange="carregarGraficoEvolucaoVendas()" style="padding: 6px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px;">
-                                <option value="30" selected>Ultimos 30 dias</option>
-                                <option value="90">Ultimos 90 dias</option>
-                                <option value="180">Ultimos 180 dias</option>
+                                <option value="30" selected>📅 Ultimos 30 dias</option>
+                                <option value="90">📅 Ultimos 90 dias</option>
+                                <option value="180">📅 Ultimos 180 dias</option>
+                                <option value="365">📅 Ultimo ano</option>
+                                <option value="customizado">🔧 Customizado</option>
                             </select>
+                            <button id="btnAbrirCustomizador" onclick="abrirCustomizadorPeriodo()" class="btn" style="padding: 6px 12px; background: #6f42c1; color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; display: none;">
+                                📅 Customizado ▼
+                            </button>
                         </div>
                     </div>
+                    
+                    <!-- Painel Customizado de Período -->
+                    <div id="painel-customizado-periodo" class="painel-customizado" style="display: none; padding: 15px; background: #f8f9fa; border-bottom: 2px solid #e0e0e0;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                            <div>
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">📅 Data Inicial:</label>
+                                <input type="date" id="customPeriodoDataInicial" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">📅 Data Final:</label>
+                                <input type="date" id="customPeriodoDataFinal" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">📊 Agrupamento:</label>
+                                <select id="customPeriodoAgrupamento" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px;">
+                                    <option value="auto" selected>🔄 Automático</option>
+                                    <option value="diario">📅 Diário</option>
+                                    <option value="semanal">📆 Semanal</option>
+                                    <option value="mensal">🗓️ Mensal</option>
+                                </select>
+                            </div>
+                            <button onclick="aplicarCustomizado()" class="btn btn-primary" style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">
+                                ✓ Aplicar
+                            </button>
+                        </div>
+                        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button onclick="setarRapidoCustomizado(30)" class="btn-period-rapido" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer;">30d</button>
+                            <button onclick="setarRapidoCustomizado(90)" class="btn-period-rapido" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer;">90d</button>
+                            <button onclick="setarRapidoCustomizado(180)" class="btn-period-rapido" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer;">180d</button>
+                            <button onclick="setarRapidoCustomizado(365)" class="btn-period-rapido" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer;">1 ano</button>
+                            <button onclick="fecharCustomizadorPeriodo()" class="btn-period-rapido" style="padding: 6px 12px; background: #fff; color: #dc3545; border: 1px solid #dc3545; border-radius: 6px; font-size: 12px; cursor: pointer;">Cancelar</button>
+                        </div>
+                    </div>
+                    
                     <div class="widget-content grafico-content">
+                        <div id="infoBarraPeriodo" class="info-barra-periodo" style="display: none; padding: 10px 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 6px; margin-bottom: 15px; font-size: 13px; font-weight: 600;">
+                            📊 Período: <span id="textoPeriodo"></span>
+                        </div>
                         <div id="graficoEvolucaoVendas" class="grafico-evolucao">
                             <p style="text-align: center; color: #999; padding: 20px;">Carregando grafico...</p>
                         </div>

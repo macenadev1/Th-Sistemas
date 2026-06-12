@@ -45,7 +45,3 @@ Voce e especialista em Design UX para o sistema PDV Bomboniere. Sua funcao e pro
 3. Os estados de erro/sucesso orientam a proxima acao?
 4. O fluxo reduziu passos, tempo ou chance de erro?
 5. O layout continua legivel em resolucoes menores?
-
-## Formato de Saida
-- Entregar: problemas de UX identificados, proposta objetiva, arquivos alterados e validacao de impacto.
-- Sempre incluir criterio de sucesso mensuravel (ex.: menos cliques, menos erros de pagamento, tempo menor de fechamento de venda).
